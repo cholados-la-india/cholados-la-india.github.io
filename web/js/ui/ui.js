@@ -1,0 +1,331 @@
+// ui.js — HUD y pantallas del juego (HTML sobre el canvas). Los textos viven en textos.js.
+//
+// Las pantallas se pintan con plantillas; los botones llevan `data-accion="..."` y main.js decide qué hace cada acción.
+import { LOCAL, T, pesos } from '../textos.js';
+import { fechaCortaBogota, fechaHoraBogota } from '../util.js';
+
+/* ───────────── Iconos (SVG en línea, sin imágenes) ───────────── */
+const SVG_VASO = '<svg viewBox="0 0 24 32" aria-hidden="true"><path class="s-pit" d="M15 9 L20.5 1.5"/><path class="s-vaso" d="M3.5 13h17l-2.6 17.2a1.6 1.6 0 0 1-1.6 1.3H7.7a1.6 1.6 0 0 1-1.6-1.3z"/><path class="s-baja" d="M5.2 21h13.6l-.9 6.8a1 1 0 0 1-1 .9H7.1a1 1 0 0 1-1-.9z"/><circle class="s-bola" cx="12" cy="10.5" r="7.2"/></svg>';
+const SVG_FRESA = '<svg viewBox="0 0 24 24" aria-hidden="true"><path class="f-cuerpo" d="M12 22.5C5.5 18 4 10.5 12 8c8 2.5 6.5 10 0 14.5z"/><path class="f-hoja" d="M7.5 8 12 3.2 16.5 8 12 9.8z"/><circle class="f-pepa" cx="9.6" cy="13.5" r=".9"/><circle class="f-pepa" cx="14.2" cy="13" r=".9"/><circle class="f-pepa" cx="12" cy="17" r=".9"/></svg>';
+const SVG_PAUSA = '<svg viewBox="0 0 18 18" aria-hidden="true"><rect x="3" y="2" width="4" height="14" rx="1.2"/><rect x="11" y="2" width="4" height="14" rx="1.2"/></svg>';
+
+const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const vasos = (activos, total) => Array.from({ length: total }, (_, i) => `<span class="vida${i < activos ? '' : ' perdida'}">${SVG_VASO}</span>`).join('');
+const elegir = (lista) => lista[Math.floor(Math.random() * lista.length)];
+
+/** Celular colombiano: 10 dígitos que empiezan por 3 (acepta +57, espacios y guiones). */
+export function normalizarCelular(texto) {
+  let d = String(texto).replace(/\D/g, '');
+  if (d.length === 12 && d.startsWith('57')) d = d.slice(2);
+  return /^3\d{9}$/.test(d) ? d : null;
+}
+
+export function crearUI(raiz, cfg) {
+  const $ = (id) => raiz.querySelector(id);
+  const contenedor = $('#pantalla');
+  const hud = $('#hud');
+  const cuenta = $('#cuenta');
+  const golpe = $('#golpe');
+  const manejadores = {};
+  let pantallaActual = null;
+
+  /* ───────────── HUD ───────────── */
+  hud.innerHTML = `
+    <div class="hud-arriba">
+      <div class="vidas" id="hud-vidas" aria-label="Vidas"></div>
+      <div class="reloj">
+        <div class="reloj-num" id="hud-reloj">1:00</div>
+        <div class="progreso"><i class="progreso-barra" id="hud-barra"></i><span class="progreso-meta">${SVG_VASO}</span></div>
+      </div>
+      <button class="pausa" id="hud-pausa" type="button" data-accion="pausa" aria-label="Pausa">${SVG_PAUSA}</button>
+    </div>
+    <div class="frutas">${SVG_FRESA}<b id="hud-frutas">0</b></div>`;
+  const elVidas = $('#hud-vidas');
+  const elReloj = $('#hud-reloj');
+  const elBarra = $('#hud-barra');
+  const elFrutas = $('#hud-frutas');
+  let ultimo = { vidas: -1, vidasMax: -1, reloj: '', barra: -1, frutas: -1 };
+
+  function actualizarHUD(p, tiempoRestante, progreso) {
+    if (p.vidas !== ultimo.vidas || p.cfg.partida.vidas !== ultimo.vidasMax) {
+      elVidas.innerHTML = vasos(Math.max(0, p.vidas), Math.max(p.cfg.partida.vidas, p.vidas));
+      ultimo.vidas = p.vidas;
+      ultimo.vidasMax = p.cfg.partida.vidas;
+    }
+    const seg = Math.ceil(tiempoRestante);
+    const reloj = `${Math.floor(seg / 60)}:${String(seg % 60).padStart(2, '0')}`;
+    if (reloj !== ultimo.reloj) {
+      elReloj.textContent = reloj;
+      ultimo.reloj = reloj;
+    }
+    const barra = Math.round(progreso * 1000) / 10;
+    if (barra !== ultimo.barra) {
+      elBarra.style.width = barra + '%';
+      ultimo.barra = barra;
+    }
+    if (p.frutas !== ultimo.frutas) {
+      elFrutas.textContent = p.frutas;
+      ultimo.frutas = p.frutas;
+    }
+  }
+  const mostrarHUD = (si) => {
+    hud.hidden = !si;
+    if (si) ultimo = { vidas: -1, vidasMax: -1, reloj: '', barra: -1, frutas: -1 };
+  };
+
+  /* ───────────── Cuenta atrás y golpe ───────────── */
+  function mostrarCuenta(texto) {
+    if (texto === null) {
+      cuenta.hidden = true;
+      return;
+    }
+    cuenta.hidden = false;
+    cuenta.textContent = texto;
+    cuenta.classList.remove('late');
+    void cuenta.offsetWidth; // reinicia la animación
+    cuenta.classList.add('late');
+  }
+  function destelloGolpe() {
+    golpe.classList.remove('on');
+    void golpe.offsetWidth;
+    golpe.classList.add('on');
+  }
+
+  /* ───────────── Pantallas ───────────── */
+  const plantillas = {
+    inicio({ estado, personaje, mostrarSelector, tieneCodigo }) {
+      return `
+      <section class="pantalla inicio">
+        <header class="inicio-cabeza">
+          <img class="logo" src="assets/marca/logo.png" alt="${esc(T.negocio)}" width="380" height="157">
+          <h1 class="titulo-juego">${esc(T.nombreJuego)}</h1>
+          ${mostrarSelector ? `
+          <div class="selector" role="group" aria-label="Personaje (solo desarrollo)">
+            <button type="button" data-accion="personaje:cholado" class="${personaje === 'cholado' ? 'on' : ''}">Choladito</button>
+            <button type="button" data-accion="personaje:india" class="${personaje === 'india' ? 'on' : ''}">La India</button>
+          </div>` : ''}
+        </header>
+        <div class="panel panel-inicio">
+          <div class="pastilla lima">${T.inicio.premios(estado.premiosRestantes)}</div>
+          <div class="intentos"><span class="vasos">${vasos(estado.intentosRestantes, estado.intentosPorSemana)}</span><span>${T.inicio.intentos(estado.intentosRestantes, estado.intentosPorSemana)}</span></div>
+          <button type="button" class="boton grande" data-accion="jugar">${T.inicio.jugar}</button>
+          <div class="enlaces">
+            <button type="button" class="enlace" data-accion="ayuda">${T.inicio.comoSeJuega}</button>
+            ${tieneCodigo ? `<button type="button" class="enlace" data-accion="mi-codigo">${T.inicio.miCodigo}</button>` : ''}
+          </div>
+        </div>
+      </section>`;
+    },
+
+    cargando: () => `<section class="pantalla centro"><div class="panel"><p class="mensaje">${T.inicio.cargando}</p></div></section>`,
+
+    error: ({ mensaje }) => `
+      <section class="pantalla centro"><div class="panel">
+        <p class="mensaje">${esc(mensaje || T.inicio.errorConexion)}</p>
+        <button type="button" class="boton" data-accion="reintentar">${T.inicio.reintentar}</button>
+      </div></section>`,
+
+    ayuda: () => `
+      <section class="pantalla centro fondo"><div class="panel ayuda">
+        <h2>${T.ayuda.titulo}</h2>
+        <ol class="pasos">${T.ayuda.pasos.map((p) => `<li>${p}</li>`).join('')}</ol>
+        <p class="nota">${T.ayuda.premio(cfg.reglas.compraMinima)}</p>
+        <button type="button" class="boton" data-accion="cerrar-ayuda">${T.ayuda.cerrar}</button>
+      </div></section>`,
+
+    pausa: () => `
+      <section class="pantalla centro fondo"><div class="panel">
+        <h2>${T.juego.pausa}</h2>
+        <button type="button" class="boton grande" data-accion="continuar">${T.juego.continuar}</button>
+        <button type="button" class="boton secundario" data-accion="salir">${T.juego.salir}</button>
+      </div></section>`,
+
+    ganaste: ({ error }) => `
+      <section class="pantalla centro fondo scroll"><form class="panel ganaste" data-accion="reclamar" novalidate>
+        <h2 class="grande-titulo">${T.ganaste.titulo}</h2>
+        <p class="mensaje">${T.ganaste.subtitulo}</p>
+        <label class="campo"><span>${T.ganaste.nombre}</span>
+          <input name="nombre" type="text" autocomplete="name" maxlength="60" autocapitalize="words" required></label>
+        <label class="campo"><span>${T.ganaste.celular}</span>
+          <input name="celular" type="tel" inputmode="numeric" autocomplete="tel-national" maxlength="16" placeholder="3XX XXX XXXX" required></label>
+        <label class="consentimiento"><input name="consentimiento" type="checkbox">
+          <span>${T.ganaste.consentimiento} <button type="button" class="enlace corto" data-accion="politica">${T.ganaste.verPolitica}</button></span></label>
+        <p class="error" id="error-form" role="alert">${error ? esc(error) : ''}</p>
+        <button type="submit" class="boton grande" id="btn-reclamar">${T.ganaste.boton}</button>
+      </form></section>`,
+
+    politica: () => `
+      <section class="pantalla centro fondo"><div class="panel ayuda">
+        <h2>${T.ganaste.politica.titulo}</h2>
+        <p class="nota">${T.ganaste.politica.texto(LOCAL.responsableDatos, LOCAL.correoContacto)}</p>
+        <button type="button" class="boton" data-accion="cerrar-politica">${T.ayuda.cerrar}</button>
+      </div></section>`,
+
+    codigo: ({ codigo, venceMs, esDePrueba, sinVolver }) => `
+      <section class="pantalla centro fondo scroll"><div class="panel ticket">
+        <h2>${T.codigo.titulo}</h2>
+        <div class="codigo" id="codigo-texto">${esc(codigo.slice(0, 3))}<span>-</span>${esc(codigo.slice(3))}</div>
+        <p class="vale">${T.codigo.vale(esc(fechaHoraBogota(venceMs)))}</p>
+        <ol class="pasos">${T.codigo.pasos(cfg.reglas.compraMinima).map((p) => `<li>${p}</li>`).join('')}</ol>
+        <p class="local"><b>${esc(LOCAL.direccion)}</b><br>${esc(LOCAL.horario)}</p>
+        ${esDePrueba ? `<p class="prueba">${T.codigo.prueba}</p>` : ''}
+        <p class="nota">${T.codigo.consejo}</p>
+        <button type="button" class="boton" data-accion="copiar" id="btn-copiar">${T.codigo.copiar}</button>
+        ${sinVolver ? '' : `<button type="button" class="boton secundario" data-accion="salir">${T.codigo.volver}</button>`}
+      </div></section>`,
+
+    perdiste: ({ progreso, frutas, intentosRestantes }) => `
+      <section class="pantalla centro fondo"><div class="panel">
+        <h2 class="grande-titulo">${esc(elegir(T.perdiste.titulos))}</h2>
+        <p class="mensaje">${T.perdiste.mensaje(Math.round(progreso * 100))}</p>
+        <div class="chips"><span class="chip">${SVG_FRESA}${esc(T.perdiste.frutas(frutas))}</span></div>
+        <p class="mensaje">${T.perdiste.intentos(intentosRestantes)}</p>
+        ${intentosRestantes > 0
+          ? `<button type="button" class="boton grande" data-accion="jugar">${T.perdiste.otraVez}</button>
+             <button type="button" class="boton secundario" data-accion="salir">${T.perdiste.salir}</button>`
+          : `<button type="button" class="boton grande" data-accion="salir">${T.perdiste.salir}</button>`}
+      </div></section>`,
+
+    'sin-intentos': ({ reiniciaEnISO, tieneCodigo }) => `
+      <section class="pantalla centro"><div class="panel">
+        <h2>${T.sinIntentos.titulo}</h2>
+        <p class="mensaje">${T.sinIntentos.mensaje(esc(fechaCortaBogota(Date.parse(reiniciaEnISO))))}</p>
+        ${tieneCodigo ? `<button type="button" class="boton" data-accion="mi-codigo">${T.inicio.miCodigo}</button>` : ''}
+        <button type="button" class="enlace" data-accion="ayuda">${T.inicio.comoSeJuega}</button>
+      </div></section>`,
+
+    'sin-premios': ({ reiniciaEnISO, tieneCodigo }) => `
+      <section class="pantalla centro"><div class="panel">
+        <h2>${T.sinPremios.titulo}</h2>
+        <p class="mensaje">${T.sinPremios.mensaje(esc(fechaCortaBogota(Date.parse(reiniciaEnISO))))}</p>
+        ${tieneCodigo ? `<button type="button" class="boton" data-accion="mi-codigo">${T.inicio.miCodigo}</button>` : ''}
+        <button type="button" class="enlace" data-accion="ayuda">${T.inicio.comoSeJuega}</button>
+      </div></section>`,
+
+    'campana-inactiva': ({ tieneCodigo }) => `
+      <section class="pantalla centro"><div class="panel">
+        <h2>${T.campanaInactiva.titulo}</h2>
+        <p class="mensaje">${T.campanaInactiva.mensaje}</p>
+        ${tieneCodigo ? `<button type="button" class="boton" data-accion="mi-codigo">${T.inicio.miCodigo}</button>` : ''}
+      </div></section>`,
+  };
+
+  function mostrar(nombre, datos = {}) {
+    pantallaActual = nombre;
+    contenedor.innerHTML = plantillas[nombre](datos);
+    contenedor.hidden = false;
+    contenedor.scrollTop = 0;
+    const primero = contenedor.querySelector('.scroll');
+    if (primero) primero.scrollTop = 0;
+  }
+  function ocultar() {
+    pantallaActual = null;
+    contenedor.hidden = true;
+    contenedor.innerHTML = '';
+  }
+  /** Ventana encima de la pantalla actual (ayuda, política): no borra lo que haya debajo, p. ej. el formulario a medio llenar. */
+  function mostrarModal(nombre, datos = {}) {
+    cerrarModal();
+    const m = document.createElement('div');
+    m.className = 'modal';
+    m.innerHTML = plantillas[nombre](datos);
+    contenedor.hidden = false;
+    contenedor.appendChild(m);
+  }
+  function cerrarModal() {
+    contenedor.querySelector('.modal')?.remove();
+    if (!contenedor.children.length) contenedor.hidden = true;
+  }
+
+  // Un solo manejador para todos los botones (delegación de eventos)
+  contenedor.addEventListener('click', (e) => {
+    const b = e.target.closest('[data-accion]');
+    if (!b || b.tagName === 'FORM') return;
+    manejadores.accion?.(b.dataset.accion, b);
+  });
+  hud.addEventListener('click', (e) => {
+    const b = e.target.closest('[data-accion]');
+    if (b) manejadores.accion?.(b.dataset.accion, b);
+  });
+  contenedor.addEventListener('submit', (e) => {
+    e.preventDefault();
+    const f = e.target.closest('form');
+    if (f) manejadores.accion?.(f.dataset.accion, f);
+  });
+
+  /** Lee y valida el formulario del premio. Devuelve { valores } o { error }. */
+  function leerFormulario() {
+    const f = contenedor.querySelector('form.ganaste');
+    const nombre = f.nombre.value.trim().replace(/\s+/g, ' ');
+    const celular = normalizarCelular(f.celular.value);
+    if (nombre.length < 2) return { error: T.ganaste.errores.nombre, campo: f.nombre };
+    if (!celular) return { error: T.ganaste.errores.celular, campo: f.celular };
+    if (!f.consentimiento.checked) return { error: T.ganaste.errores.consentimiento, campo: f.consentimiento };
+    return { valores: { nombre, celular, consentimiento: true } };
+  }
+  function errorFormulario(texto) {
+    const el = contenedor.querySelector('#error-form');
+    if (el) el.textContent = texto || '';
+  }
+  function enviando(si) {
+    const b = contenedor.querySelector('#btn-reclamar');
+    if (!b) return;
+    b.disabled = si;
+    b.textContent = si ? T.ganaste.enviando : T.ganaste.boton;
+  }
+  async function copiarCodigo(texto) {
+    const b = contenedor.querySelector('#btn-copiar');
+    let ok = false;
+    try {
+      await navigator.clipboard.writeText(texto);
+      ok = true;
+    } catch {
+      try {
+        const t = document.createElement('textarea');
+        t.value = texto;
+        t.style.cssText = 'position:fixed;opacity:0';
+        document.body.appendChild(t);
+        t.select();
+        ok = document.execCommand('copy');
+        t.remove();
+      } catch {
+        /* sin portapapeles: queda la captura de pantalla */
+      }
+    }
+    if (b && ok) {
+      b.textContent = T.codigo.copiado;
+      setTimeout(() => {
+        if (b.isConnected) b.textContent = T.codigo.copiar;
+      }, 1800);
+    }
+  }
+  function toast(texto) {
+    const t = document.createElement('div');
+    t.className = 'toast';
+    t.textContent = texto;
+    raiz.appendChild(t);
+    setTimeout(() => t.remove(), 3200);
+  }
+
+  return {
+    mostrar,
+    ocultar,
+    mostrarModal,
+    cerrarModal,
+    get pantalla() {
+      return pantallaActual;
+    },
+    mostrarHUD,
+    actualizarHUD,
+    mostrarCuenta,
+    destelloGolpe,
+    leerFormulario,
+    errorFormulario,
+    enviando,
+    copiarCodigo,
+    toast,
+    alAccion(fn) {
+      manejadores.accion = fn;
+    },
+  };
+}

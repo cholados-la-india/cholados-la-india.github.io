@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="es-CO">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#120b14">
+  <title>Estilos · Cholado Runner</title>
+  <link rel="icon" href="data:,">
+  <style>
+    @font-face { font-family: "Lilita One"; src: url("../assets/fonts/lilita-one.woff2") format("woff2"); font-display: swap; }
+    @font-face { font-family: "Fredoka"; src: url("../assets/fonts/fredoka-600.woff2") format("woff2"); font-weight: 600; font-display: swap; }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { background: #120b14; color: #fff; font: 16px/1.45 system-ui, sans-serif; padding: 20px 16px 40px; display: flex; justify-content: center; }
+    main { width: min(100%, 460px); }
+    header { text-align: center; margin-bottom: 18px; }
+    header img { width: 190px; height: auto; display: block; margin: 0 auto 10px; }
+    h1 { font-size: 20px; }
+    h2 { font-size: 13px; letter-spacing: 0.08em; text-transform: uppercase; color: #c9bccd; margin: 22px 0 10px; }
+    header p { color: #c9bccd; font-size: 14px; margin-top: 4px; }
+    .tarjeta { display: block; text-decoration: none; color: inherit; background: #1f1424; border: 1px solid #3a2a42; border-radius: 16px; padding: 16px; margin-bottom: 14px; }
+    .tarjeta:active { background: #2a1b31; }
+    .letra { font-size: 13px; color: #c9bccd; }
+    .nombre { font-size: 26px; margin: 2px 0 6px; line-height: 1.1; font-family: "Fredoka", system-ui, sans-serif; font-weight: 600; }
+    .f .nombre { font-family: "Lilita One", system-ui, sans-serif; font-weight: 400; }
+    .desc { color: #e5dbe8; font-size: 14px; }
+    .paleta { display: flex; gap: 6px; margin: 12px 0 10px; }
+    .paleta i { width: 30px; height: 30px; border-radius: 50%; border: 2px solid rgba(255, 255, 255, 0.55); background: var(--c); }
+    .ver { display: inline-block; background: #fff; color: #120b14; font-weight: 700; padding: 8px 16px; border-radius: 99px; font-size: 14px; }
+    .viejas { display: flex; flex-wrap: wrap; gap: 8px; }
+    .viejas a { color: #e5dbe8; background: #1f1424; border: 1px solid #3a2a42; border-radius: 99px; padding: 8px 14px; font-size: 14px; text-decoration: none; }
+    .viejas small { flex-basis: 100%; color: #9a8da0; font-size: 12px; }
+    footer { margin-top: 22px; padding: 14px; border-radius: 12px; background: #1f1424; font-size: 13px; color: #c9bccd; }
+    footer code { color: #fff; word-break: break-all; }
+  </style>
+</head>
+<body>
+  <main>
+    <header>
+      <img src="../assets/marca/logo.png" alt="Cholados La India" width="190" height="79">
+      <h1>Elige un estilo gráfico</h1>
+      <p>La misma escena en cada opción: choladito, La India, obstáculo, fondo y HUD.</p>
+    </header>
+
+    <h2>Ronda 2 · C con toques de B</h2>
+
+    <a class="tarjeta d" href="estilo-d.html">
+      <div class="letra">Opción D</div>
+      <div class="nombre">Jugoso + trazo fino</div>
+      <p class="desc">Lo más cercano a C. Mismo brillo de gelatina, pero con un contorno fino del color de cada objeto (no negro), solo en personaje, cajas y frutas.</p>
+      <div class="paleta"><i style="--c:#d8287f"></i><i style="--c:#ff9e5e"></i><i style="--c:#b6e80a"></i><i style="--c:#4a1b52"></i><i style="--c:#66c3e0"></i><i style="--c:#3a0f33"></i></div>
+      <span class="ver">Ver preview →</span>
+    </a>
+
+    <a class="tarjeta e" href="estilo-e.html">
+      <div class="letra">Opción E</div>
+      <div class="nombre">Jugoso + sombritas</div>
+      <p class="desc">La mezcla más literal: sombreado en 4 escalones como B, con sombras moradas, más el contorno fino de color. Borde ciruela también en el HUD.</p>
+      <div class="paleta"><i style="--c:#d8287f"></i><i style="--c:#ff9e5e"></i><i style="--c:#b6e80a"></i><i style="--c:#4a1b52"></i><i style="--c:#66c3e0"></i><i style="--c:#3a0f33"></i></div>
+      <span class="ver">Ver preview →</span>
+    </a>
+
+    <a class="tarjeta f" href="estilo-f.html">
+      <div class="letra">Opción F</div>
+      <div class="nombre">Sombritas sin línea</div>
+      <p class="desc">Las sombritas escalonadas, pintadas en la textura (más barato), sin contorno. Tipografía Lilita One, más gruesa, parecida al "LA INDIA" del logo.</p>
+      <div class="paleta"><i style="--c:#d8287f"></i><i style="--c:#ff9e5e"></i><i style="--c:#b6e80a"></i><i style="--c:#4a1b52"></i><i style="--c:#66c3e0"></i><i style="--c:#ffffff"></i></div>
+      <span class="ver">Ver preview →</span>
+    </a>
+
+    <h2>Ronda 1 · referencia</h2>
+    <div class="viejas">
+      <a href="estilo-a.html">A · Low poly</a>
+      <a href="estilo-b.html">B · Cartoon</a>
+      <a href="estilo-c.html">C · Jugoso</a>
+      <small>Ya probadas. A descartado; C es la base de la ronda 2. Ahora también muestran el cholado nuevo.</small>
+    </div>
+
+    <footer id="pie">
+      Tip: dentro de cada preview, el botón <b>Datos</b> muestra FPS, llamadas de dibujo, triángulos y peso descargado.
+    </footer>
+  </main>
+  <script>
+    // Muestra la dirección para abrir esto en el celular (misma red wifi que el PC).
+    fetch('/__info').then((r) => r.json()).then(({ puerto, ips }) => {
+      if (!ips.length) return;
+      document.getElementById('pie').insertAdjacentHTML('beforeend',
+        '<br><br>En tu celular (misma red wifi): ' + ips.map((ip) => '<code>http://' + ip + ':' + puerto + '/previews/</code>').join(' · '));
+    }).catch(() => {});
+  </script>
+</body>
+</html>

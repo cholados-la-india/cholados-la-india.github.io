@@ -7,7 +7,7 @@ Estado por etapas. Regla: solo se trabaja en la etapa que el usuario pida; al ce
 |---|---|---|
 | 1 | Contexto y preguntas (sin código) | ✅ Hecha (2026-10-19) |
 | 2 | Estilo gráfico (previews) | ✅ Hecha (2026-10-19). Elegido: **G = mezcla de D y F** |
-| 3 | Prototipo jugable sin backend | ⬜ |
+| 3 | Prototipo jugable sin backend | 🔄 Entregado el 2026-10-19, esperando feedback y visto bueno del usuario |
 | 4 | Backend en Supabase y conexión | ⬜ |
 | 5 | Página del staff (PIN) y panel admin | ⬜ |
 | 6 | Pruebas, seguridad y compatibilidad | ⬜ |
@@ -31,13 +31,16 @@ Archivos tocados: `CLAUDE.md`, `PLAN.md`, `pendientes.md`, `.gitignore`.
 **Sigue sin decidir:** personaje (choladito o La India; ambos intercambiables) y nombre del juego. Se resuelven durante la Etapa 3.
 
 ## Etapa 3 — Prototipo sin backend
-- [ ] 3.1 Bucle de juego, cámara y pista de 3 carriles.
-- [ ] 3.2 Controles táctiles (deslizar) y teclado para probar en PC.
-- [ ] 3.3 Obstáculos, coleccionables, colisión y vidas.
-- [ ] 3.4 Meta, cronómetro de ~60 s y dificultad calibrable por config.
-- [ ] 3.5 Pantallas (inicio, resultado, formulario simulado) con `config.js` simulado, textos en español caleño.
-- [ ] 3.6 Sonido y música (pistas libres de licencia).
-- [ ] 3.7 Optimización y prueba en iPhone XR (por IP local, misma red wifi).
+- [x] 3.0 Carpeta `historial/` con evidencias (hitos 01 y 02) + `npm run hito`.
+- [x] 3.1 Bucle de juego, cámara y pista de 3 carriles.
+- [x] 3.2 Controles táctiles (deslizar, tocar) y teclado para probar en PC.
+- [x] 3.3 Obstáculos (4 tipos), frutas opcionales, colisión con tolerancia y vidas.
+- [x] 3.4 Meta con el cholado de premio, cronómetro de 60 s y dificultad toda en `config.js`.
+- [x] 3.5 Pantallas (inicio, ayuda, pausa, ganaste con formulario, código, perdiste, sin intentos, sin premios) con API falsa (`api-falsa.js`) fácil de reemplazar.
+- [x] 3.6b Modo `?debug=1` (FPS, deslizadores en vivo, estadísticas, simulador con bot) y guía `documentos/calibrar-dificultad.md`.
+- [ ] 3.6 Sonido y música (pistas libres de licencia). **Aplazado**: el Prompt 3 no lo incluía; decidir con el usuario.
+- [ ] 3.7 Prueba en iPhone XR (por IP local, misma red wifi): FPS reales, controles táctiles, navegador de Instagram. **Pendiente del usuario.**
+- [ ] 3.8 Con el visto bueno: borrar `web/previews/` (ya está en `historial/`), guardar hito 03 definitivo con capturas, marcar la etapa ✅.
 
 ## Etapa 4 — Supabase
 - [ ] 4.1 Crear cuenta y proyecto (guiado) y verificar límites del plan gratis.

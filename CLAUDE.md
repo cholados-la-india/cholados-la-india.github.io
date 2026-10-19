@@ -1,7 +1,7 @@
 # CLAUDE.md — Cholado Runner (Cholados La India, Cali, Colombia)
 
 Contexto y decisiones del proyecto. Léelo SIEMPRE antes de trabajar. El estado de las etapas está en `PLAN.md`; lo que falta por resolver está en `pendientes.md`.
-Última actualización: 2026-10-19 (cierre de Etapa 2).
+Última actualización: 2026-10-19 (Etapa 3: prototipo jugable entregado, esperando feedback del usuario).
 
 ## 1. Qué es
 Minijuego web (se abre desde el celular, sin instalar nada) tipo runner vertical (Subway Surfers / Minion Rush / Temple Run) con temática de frutas y cholado, para el negocio familiar Cholados La India (Cali). El jugador corre ~60 s esquivando obstáculos hasta una meta. Si llega, gana un código de descuento único que se canjea en el local. Objetivo: incentivar ventas.
@@ -16,6 +16,8 @@ Las capturas de Temple Run / Minion Rush / Subway Surfers son referencia de **me
 - El usuario entrega prompts por etapa (diseñados antes con otro chat). Cada uno empieza con: leer `CLAUDE.md` y `PLAN.md`, revisar el repo y decir en 3 líneas qué hay hecho. **Si un prompt contradice algo ya decidido en el chat, gana lo decidido en el chat.**
 - Nunca pedir ni guardar PIN, claves o tokens en el chat ni en archivos del repo (el repo es público).
 - Lo que quede sin resolver va a `pendientes.md` con placeholders visibles (ej. `[DIRECCIÓN DEL LOCAL]`), no se inventa.
+- **Historial del proceso (`historial/`)**: el usuario quiere conservar evidencias de cómo se fue construyendo (por si el proyecto triunfa). En cada hito importante (nuevo estilo, prototipo, versión publicada...) correr `npm run hito -- "nombre" "Título" "Descripción" "ruta/"` y dejar capturas en `historial/NN-nombre/capturas/` anotadas en `historial/hitos.json`. Se ve en `http://localhost:5173/historial/`. Vive fuera de `web/`, así que no se publica. Ver `historial/LEEME.md`.
+- Al terminar cada etapa, dar al usuario una frase corta para el mensaje del commit.
 
 ## 3. Reglas del negocio (v1) — TODO configurable, nada quemado en el código
 - **Campaña por temporada** con fecha de inicio y fin editables (fechas aún sin definir). Entre temporadas solo cambian las fechas; premio y tema visual iguales por ahora (sujeto a cambio).
@@ -52,9 +54,9 @@ Las capturas de Temple Run / Minion Rush / Subway Surfers son referencia de **me
 - URL final: `https://hachescc.github.io/cholado-runner/` (cuenta personal definitiva `hachescc`). **No renombrar usuario ni repo** una vez impresos los QR. Dominio propio: depende de cómo vaya, no se paga por ahora.
 
 ## 6. Controles y juego (decidido en Etapa 1)
-- Runner vertical, cámara detrás del personaje, **3 carriles**, deslizar izquierda/derecha para cambiar de carril y arriba para saltar.
-- Deslizar hacia abajo (agacharse): fuera por ahora; se puede probar después (puede chocar con gestos del navegador interno de Instagram).
-- Dificultad inicial **provisional**: 3 vidas por partida y ~35 % de las partidas llegando a la meta; todo calibrable por configuración. Si resulta muy fácil: pasar a "un choque elimina" o subir velocidad/densidad. "Ganar" = llegar a la meta.
+- Runner vertical, cámara detrás del personaje, **3 carriles**, deslizar izquierda/derecha para cambiar de carril y arriba para saltar. **Un toque (sin deslizar) también salta** (el Prompt 3 pedía "un solo toque", el chat decidió 3 carriles de deslizar: se dejaron ambos). Teclado en PC: flechas/A D, ↑/W/espacio, Esc o P = pausa.
+- Deslizar hacia abajo (agacharse): fuera por ahora (se ignora); se puede probar después (puede chocar con gestos del navegador interno de Instagram).
+- Dificultad inicial **provisional**: 3 vidas por partida y **~1 de cada 4 o 5 intentos ganando (20–25 %)** — esta cifra del Prompt 3 reemplaza al ~35 % que se había propuesto antes. Todo calibrable por configuración (ver sección 10 y `documentos/calibrar-dificultad.md`). Si resulta muy fácil: pasar a "un choque elimina" o subir velocidad/densidad. "Ganar" = llegar a la meta (la meta aparece cuando se cumple la duración; un choque quita vida pero no frena).
 - Coleccionables posibles: frutas del menú (maracuyá, mango, guanábana, lulo, mora, fresa, piña).
 - **Personaje sin decidir** (choladito vs. La India). Ambos ya existen con el mismo estilo y el usuario los alterna con el botón mientras avanza el juego; se decide después. Recomendación de Claude: La India corre (en un runner se ve siempre de espaldas, y el penacho en abanico es la silueta más reconocible) y el cholado es la meta y el premio ("Atrapa tu cholado"); el choladito queda en las vidas del HUD y la pantalla de victoria. **Cualquier cambio de estilo debe aplicarse a los dos personajes.**
 - **Nombre sin decidir.** Candidatos que le gustan al usuario: *Atrapa tu cholado*, *Corre por tu cholado*, *Cholado Run*. Recomendación: "Corre por tu cholado" como nombre y "Atrapa tu cholado" como llamado a la acción.
@@ -92,16 +94,33 @@ Las capturas de Temple Run / Minion Rush / Subway Surfers son referencia de **me
 ```
 cholado-runner/
 ├─ CLAUDE.md · PLAN.md · pendientes.md · README.md · .gitignore
-├─ package.json · package-lock.json   (scripts: dev, vendor)
-├─ tools/                  dev-server.mjs · vendor-three.mjs
+├─ package.json · package-lock.json   (scripts: dev, vendor, hito, simular)
+├─ tools/                  dev-server.mjs · vendor-three.mjs · guardar-hito.mjs · simular.mjs
+├─ historial/              evidencias del proceso (hitos congelados); NO se publica
 ├─ referencias-diseno/     (solo local, ignorada por Git)
 ├─ web/                    ← lo único que se publica
-│  ├─ index.html           juego
-│  ├─ canje/               página del staff
-│  ├─ admin/               panel admin
-│  ├─ css/ · js/ (game/, ui/, api.js, config.js) · vendor/three/ · assets/
-│  └─ previews/            estilos A–G (G = elegido); se borra al final de la Etapa 3
+│  ├─ index.html           el juego
+│  ├─ css/juego.css
+│  ├─ js/ main.js · config.js · textos.js · util.js · api.js · api-falsa.js
+│  │    game/ (logica, nivel, bot, escena, controles, modelos, modelos-nivel, materiales, matcap, paleta)
+│  │    ui/ (ui.js, debug.js solo con ?debug=1)
+│  ├─ vendor/three/ · assets/ (fonts, marca)
+│  ├─ canje/               página del staff (Etapa 5)
+│  ├─ admin/               panel admin (Etapa 5)
+│  └─ previews/            estilos A–G (G = elegido); BORRAR al aprobar la Etapa 3 (ya están en historial/)
 ├─ supabase/ (migrations/, seed/)
 ├─ documentos/             aviso de privacidad, TyC, lista de lanzamiento
 └─ .github/workflows/      publicar web/ en GitHub Pages (Etapa 7)
 ```
+
+## 10. Etapa 3 — Prototipo jugable (sin backend) — cómo está hecho
+**Arquitectura.** El juego va por TIEMPO: la partida dura `partida.duracionS` (60 s) y la meta aparece al terminar; la velocidad sube linealmente de `velocidad.inicial` a `final`. Los obstáculos se generan por delante en filas separadas por un tiempo (en segundos) que baja de `separacionInicialS` a `separacionFinalS`. Un choque quita una vida y da invulnerabilidad breve, pero no frena (así la partida dura siempre ~60 s). Cada fila garantiza una salida (siempre se puede pasar).
+- **Lógica pura** (sin Three.js ni DOM, se puede probar en Node): `game/logica.js` (estado, física, colisiones), `game/nivel.js` (generación del recorrido), `game/bot.js` (jugador automático para medir).
+- **Dibujo**: `game/escena.js` solo MUESTRA el estado. Reutiliza los modelos del estilo G (`modelos.js`, `materiales.js`, `matcap.js`, `paleta.js`, movidos tal cual desde `previews/shared/`) y agrega `modelos-nivel.js` (pila alta, barra baja, arco de meta con el cholado de premio, cartel ¡META!).
+- **Obstáculos**: `cajaBaja` (se salta o se esquiva), `pilaAlta` (NO se salta), `barraBaja` (cruza los 3 carriles, se salta), `doble` (dos a la vez). Frutas (fresa, mango): opcionales, no afectan la meta; sobre cajas bajas suben en arco.
+- **Pantallas**: inicio (premios e intentos restantes), ayuda, cuenta atrás, pausa (también automática al salir de la pestaña), ganaste (formulario nombre + celular + consentimiento → código), código (con vigencia y [DIRECCIÓN]/[HORARIO]), perdiste (intentos restantes), sin intentos, sin premios, campaña inactiva, error. Textos en `js/textos.js`.
+- **API**: `js/api.js` es la ÚNICA puerta al servidor; hoy apunta a `api-falsa.js` (localStorage) que imita las reglas del negocio (intentos por semana, banco que se reinicia el lunes 00:00 Bogotá, token de partida, tiempo mínimo jugado, 1 código por celular cada 7 días, vigencia 7 días − 1 min, código con alfabeto sin 0/O/1/I). **Para la Etapa 4**: crear `api-supabase.js` con las MISMAS funciones (contrato documentado en `api.js`) y cambiar una línea. La victoria nunca se confía al cliente: `terminarPartida` + `reclamarPremio` la validan con el token y el tiempo.
+- **Rendimiento**: carga inicial **~0,25 MB** comprimida (tope previsto 3 MB); 19–29 llamadas de dibujo y ≤ ~22.000 triángulos por cuadro; shaders precompilados al cargar; **calidad adaptativa** (`escena.js`): si el celular no sostiene `rendimiento.fpsMinimo`, baja resolución y por último quita el contorno; si bajar no mejora los FPS (p. ej. iPhone en bajo consumo, 30 fps) vuelve atrás y no insiste. Pendiente medirlo en el iPhone XR y en un Android de gama baja (no hay uno a mano).
+- **Modo `?debug=1`** (`ui/debug.js`, no se descarga para el público): FPS/llamadas/triángulos/calidad, deslizadores de dificultad en vivo, invencible, intentos ilimitados (por defecto activado en debug), error de red simulado, reiniciar semana, estadísticas de las partidas reales con la config actual, simulador con bot (Novato/Normal/Experto) y "Copiar config". `window.__cholado.tick(dt)` permite avanzar el juego a mano (pruebas).
+- **Cómo medir la dificultad**: `documentos/calibrar-dificultad.md` (simulador `npm run simular` + estadísticas jugando). Valores iniciales: velocidad 9 → 13,5 u/s; filas cada 1,5 → 0,95 s; tolerancia 0,18; 3 vidas. Bot: Novato ~2 %, Normal ~19 %, Experto ~92 %. Estimación para una mezcla de jugadores: ~1 de cada 4 o 5. Los pesos de tipos y todos los demás valores están en `js/config.js`.
+- **Sin audio todavía** (el Prompt 3 no lo pedía; ver `pendientes.md`). Los botones "Choladito / La India" del inicio son de desarrollo (`desarrollo.selectorPersonaje`). "Girar" no está en el juego (el inicio muestra al personaje de frente); "Datos" = el mini panel de `?debug=1`.

@@ -6,7 +6,9 @@
   "type": "module",
   "scripts": {
     "dev": "node tools/dev-server.mjs",
-    "vendor": "node tools/vendor-three.mjs"
+    "vendor": "node tools/vendor-three.mjs",
+    "hito": "node tools/guardar-hito.mjs",
+    "simular": "node tools/simular.mjs"
   },
   "devDependencies": {
     "esbuild": "0.28.2",

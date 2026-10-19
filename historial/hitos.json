@@ -1,0 +1,48 @@
+[
+  {
+    "id": "01-estilos-a-f",
+    "titulo": "Preview 2: las seis opciones (A a F)",
+    "descripcion": "Ronda 2 (D, E, F) arriba y ronda 1 (A, B, C) abajo, con el cholado nuevo. De aquí salió la elección: D y F gustaron, E se descartó y A quedó descartado desde la ronda 1.",
+    "fecha": "2026-10-19",
+    "entrada": "previews/",
+    "capturas": [
+      "ronda1-A-low-poly.jpg",
+      "ronda1-B-cartoon.jpg",
+      "ronda1-C-jugoso.jpg",
+      "ronda2-D-trazo-fino.jpg",
+      "ronda2-E-sombritas.jpg",
+      "ronda2-F-sin-linea.jpg"
+    ]
+  },
+  {
+    "id": "02-estilo-g-elegido",
+    "titulo": "Preview 3: estilo G elegido",
+    "descripcion": "La mezcla de D y F: sombritas suaves, brillo de gelatina y contorno fino de color, igual en el choladito y en La India. Las opciones A a F siguen abajo como referencia.",
+    "fecha": "2026-10-19",
+    "entrada": "previews/",
+    "capturas": [
+      "G-choladito.jpg",
+      "G-la-india.jpg"
+    ]
+  },
+  {
+    "id": "03-prototipo-v1",
+    "titulo": "Preview 4: primer prototipo jugable",
+    "descripcion": "El juego completo sin servidor real: 3 carriles, obstaculos, frutas, meta con el cholado, pantallas de inicio, ganaste, codigo, perdiste y sin intentos, y modo ?debug=1 con simulador. Con la API falsa.",
+    "fecha": "2026-10-19",
+    "entrada": "",
+    "capturas": [
+      "01-inicio-la-india.jpg",
+      "02-inicio-choladito.jpg",
+      "03-carrera-pilas-altas.jpg",
+      "04-carrera-choladito.jpg",
+      "05-llegando-a-la-meta.jpg",
+      "06-ganaste-formulario.jpg",
+      "07-codigo-del-premio.jpg",
+      "08-perdiste.jpg",
+      "09-sin-intentos.jpg",
+      "10-como-se-juega.jpg",
+      "11-debug-simulador.jpg"
+    ]
+  }
+]

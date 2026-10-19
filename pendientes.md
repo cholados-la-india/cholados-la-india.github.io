@@ -12,7 +12,7 @@ Lo que NO está decidido o falta. Mientras tanto se usan placeholders visibles e
 | 5 | **Calibrar dificultad** (vidas, velocidad, ~35 % de victoria) | 3 vidas provisional | tras Etapa 3 | ⏳ |
 | 6 | **Cupo diario** del banco y tráfico esperado (desconocido) | desactivado | Etapa 4 | ⏳ |
 | 7 | **Dispositivo del staff** para canjear y quién usa el PIN | PIN compartido | Etapa 5 | ⏳ |
-| 8 | **Música y sonidos** (salsa caleña/fresco) con licencia libre | sin audio | Etapa 3.6 | ⏳ |
+| 8 | **Música y sonidos** (salsa caleña/fresco) con licencia libre. El Prompt 3 no lo pedía: ¿se hace ahora, como mini-etapa, o más adelante? | sin audio | Etapa 3.6 | ⏳ decidir |
 | 9 | **Android de gama baja** para probar (hoy solo iPhone XR) | emulación en DevTools | Etapa 6 | ⏳ |
 | 10 | **Fecha de lanzamiento** y fechas de la primera campaña | `[FECHA INICIO]`, `[FECHA FIN]` | Etapa 4 | ⏳ |
 | 11 | **Términos y condiciones** (vigencia, límite semanal, compra mínima, un regalo por código) | texto provisional | Etapa 7 | ⏳ |
@@ -22,7 +22,11 @@ Lo que NO está decidido o falta. Mientras tanto se usan placeholders visibles e
 | 15 | Instalar Node.js LTS | — | Etapa 2 (bloqueante) | ✅ instalado (v24.20.0) y política de scripts de PowerShell resuelta |
 | 16 | **Medir FPS reales en el iPhone XR** con el botón "Datos" de cada preview (el navegador de la app recorta los cuadros y no sirve para medir FPS) | — | Etapa 2 | ✅ ronda 1: ~60 FPS en A, B y C (mínimo 57). Falta repetirlo con el estilo G ya dentro del juego (Etapa 3.7) |
 | 17 | **Mejoras gráficas del estilo G** (no urgentes): el escenario/suelo necesita más detalle; en el cholado las frutas parecen "afuera" del vaso y no adentro; la bola de helado se ve "pintada hasta la mitad" (borde recto de la leche condensada). Más elementos de escenario a medida que avance el juego | — | cuando haya tiempo, después de Etapa 3 | ⏳ |
-| 18 | Revisar la saturación/contraste de G ya con el juego completo en el celular (el usuario quiere valorar si D + F juntos quedan muy saturados) | `color.setScalar(1.15)` en el material | Etapa 3.7 | ⏳ |
+| 18 | Revisar la saturación/contraste de G ya con el juego completo en el celular (el usuario quiere valorar si D + F juntos quedan muy saturados) | `color.setScalar(1.15)` en `materiales.js` | Etapa 3.7 | ⏳ |
+| 19 | **Probar el juego en el iPhone XR** (FPS reales, deslizar, tocar, formulario con teclado) y en el navegador interno de Instagram | — | Etapa 3.7 / 6 | ⏳ del usuario |
+| 20 | **Calibrar la dificultad con gente real** (estadísticas de `?debug=1`; ver `documentos/calibrar-dificultad.md`). El bot dice Normal ~19 %; falta contrastarlo con personas | valores de `config.js` | Etapa 3.7 | ⏳ |
+| 21 | Detalles visuales del juego: el cartel ¡META! se lee poco a distancia; el escenario es repetitivo (más elementos); animación de choque/caída simple; en el iPhone en modo de bajo consumo (30 fps) la imagen no mejora aunque baje la calidad | — | después de Etapa 3 | ⏳ |
+| 22 | Decidir si "Girar" y el selector Choladito / La India se mantienen en el prototipo o se quitan; y cuál es el personaje definitivo | `desarrollo.selectorPersonaje` | Etapa 3 | ⏳ |
 
 ## Análisis: ¿aplica la Ley 1581 de 2012? (2026-10-19)
 Conclusión: **sí aplica, pero la carga es liviana.** No soy abogado; conviene confirmarlo con el contador o un abogado antes de lanzar.

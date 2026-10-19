@@ -9,6 +9,9 @@ import { networkInterfaces } from 'node:os';
 import { gzipSync } from 'node:zlib';
 
 const RAIZ = resolve(fileURLToPath(new URL('../web', import.meta.url)));
+// El historial (copias congeladas de cada hito) vive fuera de web/ para que no se publique, pero aquí se sirve en /historial/.
+const RAIZ_PROYECTO = resolve(fileURLToPath(new URL('..', import.meta.url)));
+const RAIZ_HISTORIAL = join(RAIZ_PROYECTO, 'historial');
 const PUERTO = Number(process.env.PORT) || 5173;
 
 const TIPOS = {
@@ -50,8 +53,11 @@ const servidor = http.createServer(async (req, res) => {
       return res.end(JSON.stringify({ puerto: PUERTO, ips: direccionesRed() }));
     }
 
-    let archivo = resolve(join(RAIZ, normalize(decodeURIComponent(url.pathname))));
-    if (archivo !== RAIZ && !archivo.startsWith(RAIZ + sep)) {
+    const ruta = decodeURIComponent(url.pathname);
+    const esHistorial = ruta === '/historial' || ruta.startsWith('/historial/');
+    const permitida = esHistorial ? RAIZ_HISTORIAL : RAIZ;
+    let archivo = resolve(join(esHistorial ? RAIZ_PROYECTO : RAIZ, normalize(ruta)));
+    if (archivo !== permitida && !archivo.startsWith(permitida + sep)) {
       res.writeHead(403, { 'Content-Type': 'text/plain; charset=utf-8' });
       return res.end('Prohibido');
     }
@@ -89,5 +95,6 @@ servidor.listen(PUERTO, '0.0.0.0', () => {
   console.log(`\n  Servidor listo. Sirviendo la carpeta web/\n`);
   console.log(`  En tu PC:      http://localhost:${PUERTO}/`);
   for (const ip of direccionesRed()) console.log(`  En tu celular: http://${ip}:${PUERTO}/   (misma red wifi)`);
+  console.log(`\n  Historial de hitos: http://localhost:${PUERTO}/historial/`);
   console.log(`\n  Para detenerlo: Ctrl + C\n`);
 });
