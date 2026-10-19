@@ -1,12 +1,12 @@
 # PLAN.md — Cholado Runner
 
 Estado por etapas. Regla: solo se trabaja en la etapa que el usuario pida; al cerrar cada una se resume, se espera visto bueno y se actualiza este archivo.
-Última actualización: 2026-10-19.
+Última actualización: 2026-10-19 (cierre de Etapa 2; siguiente: Etapa 3).
 
 | # | Etapa | Estado |
 |---|---|---|
 | 1 | Contexto y preguntas (sin código) | ✅ Hecha (2026-10-19) |
-| 2 | 3 opciones de estilo gráfico (previews) | ⏳ Siguiente. Bloqueada hasta instalar Node.js LTS |
+| 2 | Estilo gráfico (previews) | ✅ Hecha (2026-10-19). Elegido: **G = mezcla de D y F** |
 | 3 | Prototipo jugable sin backend | ⬜ |
 | 4 | Backend en Supabase y conexión | ⬜ |
 | 5 | Página del staff (PIN) y panel admin | ⬜ |
@@ -18,12 +18,17 @@ Hecho: revisión de las 19 referencias y el menú; 10 preguntas respondidas por 
 Archivos tocados: `CLAUDE.md`, `PLAN.md`, `pendientes.md`, `.gitignore`.
 
 ## Etapa 2 — Estilo gráfico (SIN implementar el juego)
-- [ ] 2.0 Instalar Node.js LTS (guía en el chat) y comprobar `node -v` / `npm -v`.
-- [ ] 2.1 Extraer paleta y tipografía de las referencias.
-- [ ] 2.2 Servidor local de preview + Three.js dentro del repo (`web/vendor/three/`).
-- [ ] 2.3 Tres páginas de preview en `web/previews/` (choladito y La India, un obstáculo, fondo y HUD).
-- [ ] 2.4 Ficha por opción: paleta, tipografía, cómo se ve el personaje, peso estimado en MB, pros y contras en gama baja.
-- [ ] 2.5 El usuario elige → se documenta la decisión en `CLAUDE.md`.
+- [x] 2.0 Instalar Node.js LTS (v24.20.0) y política de scripts de PowerShell.
+- [x] 2.1 Extraer paleta y tipografía de las referencias.
+- [x] 2.2 Servidor local (`npm run dev`) + Three.js recortado dentro del repo (`npm run vendor`).
+- [x] 2.3 Ronda 1: previews A, B, C en `web/previews/` (choladito y La India, obstáculo, fondo y HUD).
+- [x] 2.4 Ficha por opción y prueba en iPhone XR: ~60 FPS en los tres (mínimo 57). A descartado, C favorito, B demasiado cartoon (ver `CLAUDE.md` 6b).
+- [x] 2.5 Ronda 2: cholado fiel a las referencias + previews D, E, F (C con toques de B), probados por el usuario en el iPhone XR. Le gustaron D y F; E se descartó (luz mal calibrada: sin sombras, muy saturada).
+- [x] 2.6 Decisión: **estilo G = mezcla de D y F** (sombritas suaves + brillo de gelatina + contorno fino de color un pelín más grueso), aplicado al choladito y a La India. Receta completa en `CLAUDE.md` sección 6b. Cambios gráficos futuros bienvenidos.
+
+**Qué quedó:** `web/previews/` con las opciones A–G (G = referencia), Three.js recortado (`npm run vendor`), servidor local (`npm run dev`) y el código compartido de modelos por código (`shared/kit.js`, `matcap.js`, `paletas.js`) listo para moverse a `web/js/game/` en la Etapa 3.
+**Archivos tocados en la etapa:** `package.json`, `package-lock.json`, `tools/`, `web/previews/`, `web/assets/` (fuentes y logo), `web/vendor/three/`, `.gitignore`, `CLAUDE.md`, `PLAN.md`, `pendientes.md`.
+**Sigue sin decidir:** personaje (choladito o La India; ambos intercambiables) y nombre del juego. Se resuelven durante la Etapa 3.
 
 ## Etapa 3 — Prototipo sin backend
 - [ ] 3.1 Bucle de juego, cámara y pista de 3 carriles.

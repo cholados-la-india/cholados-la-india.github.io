@@ -1,0 +1,15 @@
+{
+  "name": "cholado-runner",
+  "private": true,
+  "version": "0.0.0",
+  "description": "Minijuego web de Cholados La India (Cali, Colombia)",
+  "type": "module",
+  "scripts": {
+    "dev": "node tools/dev-server.mjs",
+    "vendor": "node tools/vendor-three.mjs"
+  },
+  "devDependencies": {
+    "esbuild": "0.28.2",
+    "three": "0.186.1"
+  }
+}

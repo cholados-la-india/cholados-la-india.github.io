@@ -150,3 +150,6 @@ vite.config.ts.timestamp-*
 
 # Proyecto Cholado Runner: referencias de diseño (84 MB, solo uso local; el repo es público)
 referencias-diseno/
+
+# Configuración local de la app de Claude (lleva rutas de tu PC)
+.claude/

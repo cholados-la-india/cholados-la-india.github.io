@@ -1,0 +1,11 @@
+/* Estilo F · el HUD de C, pero con Lilita One (más gruesa y redonda, parecida al "LA INDIA" del logo). */
+@font-face {
+  font-family: "Lilita One";
+  src: url("../../assets/fonts/lilita-one.woff2") format("woff2");
+  font-weight: 400;
+  font-display: swap;
+}
+.estilo-f { --fuente: "Lilita One", system-ui, sans-serif; font-weight: 400; }
+.estilo-f .reloj-num { font-size: 40px; letter-spacing: 0.5px; }
+.estilo-f .frutas { font-size: 24px; }
+.estilo-f .premio { font-size: 17px; }

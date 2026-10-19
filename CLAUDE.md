@@ -1,7 +1,7 @@
 # CLAUDE.md — Cholado Runner (Cholados La India, Cali, Colombia)
 
 Contexto y decisiones del proyecto. Léelo SIEMPRE antes de trabajar. El estado de las etapas está en `PLAN.md`; lo que falta por resolver está en `pendientes.md`.
-Última actualización: 2026-10-19 (cierre de Etapa 1).
+Última actualización: 2026-10-19 (cierre de Etapa 2).
 
 ## 1. Qué es
 Minijuego web (se abre desde el celular, sin instalar nada) tipo runner vertical (Subway Surfers / Minion Rush / Temple Run) con temática de frutas y cholado, para el negocio familiar Cholados La India (Cali). El jugador corre ~60 s esquivando obstáculos hasta una meta. Si llega, gana un código de descuento único que se canjea en el local. Objetivo: incentivar ventas.
@@ -39,7 +39,10 @@ Las capturas de Temple Run / Minion Rush / Subway Surfers son referencia de **me
 
 ## 5. Decisiones técnicas
 - Web estática con **Three.js** en **GitHub Pages** + **Supabase** (plan gratis) para códigos y configuración. No usar GitHub como base de datos. No se paga nada. (Verificar límites vigentes del plan gratis y la pausa por inactividad antes de crear la cuenta, Etapa 4.)
-- JavaScript plano con módulos ES, **sin paso de build**. Three.js copiado dentro del repo (`web/vendor/three/`), sin CDN. Servidor local de preview con Node.js LTS (se instala en Etapa 2).
+- JavaScript plano con módulos ES; **el juego no se compila**. Three.js 0.186.1 (versión fija) viaja dentro del repo como un paquete recortado y minificado en `web/vendor/three/three.min.js` (537 KB, 135 KB con gzip), sin CDN. Desde r186 Three.js ya no trae versión minificada (completo pesa ~2 MB), así que `npm run vendor` (`tools/vendor-three.mjs`, usa esbuild) lo regenera: busca cada `THREE.Algo` usado en `web/` y empaqueta solo eso. **Hay que repetirlo cuando el código use una clase nueva de Three.js.** Dependencias de desarrollo: `three` y `esbuild` (en `node_modules/`, que no se sube).
+- Servidor local: `npm run dev` (`tools/dev-server.mjs`, sin dependencias, http://localhost:5173/; también visible en la red wifi para probar en el celular, y muestra el peso ya comprimido como lo serviría GitHub Pages). Node.js LTS instalado (v24.20.0).
+- Fuentes web autoalojadas (`web/assets/fonts/*.woff2`, licencia OFL incluida), nunca desde Google Fonts.
+- Técnicas de rendimiento ya probadas en los previews: una malla fusionada con color por vértice por personaje/objeto, `InstancedMesh` para lo repetido, sombras falsas (círculos), cielo como degradado CSS con canvas transparente, pixel ratio máx. 1.5. Un cuadro de la escena completa: 16 llamadas de dibujo y ~7.000–12.000 triángulos.
 - Lógica crítica en funciones SQL de Supabase (asignación atómica con bloqueo de fila). PIN del staff guardado cifrado en la base y verificado en el servidor. Admin con Supabase Auth (login con correo).
 - Fechas guardadas en UTC; semana y vencimientos calculados en `America/Bogota` (UTC−5, sin horario de verano).
 - Ligero, mobile first, **vertical**, que corra bien en gama baja: pixel ratio máx. ~1.5, sin sombras reales (sombras falsas), objetos reutilizados (pooling), materiales planos, sin postprocesado, carga inicial objetivo ≈ 3 MB.
@@ -53,9 +56,28 @@ Las capturas de Temple Run / Minion Rush / Subway Surfers son referencia de **me
 - Deslizar hacia abajo (agacharse): fuera por ahora; se puede probar después (puede chocar con gestos del navegador interno de Instagram).
 - Dificultad inicial **provisional**: 3 vidas por partida y ~35 % de las partidas llegando a la meta; todo calibrable por configuración. Si resulta muy fácil: pasar a "un choque elimina" o subir velocidad/densidad. "Ganar" = llegar a la meta.
 - Coleccionables posibles: frutas del menú (maracuyá, mango, guanábana, lulo, mora, fresa, piña).
-- **Personaje sin decidir** (choladito vs. La India). En Etapa 2 se muestran ambos. Idea candidata: La India persigue a su cholado que se escapó corriendo ("Atrapa tu cholado").
+- **Personaje sin decidir** (choladito vs. La India). Ambos ya existen con el mismo estilo y el usuario los alterna con el botón mientras avanza el juego; se decide después. Recomendación de Claude: La India corre (en un runner se ve siempre de espaldas, y el penacho en abanico es la silueta más reconocible) y el cholado es la meta y el premio ("Atrapa tu cholado"); el choladito queda en las vidas del HUD y la pantalla de victoria. **Cualquier cambio de estilo debe aplicarse a los dos personajes.**
 - **Nombre sin decidir.** Candidatos que le gustan al usuario: *Atrapa tu cholado*, *Corre por tu cholado*, *Cholado Run*. Recomendación: "Corre por tu cholado" como nombre y "Atrapa tu cholado" como llamado a la acción.
 
+## 6b. Estilo gráfico — DECIDIDO (Etapa 2 cerrada el 2026-10-19)
+**Estilo elegido: G = mezcla de D y F** ("jugoso + sombritas suaves"). Referencia viva: `web/previews/estilo-g.html` (+ `estilo-g/estilo.js`). El usuario lo eligió tras dos rondas de previews probadas en su iPhone XR (todos sostuvieron ~60 FPS, mínimo visto 57). Es una **base para trabajar, no un cierre definitivo**: los cambios gráficos futuros son bienvenidos.
+
+**Receta (vale igual para el choladito y para La India; comparten material y contorno):**
+- Material: `MeshMatcapMaterial` con color por vértice y matcap generado por código (`shared/matcap.js`) con `pasos: 3, mezcla: 0.5` (sombritas en escalones suavizadas sobre el brillo de gelatina; sombras **violeta**, no grises). `color.setScalar(1.15)`. D usaba 1.25: más brillo = más saturación; **no subirlo**.
+- Contorno "tinta de color" (`shared/kit.js`, `crearContorno`): color del objeto × 0,3 mezclado con ciruela `#3a0f33` (nunca negro puro), **grosor 1,5 px** (en D era 1,1; el usuario pidió "un poquitico más grueso, muy leve"). Solo en personaje, cajas y frutas (`alcance: 'jugables'`), no en el decorado. Se calcula sobre una silueta simplificada del personaje.
+- Detalle geométrico 1.6 (más redondo que C). Costo medido por cuadro: ~19.400 triángulos con el choladito y ~15.100 con La India, 24–25 llamadas de dibujo, ~0,16 MB comprimido con Three.js incluido.
+- Paleta de C (`shared/paletas.js`): cielo magenta→durazno, suelo lima, calle ciruela, bordillos y rayas celestes, sol amarillo. HUD de C (Fredoka 600, botones de gelatina con degradado y brillo interno).
+- Sombra falsa (círculo) bajo personaje y obstáculos; cielo como degradado CSS.
+
+**Qué NO gustó (evitar):** A (low poly facetado: "parece un prototipo sin terminar"); B (trazo negro grueso y mucho negro en pantalla: "parece hecho por IA"); E (toon con luz ambiente alta: sin sombras visibles, muy saturado, con demasiado contraste y brillo). Sí gustaron: la limpieza de D y las sombritas de F.
+
+**Cholado fiel a las referencias** (ya modelado en `kit.js`): vaso plástico transparente **sin decoraciones por fuera**. Adentro, sobre hielo y almíbar rojo: piña, guanábana, banano, maracuyá y papaya. Una manzana roja al costado. Arriba, UNA bola de helado rosada/mora cubierta de leche condensada, una uvita, wafer cuadriculado, pitillo y cuchara transparente.
+
+**Mejoras gráficas pendientes (no urgentes; ver `pendientes.md`):** el escenario/suelo necesita más detalle; en el cholado las frutas parecen estar "afuera" del vaso y no adentro; la bola de helado se ve "pintada hasta la mitad" (borde recto del casquete de leche condensada).
+
+**Código reutilizable para la Etapa 3:** `web/previews/shared/kit.js` (modelos por código, fusión de mallas, instancias, contorno), `matcap.js` y `paletas.js`. En la Etapa 3 se mueven/adaptan a `web/js/game/`. Las páginas de `previews/` (A–G) se conservan como referencia y se borran al final.
+
+**Botones de la vista previa** (Choladito / La India, Girar, Datos): se mantienen mientras se desarrolla; no irán en el build final. **Personaje y nombre siguen sin decidir** (ver sección 6).
 ## 7. Marca y referencias (`referencias-diseno/`, solo local, NO se sube a Git — 84 MB)
 - Logo tipográfico "CHOLADOS LA INDIA": degradado amarillo→naranja con contorno y sombra negra. Eslogan: "¡Aquí Desafiamos La Sed y Castigamos El caLor!". Mascota: La India (perfil con penacho multicolor azul/rojo/amarillo/naranja, top verde). Los vectores originales existen, pero el usuario prefiere que Claude trabaje con lo que hay (vectorizar si hace falta).
 - Pendón: degradado naranja→amarillo→verde. Menú: fondo magenta, arco verde lima, etiquetas celestes. Redes: Instagram @cholados.laindia, Facebook "Cholados La India".
@@ -70,13 +92,15 @@ Las capturas de Temple Run / Minion Rush / Subway Surfers son referencia de **me
 ```
 cholado-runner/
 ├─ CLAUDE.md · PLAN.md · pendientes.md · README.md · .gitignore
+├─ package.json · package-lock.json   (scripts: dev, vendor)
+├─ tools/                  dev-server.mjs · vendor-three.mjs
 ├─ referencias-diseno/     (solo local, ignorada por Git)
 ├─ web/                    ← lo único que se publica
 │  ├─ index.html           juego
 │  ├─ canje/               página del staff
 │  ├─ admin/               panel admin
 │  ├─ css/ · js/ (game/, ui/, api.js, config.js) · vendor/three/ · assets/
-│  └─ previews/            solo Etapa 2 (se borra después)
+│  └─ previews/            estilos A–G (G = elegido); se borra al final de la Etapa 3
 ├─ supabase/ (migrations/, seed/)
 ├─ documentos/             aviso de privacidad, TyC, lista de lanzamiento
 └─ .github/workflows/      publicar web/ en GitHub Pages (Etapa 7)

@@ -8,7 +8,7 @@ Lo que NO está decidido o falta. Mientras tanto se usan placeholders visibles e
 | 1 | **Dirección y horario de caja del local** (el usuario no los tiene a mano) | `[DIRECCIÓN DEL LOCAL]`, `[HORARIO DE CAJA]` | Etapa 3 (pantalla de premio) | ⏳ |
 | 2 | **Datos personales (Ley 1581)**: responsable (nombre o razón social, cédula/NIT), correo o teléfono de contacto, plazo de conservación, política breve | `[RESPONSABLE DE DATOS]`, `[CORREO DE CONTACTO]` | Etapa 3 (texto) / 7 (publicar) | ⏳ ver análisis abajo |
 | 3 | **Nombre del juego** (Atrapa tu cholado / Corre por tu cholado / Cholado Run) | `Cholado Runner` | Etapa 2–3 | ⏳ |
-| 4 | **Personaje** (choladito vs. La India) | se muestran ambos en Etapa 2 | Etapa 2 | ⏳ |
+| 4 | **Personaje** (choladito vs. La India). Ambos existen con el mismo estilo y se alternan con el botón; recomendación de Claude: La India corre y el cholado es la meta | botón Choladito / La India | durante Etapa 3 | ⏳ |
 | 5 | **Calibrar dificultad** (vidas, velocidad, ~35 % de victoria) | 3 vidas provisional | tras Etapa 3 | ⏳ |
 | 6 | **Cupo diario** del banco y tráfico esperado (desconocido) | desactivado | Etapa 4 | ⏳ |
 | 7 | **Dispositivo del staff** para canjear y quién usa el PIN | PIN compartido | Etapa 5 | ⏳ |
@@ -19,7 +19,10 @@ Lo que NO está decidido o falta. Mientras tanto se usan placeholders visibles e
 | 12 | Confirmar regla de vencimiento (`expedición + 7 días − 1 min`) | propuesta | Etapa 4 | ⏳ |
 | 13 | Dominio propio (opcional, depende de cómo vaya) | URL de GitHub Pages | futuro | ⏳ |
 | 14 | Verificar límites vigentes del plan gratis de Supabase y su pausa por inactividad | — | Etapa 4 | ⏳ |
-| 15 | Instalar Node.js LTS | — | Etapa 2 (bloqueante) | 🔄 guía en el chat |
+| 15 | Instalar Node.js LTS | — | Etapa 2 (bloqueante) | ✅ instalado (v24.20.0) y política de scripts de PowerShell resuelta |
+| 16 | **Medir FPS reales en el iPhone XR** con el botón "Datos" de cada preview (el navegador de la app recorta los cuadros y no sirve para medir FPS) | — | Etapa 2 | ✅ ronda 1: ~60 FPS en A, B y C (mínimo 57). Falta repetirlo con el estilo G ya dentro del juego (Etapa 3.7) |
+| 17 | **Mejoras gráficas del estilo G** (no urgentes): el escenario/suelo necesita más detalle; en el cholado las frutas parecen "afuera" del vaso y no adentro; la bola de helado se ve "pintada hasta la mitad" (borde recto de la leche condensada). Más elementos de escenario a medida que avance el juego | — | cuando haya tiempo, después de Etapa 3 | ⏳ |
+| 18 | Revisar la saturación/contraste de G ya con el juego completo en el celular (el usuario quiere valorar si D + F juntos quedan muy saturados) | `color.setScalar(1.15)` en el material | Etapa 3.7 | ⏳ |
 
 ## Análisis: ¿aplica la Ley 1581 de 2012? (2026-10-19)
 Conclusión: **sí aplica, pero la carga es liviana.** No soy abogado; conviene confirmarlo con el contador o un abogado antes de lanzar.
