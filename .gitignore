@@ -147,3 +147,6 @@ vite.config.ts.timestamp-*
 
 # Turbo Repo
 .turbo
+
+# Proyecto Cholado Runner: referencias de diseño (84 MB, solo uso local; el repo es público)
+referencias-diseno/
