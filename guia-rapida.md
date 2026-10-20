@@ -2,7 +2,7 @@
 
 Todo lo que conviene tener a mano para manejar el proyecto: comandos, SQL para copiar y pegar, qué se hace desde el panel y recordatorios de cómo funciona cada cosa. Si algo no está aquí y lo necesitas, pídeselo a Claude y se agrega.
 
-Última actualización: 2026-10-20 (cierre de la Etapa 6).
+Última actualización: 2026-10-20 (Fase A: bugs encontrados y arreglados; ver `documentos/fase-a-paquete.md` §7a).
 
 > **Nota para Claude (no borrar):** cada vez que agregues una funcionalidad clave, un comando nuevo, un cambio en cómo se opera el servidor o cualquier cosa que el dueño deba recordar, **añádela a esta guía** (en la sección que le toque) y actualiza la fecha de arriba **antes de cerrar la etapa**. Todo el SQL de los bloques ` ```sql ` se ejecuta en `npm run probar-sql`: si cambias una tabla o una función, esa prueba te avisa si algún bloque quedó roto. Los bloques de ejemplo que NO deben ejecutarse se marcan con ` ```text `. Esta guía está escrita para una persona que **no es experta**: tuteo, pasos cortos, cero jerga sin explicar.
 
@@ -59,7 +59,7 @@ Siempre se escriben en la terminal, **dentro de la carpeta del proyecto**. Prime
 | Comando | Para qué | ¿Deja datos de prueba en el servidor real? |
 |---|---|---|
 | `npm run dev` | Prende el servidor local para ver todo (sección 3). | No |
-| `npm run sql` | Arma el archivo **`supabase/todo-junto.sql`** con TODO el SQL del servidor. Úsalo cada vez que Claude cambie algo en `supabase/migrations/`; luego se pega en Supabase (sección 5.8). | No |
+| `npm run sql` | Arma el archivo **`supabase/todo-junto.sql`** con TODO el SQL del servidor. Úsalo cada vez que Claude cambie algo en `supabase/migrations/`; luego se pega en Supabase (sección 5.9). | No |
 | `npm run probar-sql` | Prueba todo el SQL en tu computador, sin tocar Supabase (≈ 10 s). Debe terminar en «✅ TODO BIEN». Incluye este documento: ejecuta todos sus bloques SQL. | No |
 | `npm run probar-mutaciones` | Rompe el SQL a propósito y comprueba que las pruebas lo notan (≈ 2 min). | No |
 | `npm run revisar-secretos` | Busca claves, contraseñas y PIN en el repo **y en su historial** (≈ 1 s). | No |
@@ -100,7 +100,7 @@ update app.configuracion set
 where id = 1;
 ```
 
-**«Cero absoluto» antes de lanzar** (en este orden): 5.1 (limpiar datos) → 5.2 (reglas de fábrica, si las moviste) → 5.7 (quitar el PIN de pruebas y poner el definitivo en el panel → Cuenta) → pegar `todo-junto.sql` (5.8) y comprobar «✅ Todo en orden».
+**«Cero absoluto» antes de lanzar** (en este orden): 5.1 (limpiar datos) → 5.2 (reglas de fábrica, si las moviste) → 5.7 (quitar el PIN de pruebas y poner el definitivo en el panel → Cuenta) → pegar `todo-junto.sql` (5.9) y comprobar «✅ Todo en orden».
 
 ### 5.3 Mirar: cómo va todo
 Los últimos 50 códigos con su estado real (activo, vencido, canjeado, desactivado):
@@ -256,7 +256,15 @@ Quitar a un administrador:
 delete from app.admins where user_id = (select id from auth.users where email = 'SU-CORREO');
 ```
 
-### 5.8 Actualizar el servidor cuando Claude cambie algo
+### 5.8 Borrar datos personales viejos (privacidad)
+Para cumplir lo que prometa la política de datos («guardamos tu nombre y celular hasta X»): deja los códigos pero **borra el nombre y el celular** de los que vencieron hace más de 6 meses (180 días). Ajusta los días si decides otro plazo. Se puede correr cada tanto (por ejemplo, al cerrar cada campaña).
+
+```sql
+update app.codigos set nombre = '(borrado)', celular = '3000000000'
+where vence_en < now() - interval '180 days' and nombre <> '(borrado)';
+```
+
+### 5.9 Actualizar el servidor cuando Claude cambie algo
 1. En la terminal: `npm run sql`.
 2. Abre `supabase/todo-junto.sql`, selecciona todo (`Ctrl + A`) y copia (`Ctrl + C`).
 3. SQL Editor → «+» → **Create a new snippet** → pegar → **Run** (si sale un aviso amarillo, «Run this query»).
@@ -348,7 +356,7 @@ Claude **nunca** hace commit ni push: lo haces tú. Las carpetas `node_modules/`
 | La caja dice «FALTA EL PIN» | Aún no hay PIN: panel → Cuenta → ponlo. |
 | «DEMASIADOS INTENTOS» en la caja | Panel → Cuenta → Desbloquear ahora (o 5.7). |
 | El panel dice «Esta cuenta no es de administrador» | Falta anotar tu correo: 5.7 «Agregar a otro administrador» con tu correo. |
-| El panel dice «faltan las funciones» | No se pegó el SQL: 5.8. |
+| El panel dice «faltan las funciones» | No se pegó el SQL: 5.9. |
 | Nadie puede jugar por premio y quedan premios | Mira Resumen: ¿manda el cupo del día? ¿la campaña está fuera de fechas? ¿es lunes y se acabó la semana? |
 | Salen premios agotados después de correr pruebas | 5.1 (limpiar datos de prueba). |
 | `probar-canje` dice «sin-premios» | Falta 5.1 antes. |
@@ -358,12 +366,14 @@ Claude **nunca** hace commit ni push: lo haces tú. Las carpetas `node_modules/`
 | `npm` no se reconoce | Instala Node.js LTS y abre una terminal nueva. |
 | El celular no abre `http://192.168…` | Misma wifi, y permitir *Node.js* en el firewall de Windows (sección 3). |
 | `npm run probar-sql` falla en «todo-junto.sql está al día» | Corre `npm run sql`. |
+| Un cliente dice «gané y se me perdió el premio» (recargó o se cerró la página) | Ya no se pierde: al volver a abrir el juego le sale «¡Tu premio te espera!» (por 6 h, mientras queden premios). Si le sale «no pudimos validar tu partida», pasó demasiado tiempo: que vuelva a jugar. |
+| En `?debug=1&api=falsa` los intentos no bajan | Es a propósito: en el cuadrito de arriba dice «INTENTOS ILIMITADOS»; desmárcalo en el botón «Debug». |
 
 ---
 
 ## 12. Cuando se agregue algo nuevo al proyecto
 
-- **Cambió algo en `supabase/migrations/`** → `npm run sql` → pegar `todo-junto.sql` en Supabase (5.8).
+- **Cambió algo en `supabase/migrations/`** → `npm run sql` → pegar `todo-junto.sql` en Supabase (5.9).
 - **El código del juego usa una clase nueva de Three.js** → `npm run vendor`.
 - **Se agregó o renombró un archivo `.js` del juego en `web/js/`** → actualizar la lista de `modulepreload` en `web/index.html` (sin esto el juego funciona igual, solo carga un poco más lento).
 - **Se cerró una etapa** → Claude guarda un hito (`npm run hito …`), actualiza los `.md` y esta guía, y te da la frase de commit.
@@ -382,6 +392,7 @@ Claude **nunca** hace commit ni push: lo haces tú. Las carpetas `node_modules/`
 | `supabase/LEEME.md` | Cómo funciona el servidor y su puesta en marcha. |
 | `documentos/bitacora.md` | Todo lo hablado y decidido, con el porqué. |
 | `documentos/reporte-etapa6.md` | Reporte de pruebas y seguridad. |
+| `documentos/fase-a-paquete.md` | **El paquete de la Fase A**: todo lo que se puede ejecutar y una lista larga de qué probar para cazar bugs (PC y iPhone XR). |
 | `documentos/pruebas-en-celulares.md` | Cómo probar en celulares reales. |
 | `documentos/calibrar-dificultad.md` | Cómo medir y ajustar la dificultad. |
 | `historial/` | Copias congeladas del proyecto en cada hito (con capturas). |

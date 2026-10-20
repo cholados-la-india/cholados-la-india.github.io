@@ -43,6 +43,26 @@ let terminada = false;
 let ultimoCodigo = null;
 const hooks = { alTerminar: [] }; // el panel de debug se engancha aquí
 
+/* ───────────── Victoria pendiente (K1) ─────────────
+   Al llegar a la meta se anota en este navegador el token de la partida. Si la persona cierra o recarga la página antes de
+   reclamar (o se cae el internet justo al terminar), al volver se le ofrece reclamar. Es solo una ayuda: el servidor decide
+   si todavía se puede (la reserva dura 15 min y puede reclamar hasta unas 6 h después, mientras haya premios). */
+const CLAVE_VICTORIA = 'cholado-victoria-pendiente' + (api.esFalsa ? '-falsa' : ''); // la simulación y el servidor real NO se mezclan
+const VICTORIA_MAX_MS = 6 * 3600e3;
+let pendienteDescartado = false; // «Ahora no»: no se vuelve a ofrecer hasta recargar la página
+const guardarVictoria = (v) => almacen.escribir(CLAVE_VICTORIA, { ...v, guardadoMs: Date.now() });
+const olvidarVictoria = () => almacen.borrar(CLAVE_VICTORIA);
+function victoriaPendiente() {
+  const v = almacen.leer(CLAVE_VICTORIA);
+  if (!v) return null;
+  const edad = Date.now() - v.guardadoMs;
+  if (typeof v.token !== 'string' || !(edad >= -60000 && edad <= VICTORIA_MAX_MS)) {
+    olvidarVictoria();
+    return null;
+  }
+  return v;
+}
+
 /** Lo que manda el servidor (dificultad y reglas) se mezcla encima de config.js; su hora es la que vale para las cuentas regresivas. */
 function aplicarServidor(estado) {
   if (estado.ahoraISO) reloj.ajustar(estado.ahoraISO);
@@ -101,6 +121,10 @@ async function irInicio(recargar = true) {
     }
   }
   const tieneCodigo = tieneCodigoActivo();
+  if (recargar && !pendienteDescartado && victoriaPendiente()) {
+    ui.mostrar('premio-pendiente', {});
+    return;
+  }
   if (!estadoServidor.jugable) {
     ui.mostrar(estadoServidor.motivo, { ...estadoServidor, tieneCodigo });
     return;
@@ -146,6 +170,12 @@ function alternarPausa(forzar) {
   if (pausado) ui.mostrar('pausa');
   else ui.ocultar();
 }
+// Celular acostado: se tapa con un aviso (CSS, .gira) y se pausa, para no perder la partida al girarlo sin querer
+const apaisado = window.matchMedia('(orientation: landscape) and (max-height: 500px) and (pointer: coarse)');
+document.getElementById('gira').innerHTML = `<b>${T.gira.titulo}</b><span>${T.gira.mensaje}</span>`;
+const alGirar = (e) => e.matches && alternarPausa(true);
+if (apaisado.addEventListener) apaisado.addEventListener('change', alGirar);
+else apaisado.addListener?.(alGirar); // iOS < 14
 document.addEventListener('visibilitychange', () => {
   if (document.hidden && cfg.desarrollo.autoPausa) alternarPausa(true); // al cambiar de app o apagar la pantalla, se pausa
 });
@@ -162,6 +192,7 @@ function alTerminarPartida(p) {
     choques: p.choques,
     segundos: p.t,
   };
+  if (resumen.gano) guardarVictoria({ token, progreso: resumen.progreso, frutas: resumen.frutas }); // por si recarga antes de reclamar (K1)
   const pedido = api.terminarPartida({ token, gano: resumen.gano, progreso: resumen.progreso, frutas: resumen.frutas }).catch((error) => ({ error }));
   hooks.alTerminar.forEach((f) => f(resumen));
   const espera = resumen.gano || resumen.motivo === 'frutas' ? cfg.partida.celebracionS * 1000 : 900; // si llegó a la meta, pasa bajo el arco
@@ -174,17 +205,26 @@ function alTerminarPartida(p) {
 function mostrarResultado(resumen, r) {
   ui.mostrarHUD(false);
   if (r.error) {
-    ui.mostrar('error', { mensaje: T.inicio.errorConexion });
+    // Si había ganado, la victoria queda anotada: al reintentar se le ofrece reclamar (no la pierde por una mala señal)
+    ui.mostrar('error', { mensaje: resumen.gano ? T.ganaste.errores.sinConexionGano : T.inicio.errorConexion });
+    return;
+  }
+  if (!r.estado) {
+    // El servidor contestó que esa partida no existe o no vale (p. ej. ya pasó mucho tiempo): no hay nada que recuperar
+    olvidarVictoria();
+    ui.mostrar('error', { mensaje: resumen.gano ? T.ganaste.errores.partidaInvalida : T.inicio.errorConexion });
     return;
   }
   estadoServidor = r.estado;
-  if (estadoServidor) aplicarServidor(estadoServidor);
+  aplicarServidor(estadoServidor);
   if (resumen.gano && r.puedeReclamar) {
     ui.mostrar('ganaste', {});
   } else if (resumen.gano && r.motivo === 'sin-premios') {
     // Ganó, pero otra persona se llevó el último premio justo antes (no se alcanzó a apartar el suyo)
+    olvidarVictoria();
     ui.mostrar('sin-premios', { ...estadoServidor, ganaste: true, tieneCodigo: tieneCodigoActivo() });
   } else if (resumen.gano) {
+    olvidarVictoria();
     ui.mostrar('error', { mensaje: T.ganaste.errores.partidaInvalida }); // el servidor no validó la victoria (token, tiempo o frutas)
   } else {
     ui.mostrar('perdiste', {
@@ -195,6 +235,24 @@ function mostrarResultado(resumen, r) {
       intentosRestantes: estadoServidor.intentosRestantes,
     });
   }
+}
+
+/** «Reclamar mi premio» desde el aviso de victoria pendiente: se le pregunta al servidor si todavía vale y se abre el formulario. */
+async function recuperarVictoria() {
+  const v = victoriaPendiente();
+  if (!v) {
+    irInicio(true);
+    return;
+  }
+  ui.mostrar('cargando');
+  let r;
+  try {
+    r = await api.terminarPartida({ token: v.token, gano: true, progreso: v.progreso, frutas: v.frutas }); // repetirla no cambia nada
+  } catch (error) {
+    r = error?.http && error.http < 500 ? { ok: false, motivo: 'partida-invalida' } : { error }; // 4xx: el servidor la rechaza, no es mala señal
+  }
+  token = v.token;
+  mostrarResultado({ gano: true, motivo: null, progreso: v.progreso ?? 1, frutas: v.frutas ?? 0, frutasMinimas: cfg.partida.frutasMinimas }, r);
 }
 
 async function reclamar() {
@@ -217,6 +275,7 @@ async function reclamar() {
   if (r.ok) {
     if (r.ahoraISO) reloj.ajustar(r.ahoraISO);
     ultimoCodigo = r.codigo;
+    olvidarVictoria();
     estadoServidor = null; // el banco cambió: se recarga al volver al inicio
     ui.mostrar('codigo', { codigo: r.codigo, venceMs: Date.parse(r.venceISO), estado: 'activo', esDePrueba: r.esDePrueba });
     return;
@@ -233,13 +292,15 @@ async function reclamar() {
   } else if (r.motivo === 'limite-red') {
     ui.errorFormulario(T.limiteRed.codigos);
   } else if (r.motivo === 'sin-premios') {
+    olvidarVictoria();
     ui.errorFormulario(T.ganaste.errores.sinPremios);
   } else if (r.motivo === 'partida-invalida') {
+    olvidarVictoria();
     ui.errorFormulario(T.ganaste.errores.partidaInvalida);
   } else if (r.motivo === 'consentimiento') {
     ui.errorFormulario(T.ganaste.errores.consentimiento);
   } else if (r.motivo === 'datos') {
-    ui.errorFormulario(T.ganaste.errores.celular);
+    ui.errorFormulario(T.ganaste.errores.datos); // el servidor no dice cuál campo falló
   } else {
     ui.errorFormulario(T.ganaste.errores.generico);
   }
@@ -285,6 +346,14 @@ ui.alAccion((accion, el) => {
       alternarPausa(false);
       break;
     case 'salir':
+      if (ui.pantalla === 'ya-tienes-cupon') olvidarVictoria(); // ese celular no puede reclamar otro: ya no hay nada pendiente
+      irInicio(true);
+      break;
+    case 'recuperar-premio':
+      recuperarVictoria();
+      break;
+    case 'ahora-no':
+      pendienteDescartado = true;
       irInicio(true);
       break;
     case 'reintentar':

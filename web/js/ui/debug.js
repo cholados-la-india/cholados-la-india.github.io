@@ -243,7 +243,7 @@ export function iniciarDebug({ cfg, escena, api, hooks, reiniciar, obtenerPartid
       desde = ahora;
       const i = escena.info();
       const p = obtenerPartida();
-      mini.textContent = `API ${api.esFalsa ? 'falsa (local)' : 'REAL (Supabase)'}\n${fps} fps · ${i.llamadas} llamadas · ${(i.triangulos / 1000).toFixed(1)}k tri\n${i.ancho}×${i.alto} (DPR ${i.dpr.toFixed(2)}) · calidad ${NIVELES[i.calidad]}${p ? `\nt ${p.t.toFixed(1)} s · v ${p.vel.toFixed(1)} · vidas ${p.vidas} · frutas ${p.frutas}/${p.frutasGeneradas} (mín ${cfg.partida.frutasMinimas})` : ''}`;
+      mini.textContent = `API ${api.esFalsa ? 'falsa (local)' : 'REAL (Supabase)'}${api.esFalsa && api.debug?.leerAjustes().ilimitado ? ' · INTENTOS ILIMITADOS' : ''}\n${fps} fps · ${i.llamadas} llamadas · ${(i.triangulos / 1000).toFixed(1)}k tri\n${i.ancho}×${i.alto} (DPR ${i.dpr.toFixed(2)}) · calidad ${NIVELES[i.calidad]}${p ? `\nt ${p.t.toFixed(1)} s · v ${p.vel.toFixed(1)} · vidas ${p.vidas} · frutas ${p.frutas}/${p.frutasGeneradas} (mín ${cfg.partida.frutasMinimas})` : ''}`;
     }
     requestAnimationFrame(medir);
   })(performance.now());

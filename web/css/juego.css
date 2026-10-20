@@ -36,7 +36,7 @@ button { font: inherit; color: inherit; cursor: pointer; border: 0; background: 
   position: relative;
   overflow: hidden;
   width: 100vw;
-  width: min(100vw, 50vh);
+  width: min(100vw, 58vh); /* 58vh: los celulares 16:9 (375×667, 360×640) llenan todo el ancho; en monitor queda una columna vertical */
   height: 100vh;
   height: 100dvh;
   background: linear-gradient(180deg, var(--cielo-arriba) 0%, var(--cielo-horizonte) 34%, var(--cielo-horizonte) 100%);
@@ -89,6 +89,9 @@ button { font: inherit; color: inherit; cursor: pointer; border: 0; background: 
 .pantalla.fondo { background: rgba(30, 5, 40, 0.55); pointer-events: auto; }
 .pantalla.scroll { overflow-y: auto; -webkit-overflow-scrolling: touch; justify-content: flex-start; touch-action: pan-y; }
 .pantalla.scroll > .panel { margin: auto 0; }
+/* Pantallas centradas: si el contenido no cabe (celular chico o teclado abierto) se puede deslizar, en vez de quedar cortado */
+.pantalla.centro { justify-content: flex-start; overflow-y: auto; -webkit-overflow-scrolling: touch; touch-action: pan-y; }
+.pantalla.centro > .panel { margin: auto 0; }
 
 .panel { width: min(100%, 380px); text-align: center; padding: 20px 18px; border-radius: 28px; background: linear-gradient(180deg, rgba(86, 28, 96, 0.94), rgba(52, 13, 62, 0.96)); border: 2px solid rgba(255, 255, 255, 0.2); box-shadow: 0 14px 34px rgba(30, 0, 40, 0.5), inset 0 2px 0 rgba(255, 255, 255, 0.18); display: flex; flex-direction: column; gap: 12px; align-items: stretch; }
 .panel h2 { font-family: var(--titulos); font-weight: 400; font-size: 30px; line-height: 1.1; color: var(--crema); }
@@ -161,6 +164,11 @@ button { font: inherit; color: inherit; cursor: pointer; border: 0; background: 
   .titulo-juego { font-size: 24px; }
   .panel { padding: 14px; gap: 9px; }
 }
+/* Celular acostado: el juego es vertical (el marco quedaría de ~190 px). Se tapa con un aviso y el juego se pausa (main.js). */
+.gira { display: none; position: fixed; inset: 0; z-index: 99; flex-direction: column; align-items: center; justify-content: center; gap: 8px; padding: 20px; text-align: center; background: #120b14; color: var(--crema); }
+.gira b { font-family: var(--titulos); font-weight: 400; font-size: 28px; color: #ffe86b; }
+.gira span { font-size: 16px; color: #fbeaff; }
+@media (orientation: landscape) and (max-height: 500px) and (pointer: coarse) { .gira { display: flex; } }
 @media (prefers-reduced-motion: reduce) {
   .cuenta.late, .golpe.on, .toast { animation-duration: 0.01s; }
 }

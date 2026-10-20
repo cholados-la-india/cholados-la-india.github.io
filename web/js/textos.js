@@ -33,6 +33,9 @@ export const T = {
   lema: '¡Atrapa tu cholado!',
   negocio: 'Cholados La India',
 
+  // Celular acostado (el juego es vertical)
+  gira: { titulo: 'Gira tu celular', mensaje: 'Este juego se juega con el celular en vertical.' },
+
   personajes: { titulo: 'Elige tu personaje', cholado: 'Choladito', india: 'La India' },
 
   inicio: {
@@ -108,8 +111,10 @@ export const T = {
     errores: {
       nombre: 'Escribe tu nombre.',
       celular: 'Escribe un celular colombiano de 10 dígitos (empieza por 3).',
+      datos: 'Revisa tu nombre y tu celular (10 dígitos que empiezan por 3).',
       consentimiento: 'Necesitamos tu autorización para guardar tus datos.',
-      sinPremios: 'Uy, justo se acabaron los premios de esta semana. ¡Vuelve el lunes!',
+      sinPremios: 'Uy, justo se acabaron los premios. ¡Vuelve pronto!',
+      sinConexionGano: '¡Llegaste a la meta! Pero no pudimos confirmarlo por la conexión. No lo perdiste: toca «Reintentar» cuando tengas internet y te devolvemos tu premio.',
       partidaInvalida: 'No pudimos validar tu partida. Intenta jugar de nuevo.',
       yaTienesCodigo: 'Este celular ya reclamó un código.',
       generico: 'No pudimos reclamar el premio. Intenta de nuevo.',
@@ -125,9 +130,9 @@ export const T = {
     vale: (fecha) => `Vale hasta el <b>${fecha}</b>`,
     restante: 'Te quedan',
     vencido: (fecha) => `Este código <b>venció</b> (valía hasta el ${fecha}). Los códigos vencidos no se reactivan.`,
-    canjeado: (fecha) => `Este código ya fue <b>canjeado</b> el ${fecha}.`,
+    canjeado: (fecha) => `Este código ya fue <b>canjeado</b> el ${fecha}`, // (sin punto final: la hora ya termina en «a. m.»),
     desactivado: 'Este código fue <b>desactivado</b>.',
-    otroCupon: (cuando) => `Podrás reclamar otro cupón a partir del <b>${cuando}</b>.`,
+    otroCupon: (cuando) => `Podrás reclamar otro cupón a partir del <b>${cuando}</b>`, // (sin punto final: la hora ya termina en «a. m.»),
     pasos: (compraMinima, regalos) => [
       `Ve al local y muestra este código en caja.`,
       `Compra mínimo <b>${pesos(compraMinima)}</b> en productos (el regalo no cuenta).`,
@@ -140,6 +145,14 @@ export const T = {
     consejo: 'Tómale una captura de pantalla para no perderlo.',
     prueba: 'Código de PRUEBA: no sirve en caja.',
     volver: 'Volver al inicio',
+  },
+
+  // Ganó, cerró o recargó la página antes de reclamar y vuelve a entrar
+  premioPendiente: {
+    titulo: '¡Tu premio te espera!',
+    mensaje: 'Llegaste a la meta hace poco y no alcanzaste a reclamar tu código. Si todavía queda un premio, es tuyo.',
+    boton: 'Reclamar mi premio',
+    luego: 'Ahora no',
   },
 
   perdiste: {

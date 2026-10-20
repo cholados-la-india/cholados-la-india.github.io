@@ -76,7 +76,12 @@ Reporte: `documentos/reporte-etapa6.md` · Guía de celulares: `documentos/prueb
 - **Decisiones del usuario al cerrar:** el **cupo diario** queda como opción del panel (prender/apagar y cuántos por día; lo decidirá con su mamá, hoy apagado); las **pruebas en celulares reales quedan en pendientes** (en su iPhone XR ya funciona); aprobó cerrar la etapa.
 
 ## Fase bonus A — Revisión de bugs en localhost ⏳ (SIGUIENTE; la pidió el usuario)
-Claude le entrega el juego, la caja y el panel para que el usuario los ejecute en localhost, busque bugs y cosas por mejorar, y se corrigen. Se organiza el feedback en una lista numerada. Sin etapas de por medio.
+Claude le entrega el juego, la caja y el panel para que el usuario los ejecute en localhost (PC e iPhone XR), busque bugs y cosas por mejorar, y se corrigen. Se organiza el feedback en una lista numerada. Sin etapas de por medio.
+- [x] A.1 **Paquete entregado** (2026-10-20): `documentos/fase-a-paquete.md` (todos los ejecutables con sus direcciones, ruta rápida de 30 min, lista completa por áreas, «intenta romperlo», 9 recorridos de principio a fin, plantilla para anotar bugs y cómo dejar todo limpio).
+- [ ] A.2 El usuario prueba y manda su lista (plantilla: `N. [🔴/🟠/🟡/💡] dónde · qué hice · qué esperaba · qué pasó · PC/XR`).
+- [x] A.2b **Claude buscó bugs por su cuenta** (2026-10-20, a pedido del usuario: «anda en busca de bugs»): revisión de `main.js`, `ui.js`, `controles.js`, `logica.js`, APIs, `auth.js`, `rpc.js`, textos y CSS + recorrido en el navegador (ganar/perder/faltan frutas/pausa/errores de red/«este número ya tiene cupón»/caja con sus 6 resultados/panel con sus 5 pestañas/validaciones de Configuración/diagnóstico). **9 arreglos F1–F9** (ver `documentos/fase-a-paquete.md` §7a y `bitacora.md` §12): K1 (victoria pendiente), celular pegado con +57, marco vertical en celulares 16:9, pantallas deslizables si no caben, aviso «Gira tu celular», nombre de un emoji, doble punto «a. m..», rótulo «INTENTOS ILIMITADOS» en debug, descripción del link.
+- [ ] A.3 El usuario prueba en el XR lo que solo se siente en la mano (controles, fluidez, teclado, rotar, Instagram) y manda su lista; Claude la ordena, arregla por prioridad y devuelve cada arreglo con la dirección para verlo.
+- [ ] A.4 Visto bueno del usuario → pasar a la Fase B.
 
 ## Fase bonus B — Mejoras estéticas ⬜
 Lo que el usuario dijo que quería mejorar al final (ver `pendientes.md` #16): cholado con frutas «adentro» del vaso, bola de helado, más detalle en La India y el escenario, más elementos de escenario, posibles cambios de color, sonido y música (#10), cartel ¡META! legible, animación de choque.

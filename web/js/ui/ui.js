@@ -169,13 +169,22 @@ export function crearUI(raiz, cfg) {
         <label class="campo"><span>${T.ganaste.nombre}</span>
           <input name="nombre" type="text" autocomplete="name" maxlength="60" autocapitalize="words" required></label>
         <label class="campo"><span>${T.ganaste.celular}</span>
-          <input name="celular" type="tel" inputmode="numeric" autocomplete="tel-national" maxlength="12" placeholder="3XX XXX XXXX" required></label>
+          <input name="celular" type="tel" inputmode="numeric" autocomplete="tel-national" maxlength="24" placeholder="3XX XXX XXXX" required></label>
         <label class="consentimiento"><input name="consentimiento" type="checkbox">
           <span>${T.ganaste.consentimiento} <button type="button" class="enlace corto" data-accion="politica">${T.ganaste.verPolitica}</button></span></label>
         <p class="nota chico">${T.ganaste.resumen(cfg.reglas)} <button type="button" class="enlace corto" data-accion="condiciones">${T.ganaste.verCondiciones}</button></p>
         <p class="error" id="error-form" role="alert">${error ? esc(error) : ''}</p>
         <button type="submit" class="boton grande" id="btn-reclamar">${T.ganaste.boton}</button>
       </form></section>`,
+
+    // Ganó hace poco y no alcanzó a reclamar (cerró o recargó la página): se le ofrece volver al formulario.
+    'premio-pendiente': () => `
+      <section class="pantalla centro fondo"><div class="panel">
+        <h2 class="grande-titulo">${T.premioPendiente.titulo}</h2>
+        <p class="mensaje">${T.premioPendiente.mensaje}</p>
+        <button type="button" class="boton grande" data-accion="recuperar-premio">${T.premioPendiente.boton}</button>
+        <button type="button" class="enlace" data-accion="ahora-no">${T.premioPendiente.luego}</button>
+      </div></section>`,
 
     condiciones: () => `
       <section class="pantalla centro fondo scroll"><div class="panel ayuda">
@@ -349,7 +358,7 @@ export function crearUI(raiz, cfg) {
     const f = contenedor.querySelector('form.ganaste');
     const nombre = f.nombre.value.trim().replace(/\s+/g, ' ');
     const celular = normalizarCelular(f.celular.value);
-    if (nombre.length < 2) return { error: T.ganaste.errores.nombre, campo: f.nombre };
+    if ([...nombre].length < 2) return { error: T.ganaste.errores.nombre, campo: f.nombre }; // por caracteres, no por unidades UTF-16: un solo emoji no es un nombre
     if (!celular) return { error: T.ganaste.errores.celular, campo: f.celular };
     if (!f.consentimiento.checked) return { error: T.ganaste.errores.consentimiento, campo: f.consentimiento };
     return { valores: { nombre, celular, consentimiento: true } };

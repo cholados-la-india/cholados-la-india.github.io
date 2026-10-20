@@ -1,6 +1,6 @@
 # CLAUDE.md — Cholado Runner (Cholados La India, Cali, Colombia)
 
-Fuente de verdad del proyecto. **Léelo SIEMPRE antes de trabajar.** Última actualización: 2026-10-20 (Etapa 6 **cerrada**; siguiente: **Fase bonus A** —el usuario prueba todo en localhost y se corrigen bugs—, luego **Fase bonus B** —estética— y por último la **Etapa 7**, que será la última).
+Fuente de verdad del proyecto. **Léelo SIEMPRE antes de trabajar.** Última actualización: 2026-10-20 (Etapa 6 **cerrada**; **Fase bonus A en curso**: Claude ya buscó bugs por su cuenta y arregló 9 —F1–F9, ver §13b y `documentos/fase-a-paquete.md` §7a—; falta la prueba del usuario en su XR; luego **Fase bonus B** —estética— y por último la **Etapa 7**, que será la última).
 
 ## 0. Mapa de documentos (qué hay y dónde)
 | Archivo | Para qué |
@@ -15,6 +15,7 @@ Fuente de verdad del proyecto. **Léelo SIEMPRE antes de trabajar.** Última act
 | `historial/` (+ `LEEME.md`) | Evidencias del proceso: copias congeladas jugables de cada hito + capturas |
 | `documentos/reporte-etapa6.md` | **Reporte de pruebas y endurecimiento** (concurrencia, casos, secretos, RLS, compatibilidad, rendimiento, textos legales, pendientes) |
 | `documentos/pruebas-en-celulares.md` | Guía paso a paso para probar en celulares reales (Instagram/Facebook, Safari/Chrome, gama baja) con la página `/diagnostico/` |
+| `documentos/fase-a-paquete.md` | **Paquete de la Fase A**: ejecutables, qué probar para cazar bugs (PC y iPhone XR), «lo que ya sé» (K1…), plantilla de reporte y cómo dejar limpio |
 | `guia-rapida.md` | **Guía del dueño** (raíz): todos los comandos, el SQL para pegar en Supabase, el panel, la caja y qué hacer si algo falla. **Mantenerla al día** (ver §2) |
 | `README.md` | Cómo correrlo y comandos |
 
@@ -176,6 +177,14 @@ Reporte completo: **`documentos/reporte-etapa6.md`**. Guía para celulares reale
 - **Casos de tiempo:** ninguna de las 20 funciones públicas recibe fecha u hora (el reloj del celular no cuenta; con el celular adelantado 3 días la cuenta regresiva sigue bien); vencimiento exacto a 1 ms; lunes 00:00 de Bogotá (05:00 UTC) en julio y marzo. El reloj del servidor no se puede simular: el primer lunes real es la prueba final.
 - **Front:** la caja y el panel se niegan a abrirse dentro de otra página (anti-clickjacking); `/diagnostico/` (revisa un celular: navegador interno, WebGL 2, almacenamiento, gestos, rendimiento, hora, conexión; «Copiar resultado»); `modulepreload` de los 21 módulos (cascada de 66 ms → 3 ms en local); `escena.js`: si `navigator.deviceMemory ≤ 2` arranca en calidad 2 (resolución 1,0) y sin antialias. Mínimo real: iOS 15 / Chrome-WebView 90 (WebGL 2 de Three.js). Peso de carga **≈ 272 KB comprimidos** (objetivo ≤ 3 MB). Se eliminó la fuente Luckiest Guy.
 - **Cierre (2026-10-20):** el usuario pegó el SQL (auditoría «✅ Todo en orden»), corrió `probar-canje` y limpió los datos de prueba («todo bien»). **Cupo diario:** queda como **opción del panel** (interruptor + cuántos por día; hoy apagado; lo decidirá con su mamá); con el cupo activo el juego dice «hoy» en vez de «esta semana» (`estado.limitadoPor`, `reglas.cupoDiario`) y el Resumen muestra «Premios que quedan HOY». **Pruebas en celulares reales: en pendientes** (en su iPhone XR ya funciona). Para ver «hoy» y el resumen con el servidor real hay que volver a pegar `supabase/todo-junto.sql` (el front funciona igual sin eso). No medido: rendimiento en gama baja real; navegadores internos de Instagram/Facebook.
+
+## 13b. Fase bonus A — bugs encontrados y arreglados por Claude (2026-10-20)
+Detalle y cómo comprobarlos: `documentos/fase-a-paquete.md` §7a; el porqué: `documentos/bitacora.md` §12. Lo que hay que saber al tocar el juego:
+- **Victoria pendiente (K1):** al llegar a la meta `main.js` anota `{token, progreso, frutas}` en `localStorage` (`cholado-victoria-pendiente`, y `…-falsa` para la simulación: **nunca se mezclan**). Si la persona recarga o se cae el internet antes de reclamar, `irInicio(true)` muestra la pantalla `premio-pendiente` («¡Tu premio te espera!» · «Reclamar mi premio» / «Ahora no»); «Reclamar» repite `terminarPartida` (idempotente en el servidor) y abre el formulario. Se olvida al reclamar, si el servidor la rechaza, si no hay cupo, al «Volver al inicio» desde «Este número ya tiene un cupón» y a las 6 h. Solo es una ayuda: **decide el servidor**.
+- **Marco vertical:** `.escena` mide `min(100vw, 58vh)` (antes 50vh): llena el ancho en celulares 16:9 y en monitor sigue siendo una columna. **Celular acostado** (apaisado, ≤ 500 px de alto, táctil): aviso `#gira` («Gira tu celular») y pausa. Las pantallas `.pantalla.centro` ahora se pueden deslizar si el contenido no cabe.
+- **Debug:** con `?debug=1&api=falsa` los intentos son **ilimitados por defecto** (el cuadrito de arriba lo dice: «INTENTOS ILIMITADOS»); para probar el gasto real, desmarcarlo o abrir sin `debug`.
+- Varios textos: el campo del celular ya no corta lo pegado (+57…), un nombre de un solo emoji pide nombre, el error `datos` del servidor dice «Revisa tu nombre y tu celular», y se quitó el doble punto tras «a. m.».
+- **Sigue pendiente de la Fase A:** que el usuario pruebe en el XR lo que solo se siente en la mano y mande su lista numerada.
 
 ## 14. Insumos para la Etapa 7 (publicación, QR y lista de lanzamiento) — NO es trabajo hecho
 **El usuario pegará el Prompt 7; hasta entonces no se avanza.**

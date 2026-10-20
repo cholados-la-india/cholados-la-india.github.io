@@ -12,6 +12,7 @@ Minijuego web de **Cholados La India** (Cali, Colombia): un runner vertical para
 | [pendientes.md](pendientes.md) | Lo que falta decidir o hacer |
 | [supabase/LEEME.md](supabase/LEEME.md) | El servidor (Supabase): cómo funciona, cómo cambiar reglas y dificultad |
 | [documentos/bitacora.md](documentos/bitacora.md) | Registro detallado de todo lo hablado, decidido y descubierto |
+| [documentos/fase-a-paquete.md](documentos/fase-a-paquete.md) | Paquete de la Fase A: qué ejecutar y qué probar para cazar bugs |
 | [documentos/reporte-etapa6.md](documentos/reporte-etapa6.md) | Reporte de pruebas y endurecimiento (Etapa 6) |
 | [documentos/pruebas-en-celulares.md](documentos/pruebas-en-celulares.md) | Cómo probar en celulares reales (Instagram, Facebook, Safari, Chrome, gama baja) |
 | [documentos/calibrar-dificultad.md](documentos/calibrar-dificultad.md) | Cómo medir y ajustar la dificultad |
