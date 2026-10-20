@@ -1,14 +1,14 @@
 # Reporte de la Etapa 6 — Pruebas y endurecimiento
 
-Fecha: 2026-10-20 · Servidor probado: el Supabase real del proyecto (no una copia) · Repetir todo: ver la sección 10.
+Fecha: 2026-10-20 · **ETAPA CERRADA el mismo día** (decisiones del usuario en la sección 9) · Servidor probado: el Supabase real del proyecto (no una copia) · Repetir todo: ver la sección 10.
 
 ## Resumen en pocas líneas
 
 | Área | Estado | En una frase |
 |---|---|---|
 | Concurrencia (cupo casi agotado) | 🟢 | 100 ganadores a la vez con 40 premios: se apartaron **exactamente 40**, 0 códigos repetidos, el banco quedó en 0 y nunca se superó el tope. |
-| Casos pedidos (7 días exactos, canje doble, lunes 00:00, hora del celular, intentos, banco, llamadas directas) | 🟢 / 🟡 | Todo probado. Falta solo el canje doble **simultáneo** real: lo corres tú con `npm run probar-canje` (necesita tu PIN). |
-| Secretos y RLS | 🟢 | Ningún secreto en el repo ni en su historial; registro público de Supabase apagado; ninguna tabla se lee desde afuera. La auditoría encontró **1 función abierta de más** (inofensiva) y quedó corregida; falta volver a pegar el SQL. |
+| Casos pedidos (7 días exactos, canje doble, lunes 00:00, hora del celular, intentos, banco, llamadas directas) | 🟢 | Todo probado; el canje doble simultáneo real lo corriste tú con `probar-canje` («todo bien»). |
+| Secretos y RLS | 🟢 | Ningún secreto en el repo ni en su historial; registro público de Supabase apagado; ninguna tabla se lee desde afuera. La auditoría encontró **1 función abierta de más** (inofensiva) y quedó corregida; el usuario pegó el SQL y la auditoría dice «✅ Todo en orden». |
 | Textos legales | 🟢 | Consentimiento, vigencia, «no acumulable», compra mínima y fechas de la temporada ya se ven en el juego (inicio, formulario, ticket y «Condiciones»). Siguen los placeholders que dependen de ti (dirección, horario, responsable de datos). |
 | Peso de carga | 🟢 | **272 KB** comprimidos (el objetivo era 3 MB); 21 archivos del juego ahora se piden a la vez. |
 | Rendimiento en gama baja | 🟡 | Estimado, **no medido** en un celular de gama baja real (no hay uno a mano). Hay prueba lista para hacerlo. |
@@ -135,10 +135,13 @@ Lo que sigue pendiente porque depende de ti: `[DIRECCIÓN DEL LOCAL]`, `[HORARIO
 
 ## 9. Lo que queda pendiente y decisiones tuyas
 
+**Al cerrar la etapa (2026-10-20):** ✅ el SQL se volvió a pegar y la auditoría dice «Todo en orden»; ✅ `probar-canje` y la limpieza de datos de prueba hechos («todo bien»); **cupo diario:** queda como **opción en el panel** (se prende y se apaga, y se elige cuántos por día; lo decidirá con su mamá); **celulares reales:** en pausa (en el iPhone XR ya funciona; se retoma antes de publicar). Lo que sigue pendiente de verdad está en `pendientes.md`.
+
+*(Lo que sigue es la lista original de esa sección, ya resuelta en su mayoría.)*
+
 1. **Volver a pegar `supabase/todo-junto.sql`** (cierra el hallazgo 4). Debe terminar en «✅ Todo en orden».
 2. **Decisión: ¿activar el cupo diario?** (por ejemplo 8 al día = 56 por semana; en el panel → Configuración → «Cupo diario»). Si algún programa agota los premios, solo agota **los de ese día**, no los de toda la semana. Si no lo activas, sigue siendo posible vaciar la semana usando varias redes distintas. Mi recomendación: activarlo en cuanto lances. (Es una decisión de producto: con 50 por semana y poco tráfico puede dejar días sin premios; en las primeras semanas se ajusta mirando el panel.)
-3. **Correr `npm run probar-canje`** (te pide el PIN en tu terminal).
-4. **Limpiar los datos de prueba** con `supabase/sql/limpiar_pruebas.sql`: las pruebas de hoy dejaron unas 130 partidas y unos 9 códigos falsos y el banco de esta semana está gastado hasta que se limpie.
+3. **Limpiar los datos de prueba PRIMERO** con `supabase/sql/limpiar_pruebas.sql` (sin esto `probar-canje` dice «sin-premios»: las pruebas dejaron el banco en 0 y el tope por red agotado), luego **correr `npm run probar-canje`** (te pide el PIN en tu terminal) y **volver a limpiar** (deja 1 código de prueba canjeado). Detalle de lo que dejan las pruebas: las pruebas de hoy dejaron unas 130 partidas y unos 9 códigos falsos y el banco de esta semana está gastado hasta que se limpie.
 5. **Pruebas en celulares reales** (sección 5) y, ojalá, un Android de gama baja.
 6. **Después de lanzar:** mirar si 150 partidas/hora y 8 códigos/día por red son los números correctos (el panel Resumen y las pruebas muestran el uso); revisar el primer lunes que pase; repetir la prueba de Instagram/Facebook con la URL `https://` real; decidir la URL/dominio **antes de imprimir los QR** (pendientes #14).
 7. Opcionales: 2FA para el administrador, bitácora de acciones del admin, plazo de conservación de datos.
@@ -146,7 +149,7 @@ Lo que sigue pendiente porque depende de ti: `[DIRECCIÓN DEL LOCAL]`, `[HORARIO
 ## 10. Cómo repetir todo
 
 ```
-npm run probar-sql          # 233 pruebas del SQL en tu computador (~10 s)
+npm run probar-sql          # 235 pruebas del SQL en tu computador (~10 s)
 npm run probar-mutaciones   # rompe el SQL a propósito y comprueba que las pruebas lo notan (~2 min)
 npm run revisar-secretos    # secretos en el repo y su historial (~1 s)
 npm run probar-seguridad    # servidor real: lo del administrador, registro de usuarios (~3 s)

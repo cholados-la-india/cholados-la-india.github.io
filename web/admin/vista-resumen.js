@@ -51,7 +51,8 @@ export function vistaResumen(ctx) {
     reemplazar(
       contenedor,
       el('div', { class: 'estadisticas' },
-        dato(r.premiosRestantes, 'Premios que quedan esta semana', { total: r.premiosPorSemana, clase: 'destacado', sub: `Se reinicia el lunes 00:00` }),
+        dato(r.premiosSemanaRestantes ?? r.premiosRestantes, 'Premios que quedan esta semana', { total: r.premiosPorSemana, clase: 'destacado', sub: `Se reinicia el lunes 00:00` }),
+        r.cupoDiario > 0 && dato(r.premiosHoyRestantes ?? 0, 'Premios que quedan HOY', { total: r.cupoDiario, clase: r.premiosHoyRestantes === 0 ? 'cerrado' : '', sub: 'Cupo diario activo; se renueva a las 12:00 a. m.' }),
         dato(r.jugable ? 'Abierto' : 'Cerrado', 'Estado del juego', { clase: r.jugable ? '' : 'cerrado', sub: r.jugable ? 'La gente puede jugar por premio' : MOTIVOS[r.motivo] ?? r.motivo }),
         dato(r.partidas.semana, 'Partidas esta semana', { sub: `${r.partidas.total.toLocaleString('es-CO')} en total` }),
         dato(r.partidas.ganadoresSemana, 'Llegaron a la meta esta semana', { sub: `${r.partidas.ganadores.toLocaleString('es-CO')} en total` }),

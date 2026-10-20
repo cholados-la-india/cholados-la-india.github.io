@@ -155,6 +155,11 @@ function resumen() {
   const sem0 = inicioSemana(t);
   const deSem = codigos.filter((k) => k.emitido >= sem0);
   const cuenta = (e) => codigos.filter((k) => efectivo(k) === e).length;
+  const bog = new Date(t - 5 * HORA);
+  const inicioHoy = Date.UTC(bog.getUTCFullYear(), bog.getUTCMonth(), bog.getUTCDate()) + 5 * HORA; // 00:00 de hoy en Bogotá
+  const sem = Math.max(0, cfg.premiosPorSemana - deSem.length);
+  const hoy = cfg.cupoDiario > 0 ? Math.max(0, cfg.cupoDiario - codigos.filter((k) => k.emitido >= inicioHoy).length) : null;
+  const restantes = hoy === null ? sem : Math.min(sem, hoy);
   const dias = [];
   for (let i = 0; i < 14; i++) {
     const d = new Date(t - 5 * HORA - i * DIA).toISOString().slice(0, 10);
@@ -163,7 +168,8 @@ function resumen() {
   }
   return {
     ok: true, ahoraISO: iso(t), semanaInicioISO: iso(sem0), jugable: true, motivo: null,
-    premiosRestantes: Math.max(0, cfg.premiosPorSemana - deSem.length), premiosPorSemana: cfg.premiosPorSemana,
+    premiosRestantes: restantes, premiosPorSemana: cfg.premiosPorSemana, premiosSemanaRestantes: sem, cupoDiario: cfg.cupoDiario, premiosHoyRestantes: hoy,
+    limitadoPor: hoy !== null && hoy < sem ? 'dia' : 'semana',
     partidas: { total: 214, semana: 63, ganadores: 41, ganadoresSemana: 12, rechazadas: 3, sinCupo: 1 },
     codigos: {
       total: codigos.length, semana: deSem.length, activos: cuenta('activo'), vencidos: cuenta('vencido'), desactivados: cuenta('desactivado'),

@@ -208,6 +208,8 @@ begin
     'motivo', v_motivo,
     'premiosRestantes', cu.restantes,
     'premiosPorSemana', c.premios_por_semana,
+    -- Qué tope es el que manda ahora: el del DÍA (cupo diario) o el de la SEMANA. Así el juego dice «hoy» o «esta semana» como toca.
+    'limitadoPor', case when cu.diario is not null and cu.diario < cu.semanal then 'dia' else 'semana' end,
     'intentosRestantes', v_int_rest,
     'intentosPorSemana', c.intentos_por_semana,
     'reiniciaEnISO', app.iso(v_reinicia),
@@ -219,6 +221,7 @@ begin
       'diasEntreCodigosPorCelular', c.dias_entre_codigos_por_celular,
       'regalos', c.regalos,
       'ventanaReclamoMin', c.ventana_reclamo_min,
+      'cupoDiario', c.cupo_diario,   -- 0 = sin cupo diario
       -- Fechas de la temporada (null = sin fechas, siempre activa): el juego las muestra en las condiciones
       'campana', jsonb_build_object(
         'inicioISO', case when c.campana_inicio is not null then app.iso(c.campana_inicio) end,

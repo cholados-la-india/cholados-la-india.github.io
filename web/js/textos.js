@@ -40,7 +40,10 @@ export const T = {
     comoSeJuega: '¿Cómo se juega?',
     miCodigo: 'Ver mi código',
     condiciones: 'Condiciones',
-    premios: (n) => (n === 1 ? 'Queda <b>1</b> premio esta semana' : `Quedan <b>${n}</b> premios esta semana`),
+    premios: (n, porDia = false) => {
+      const cuando = porDia ? 'hoy' : 'esta semana'; // «hoy» cuando manda el cupo diario
+      return n === 1 ? `Queda <b>1</b> premio ${cuando}` : `Quedan <b>${n}</b> premios ${cuando}`;
+    },
     intentos: (n, max) => (n === 1 ? `Te queda <b>1</b> intento de ${max}` : `Te quedan <b>${n}</b> intentos de ${max}`),
     cargando: 'Cargando...',
     errorConexion: 'No pudimos conectarnos. Revisa tu internet e intenta de nuevo.',
@@ -70,6 +73,7 @@ export const T = {
       `El código vale <b>${r.vigenciaDias} días</b> desde que lo recibes (en tu código aparece hasta cuándo), se canjea <b>una sola vez</b> y <b>solo en el local</b>.`,
       `Se entrega <b>un código por celular cada ${r.diasEntreCodigosPorCelular} días</b>.`,
       premios ? `Hay <b>${premios} premios por semana</b>; se renuevan los lunes a las 12:00 a. m. (hora de Bogotá). Cuando se acaban, toca esperar al lunes.` : null,
+      r.cupoDiario > 0 ? `Además, cada día se reparten como máximo <b>${r.cupoDiario} premios</b>; el cupo del día se renueva a las 12:00 a. m. (hora de Bogotá). Si ya se repartieron hoy, vuelve mañana.` : null,
       textoCampana(r.campana, dia) || 'Por ahora la campaña no tiene fechas anunciadas: puede terminar o cambiar, y lo avisaremos en nuestras redes (@cholados.laindia).',
     ].filter(Boolean),
     provisional: '<i>Condiciones provisionales: el texto definitivo se publicará antes del lanzamiento.</i>',
@@ -169,6 +173,9 @@ export const T = {
     mensajeGanaste: (reinicio) => `Otra persona se llevó el último premio justo antes que tú. Vuelve el <b>${reinicio}</b> y atrapa el tuyo.`,
     titulo: '¡Se acabaron los premios!',
     mensaje: (reinicio) => `Esta semana ya se entregaron todos. Vuelve el <b>${reinicio}</b> y atrapa el tuyo.`,
+    // Cuando lo que se agotó fue el cupo DIARIO (la semana todavía tiene premios)
+    tituloDia: '¡Se acabaron los premios de hoy!',
+    mensajeDia: (reinicio) => `Hoy ya se repartieron todos los del día. Vuelve el <b>${reinicio}</b> y atrapa el tuyo.`,
     volver: 'Volver al inicio',
   },
 

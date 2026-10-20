@@ -49,6 +49,7 @@ function calcular(s) {
     motivo,
     premiosRestantes,
     premiosPorSemana,
+    limitadoPor: 'semana', // la API falsa no tiene cupo diario
     intentosRestantes: s.dbg.ilimitado ? intentosPorSemana : intentosRestantes,
     intentosPorSemana,
     reiniciaEnISO: iso(s.semana + SEMANA_MS),

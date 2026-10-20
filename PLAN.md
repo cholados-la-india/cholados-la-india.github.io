@@ -1,7 +1,7 @@
 # PLAN.md — Cholado Runner
 
 Estado por etapas. **Regla:** solo se trabaja en la etapa que el usuario pida; al cerrar cada una se resume (qué se hizo, archivos tocados, frase de commit), se espera el visto bueno y se actualiza este archivo y los demás documentos.
-Última actualización: 2026-10-20 (Etapa 6 hecha; **faltan pasos del usuario** —ver 6.7 y 6.8— y su visto bueno; después, Etapa 7 a la espera del Prompt 7).
+Última actualización: 2026-10-20 (Etapa 6 **cerrada**). Orden decidido por el usuario: **Fase bonus A (bugs en localhost) → Fase bonus B (estética) → Etapa 7 (publicación, la última)**.
 Contexto completo en `CLAUDE.md`; historia detallada en `documentos/bitacora.md`; lo abierto en `pendientes.md`.
 
 | # | Etapa | Estado |
@@ -11,8 +11,10 @@ Contexto completo en `CLAUDE.md`; historia detallada en `documentos/bitacora.md`
 | 3 | Prototipo jugable sin backend | ✅ Hecha y aprobada por el usuario (2026-10-19: «todo bien») |
 | 4 | Backend en Supabase y conexión | ✅ Hecha, probada contra el servidor real y commiteada (`39f0e17`, 2026-10-19) |
 | 5 | Página del staff (PIN) y panel admin | ✅ Hecha, probada contra el servidor real y aprobada por el usuario (2026-10-19) |
-| 6 | Pruebas, seguridad y compatibilidad | ✅ Hecha (233 pruebas SQL, servidor real 43+30+19 ✓); faltan pasos del usuario (volver a pegar el SQL, `probar-canje`, celulares reales) y su visto bueno |
-| 7 | Publicación, QR y lista de lanzamiento | ⏳ **Siguiente** — esperando el Prompt 7 (insumos en `CLAUDE.md` §14) |
+| 6 | Pruebas, seguridad y compatibilidad | ✅ **Cerrada** (2026-10-20): 244 pruebas SQL; servidor real 43 + 30 + 19 ✓; canje doble y limpieza hechos por el usuario; celulares reales en pendientes |
+| A | **Fase bonus A**: revisión de bugs en localhost | ⏳ **Siguiente** (el usuario prueba, Claude corrige) |
+| B | **Fase bonus B**: mejoras estéticas | ⬜ |
+| 7 | Publicación, QR y lista de lanzamiento | ⬜ **La última**: se hace cuando A y B estén listas (insumos en `CLAUDE.md` §14) y el usuario pegue el Prompt 7 |
 
 ## Etapa 1 — Contexto y preguntas ✅
 Revisión de las 19 referencias y el menú; 10 preguntas respondidas por el usuario; análisis de la Ley 1581; creación de `CLAUDE.md`, `PLAN.md`, `pendientes.md`; `referencias-diseno/` agregada a `.gitignore`.
@@ -62,24 +64,28 @@ Archivos principales de la etapa: `web/index.html`, `web/css/juego.css`, `web/js
 - **Para ver el diseño sin tocar nada real:** <http://localhost:5173/canje/?api=falsa> (PIN 1234) y <http://localhost:5173/admin/?api=falsa> (cualquier correo, clave `demo`).
 - **Decisiones de esta etapa:** el regalo se elige en la caja (el prompt decía «mostrar el regalo»); el PIN no tiene valor por defecto; el límite de PIN es global (compromiso: se puede bloquear la caja, el dueño desbloquea; límite por IP → Etapa 6); un canje no se deshace desde el panel; la caja no ve nombre ni celular.
 
-## Etapa 6 — Pruebas, seguridad y compatibilidad ✅ (hecha el 2026-10-20; faltan pasos del usuario y su visto bueno)
-Reporte: `documentos/reporte-etapa6.md` · Guía de celulares: `documentos/pruebas-en-celulares.md` · Detalle: `documentos/bitacora.md` §11 · `CLAUDE.md` §13.
+## Etapa 6 — Pruebas, seguridad y compatibilidad ✅ (CERRADA el 2026-10-20)
+Reporte: `documentos/reporte-etapa6.md` · Guía de celulares: `documentos/pruebas-en-celulares.md` · Detalle: `documentos/bitacora.md` §11 · `CLAUDE.md` §13 · Hito: `historial/07-endurecimiento/`.
 - [x] 6.1 Revisión del repo y del código (compatibilidad, textos, seguridad).
 - [x] 6.2 Secretos: `npm run revisar-secretos` (archivos + historial de git): limpio. Registro público de Supabase **apagado** (verificado en el servidor real).
-- [x] 6.3 SQL de endurecimiento: límites por red (150 partidas/hora, 8 códigos/día, PIN por red), tope de celulares probados por token, fechas de la campaña hacia el juego, `diag_red`, `rls_auto_enable` cerrada. `probar-sql` 233 ✓; `probar-mutaciones` 9/9; auditoría de permisos `supabase/sql/auditoria_permisos.sql`; todo en un solo archivo `supabase/todo-junto.sql` (`npm run sql`).
-- [x] 6.4 Textos legales visibles: «Condiciones» (no acumulable, compra mínima, vigencia, un código por celular, temporada) en inicio/formulario/ticket; regalos dinámicos desde el servidor.
+- [x] 6.3 SQL de endurecimiento: límites por red (150 partidas/hora, 8 códigos/día, PIN por red), tope de celulares probados por token, fechas de la campaña hacia el juego, `diag_red`, `rls_auto_enable` cerrada, **cupo diario opcional** (interruptor en el panel; el juego dice «hoy» o «esta semana» según el tope que mande). `probar-sql` 244 ✓; `probar-mutaciones` 9/9; auditoría de permisos; todo en un solo archivo `supabase/todo-junto.sql` (`npm run sql`).
+- [x] 6.4 Textos legales visibles: «Condiciones» (no acumulable, compra mínima, vigencia, un código por celular, temporada, cupo diario) en inicio/formulario/ticket; regalos dinámicos desde el servidor.
 - [x] 6.5 Compatibilidad y rendimiento: página `/diagnostico/`, `modulepreload`, celulares ≤ 2 GB arrancan con menos resolución, anti-clickjacking, peso de carga ≈ 272 KB.
-- [x] 6.6 Contra el servidor real: `probar-seguridad` 19 ✓, `probar-ataques --completo` 30 ✓, `probar-supabase` 43 ✓ (100 ganadores simultáneos con 40 premios → exactamente 40; límite por red exacto).
-- [ ] 6.7 **El usuario:** volver a pegar `supabase/todo-junto.sql` (cierra `rls_auto_enable`) → «✅ Todo en orden»; `npm run probar-canje` (con su PIN); `supabase/sql/limpiar_pruebas.sql`.
-- [ ] 6.8 **El usuario:** pruebas en celulares reales (Instagram/Facebook iOS y Android, Safari/Chrome, gama baja) con la guía; decidir si activa el **cupo diario** (recomendado).
-- [ ] 6.9 Visto bueno del usuario → marcar ✅ definitivo.
-- Hito: `historial/07-endurecimiento/`.
+- [x] 6.6 Contra el servidor real: `probar-seguridad` 19 ✓, `probar-ataques --completo` 30 ✓, `probar-supabase` 43 ✓ (100 ganadores simultáneos con 40 premios → exactamente 40; límite por red exacto), auditoría de permisos «✅ Todo en orden» (confirmada por el usuario), `probar-canje` y limpieza de datos de prueba hechos por el usuario («todo bien»).
+- [x] 6.7 `guia-rapida.md` (raíz): comandos, SQL y recordatorios para el dueño; su SQL se prueba en `probar-sql`. **Claude debe mantenerla al día** (nota dentro del archivo).
+- **Decisiones del usuario al cerrar:** el **cupo diario** queda como opción del panel (prender/apagar y cuántos por día; lo decidirá con su mamá, hoy apagado); las **pruebas en celulares reales quedan en pendientes** (en su iPhone XR ya funciona); aprobó cerrar la etapa.
+
+## Fase bonus A — Revisión de bugs en localhost ⏳ (SIGUIENTE; la pidió el usuario)
+Claude le entrega el juego, la caja y el panel para que el usuario los ejecute en localhost, busque bugs y cosas por mejorar, y se corrigen. Se organiza el feedback en una lista numerada. Sin etapas de por medio.
+
+## Fase bonus B — Mejoras estéticas ⬜
+Lo que el usuario dijo que quería mejorar al final (ver `pendientes.md` #16): cholado con frutas «adentro» del vaso, bola de helado, más detalle en La India y el escenario, más elementos de escenario, posibles cambios de color, sonido y música (#10), cartel ¡META! legible, animación de choque.
 
 ## Etapa 7 — Publicación ⬜
 - [ ] GitHub Pages desde `web/` con workflow; URL permanente `https://hachescc.github.io/cholado-runner/`; QR de alta resolución (mostrador y vasos); términos y condiciones; aviso de datos (Ley 1581); plan de contingencia; lista de lanzamiento; hito final en `historial/`.
 
-## Después de la Etapa 7 (el usuario lo pidió así)
-Mejoras **estéticas**: cholado con frutas «adentro» del vaso, bola de helado, más detalle en La India y el escenario, más elementos, posibles cambios de color, sonido y música.
+## Después de la Etapa 7
+El usuario seguirá haciendo cambios después de publicar. Las mejoras estéticas que antes iban aquí **se adelantaron** (Fase bonus B): quiere publicar con todo lo más pulido posible.
 
 ## Decisiones tomadas
 Ver `CLAUDE.md` (§3, §5, §6, §6b) y el detalle con su porqué en `documentos/bitacora.md`.

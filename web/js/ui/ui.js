@@ -125,7 +125,7 @@ export function crearUI(raiz, cfg) {
           </div>` : ''}
         </header>
         <div class="panel panel-inicio">
-          <div class="pastilla lima">${T.inicio.premios(estado.premiosRestantes)}</div>
+          <div class="pastilla lima">${T.inicio.premios(estado.premiosRestantes, estado.limitadoPor === 'dia')}</div>
           ${campana() ? `<p class="campana">${campana()}</p>` : ''}
           <div class="intentos"><span class="vasos">${vasos(estado.intentosRestantes, estado.intentosPorSemana)}</span><span>${T.inicio.intentos(estado.intentosRestantes, estado.intentosPorSemana)}</span></div>
           <button type="button" class="boton grande" data-accion="jugar">${T.inicio.jugar}</button>
@@ -251,10 +251,10 @@ export function crearUI(raiz, cfg) {
       </div></section>`,
 
     // `ganaste`: ganó, pero otra persona se llevó el último premio justo antes (se avisa distinto, sin culpa).
-    'sin-premios': ({ reiniciaEnISO, tieneCodigo, ganaste }) => `
+    'sin-premios': ({ reiniciaEnISO, tieneCodigo, ganaste, limitadoPor }) => `
       <section class="pantalla centro ${ganaste ? 'fondo' : ''}"><div class="panel">
-        <h2>${ganaste ? T.sinPremios.tituloGanaste : T.sinPremios.titulo}</h2>
-        <p class="mensaje">${(ganaste ? T.sinPremios.mensajeGanaste : T.sinPremios.mensaje)(esc(fechaCortaBogota(Date.parse(reiniciaEnISO))))}</p>
+        <h2>${ganaste ? T.sinPremios.tituloGanaste : limitadoPor === 'dia' ? T.sinPremios.tituloDia : T.sinPremios.titulo}</h2>
+        <p class="mensaje">${(ganaste ? T.sinPremios.mensajeGanaste : limitadoPor === 'dia' ? T.sinPremios.mensajeDia : T.sinPremios.mensaje)(esc(fechaCortaBogota(Date.parse(reiniciaEnISO))))}</p>
         ${tieneCodigo ? `<button type="button" class="boton" data-accion="mi-codigo">${T.inicio.miCodigo}</button>` : ''}
         <button type="button" class="enlace" data-accion="ayuda">${T.inicio.comoSeJuega}</button>
       </div></section>`,

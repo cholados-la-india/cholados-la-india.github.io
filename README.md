@@ -6,6 +6,7 @@ Minijuego web de **Cholados La India** (Cali, Colombia): un runner vertical para
 
 | Archivo | Qué contiene |
 |---|---|
+| [guia-rapida.md](guia-rapida.md) | **La guía del dueño:** todos los comandos, el SQL para pegar en Supabase, el panel, la caja y qué hacer si algo falla |
 | [CLAUDE.md](CLAUDE.md) | Reglas, decisiones vigentes, arquitectura y cómo probar (fuente de verdad) |
 | [PLAN.md](PLAN.md) | Estado de las 7 etapas |
 | [pendientes.md](pendientes.md) | Lo que falta decidir o hacer |

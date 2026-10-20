@@ -56,6 +56,10 @@ const device = randomUUID();
 const ini = await rpc('iniciar_partida', { p_device: device });
 if (!ini.ok) {
   console.log('No se pudo iniciar la partida de prueba:', JSON.stringify(ini).slice(0, 200));
+  if (ini.motivo === 'sin-premios' || ini.motivo === 'limite-red') {
+    console.log('\n→ El banco de la semana (o el tope de tu red) está gastado por las pruebas anteriores. Corre PRIMERO supabase/sql/limpiar_pruebas.sql');
+    console.log('  en el SQL Editor de Supabase (borra datos de prueba y los contadores por red) y vuelve a correr npm run probar-canje.');
+  }
   process.exit(1);
 }
 await esperar(47000);

@@ -29,6 +29,22 @@ export function vistaConfig(ctx) {
     return el('label', { class: 'campo' }, el('span', {}, etiqueta), input, ayuda && el('span', { class: 'ayuda' }, ayuda));
   }
 
+  // El cupo diario es OPCIONAL: un interruptor y, si está activo, cuántos premios se reparten cada día.
+  // (En el servidor «apagado» se guarda como 0; al apagarlo se manda 0 y al prenderlo el número de la casilla.)
+  function cupoDiario() {
+    const prendido = actual.cupoDiario > 0;
+    const sugerido = Math.max(1, Math.ceil((actual.premiosPorSemana || 50) / 7));
+    const activo = el('input', { type: 'checkbox', checked: prendido });
+    const input = el('input', { type: 'number', inputmode: 'numeric', min: 1, max: 10000, step: 1, value: prendido ? actual.cupoDiario : sugerido, disabled: !prendido });
+    activo.addEventListener('change', () => { input.disabled = !activo.checked; });
+    campos.cupo = { activo, input };
+    return el('div', { class: 'campo' },
+      el('span', {}, 'Cupo diario (opcional)'),
+      el('label', { class: 'opcion' }, activo, el('span', {}, 'Activar el cupo diario')),
+      el('label', { class: 'campo' }, el('span', {}, 'Premios que se reparten cada día'), input),
+      el('span', { class: 'ayuda' }, `Apagado: solo manda el tope de la semana. Prendido: nunca se reparten más de estos por día (así, si alguien usa un programa para llevarse los premios, solo agota los de ese día). Con ${actual.premiosPorSemana} por semana, ${sugerido} al día es un buen comienzo. Se puede prender y apagar cuando quieras.`));
+  }
+
   function dificultad(ruta, etiqueta, ayuda) {
     const [grupo, clave] = ruta.split('.');
     const valor = actual.juego?.[grupo]?.[clave];
@@ -66,7 +82,7 @@ export function vistaConfig(ctx) {
       seccion('Premios y banco semanal', 'La semana va de lunes 00:00 a domingo 23:59 (hora de Bogotá).',
         el('div', { class: 'rejilla' },
           numero('premiosPorSemana', 'Premios por semana', 'El banco. Cuenta los códigos expedidos y los premios apartados.', { min: 0, max: 10000 }),
-          numero('cupoDiario', 'Cupo diario (0 = apagado)', 'Tope de premios por día, para repartirlos en la semana (ej. 7).', { min: 0, max: 10000 }),
+          cupoDiario(),
           numero('intentosPorSemana', 'Intentos por semana', 'Partidas por premio que tiene cada persona (cada navegador).', { min: 1, max: 50 }))),
       seccion('Códigos', 'Los cambios de días, prefijo y largo valen para los códigos que se expidan desde ahora; los ya expedidos no cambian.',
         el('div', { class: 'rejilla' },
@@ -113,6 +129,13 @@ export function vistaConfig(ctx) {
     for (const [clave, { input, etiqueta }] of Object.entries(campos.numeros)) {
       if (input.value.trim() === '') throw new Error(`Falta llenar «${etiqueta}».`);
       cambios[clave] = Number(input.value);
+    }
+    if (campos.cupo.activo.checked) {
+      const n = Number(campos.cupo.input.value);
+      if (!Number.isInteger(n) || n < 1) throw new Error('Escribe cuántos premios se reparten cada día (un número desde 1), o apaga el cupo diario.');
+      cambios.cupoDiario = n;
+    } else {
+      cambios.cupoDiario = 0;
     }
     cambios.regalos = [...campos.regalos.querySelectorAll('input')].map((i) => i.value.trim()).filter(Boolean);
     cambios.prefijoCodigo = campos.prefijo.value.trim();

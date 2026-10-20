@@ -510,6 +510,10 @@ begin
     'motivo', e ->> 'motivo',
     'premiosRestantes', cu.restantes,
     'premiosPorSemana', c.premios_por_semana,
+    'cupoDiario', c.cupo_diario,                 -- 0 = apagado
+    'premiosHoyRestantes', cu.diario,            -- null si no hay cupo diario
+    'premiosSemanaRestantes', cu.semanal,        -- lo que queda de la semana (premiosRestantes es el menor entre este y el de hoy)
+    'limitadoPor', case when cu.diario is not null and cu.diario < cu.semanal then 'dia' else 'semana' end,
     'partidas', jsonb_build_object('total', pt.total, 'semana', pt.sem, 'ganadores', pt.gan, 'ganadoresSemana', pt.gan_sem,
                                    'rechazadas', pt.rech, 'sinCupo', pt.sin_cupo),
     'codigos', jsonb_build_object('total', cd.total, 'semana', cd.sem, 'activos', cd.activos, 'vencidos', cd.vencidos,

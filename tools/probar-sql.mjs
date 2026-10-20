@@ -834,6 +834,41 @@ seccion('21. Volver a correr las migraciones no rompe nada');
   ok('y la configuración conserva su única fila', Number(await uno('select count(*) from app.configuracion')) === 1);
 }
 
+seccion('21a. Cupo diario opcional: el juego y el panel saben cuál tope manda (el del día o el de la semana)');
+await reiniciarDatos();
+await reiniciarConfig5();
+await reiniciarStaff();
+await sql(`truncate app.limites_red`);
+{
+  let e = await rpc('estado', null);
+  ok('sin cupo diario manda el tope de la SEMANA (y reglas.cupoDiario = 0)', e.limitadoPor === 'semana' && e.reglas.cupoDiario === 0 && e.premiosRestantes === 50, JSON.stringify([e.limitadoPor, e.reglas.cupoDiario, e.premiosRestantes]));
+  ok('el panel lo muestra apagado (premiosHoyRestantes = null)', await admin('admin_resumen').then((r) => r.cupoDiario === 0 && r.premiosHoyRestantes === null && r.limitadoPor === 'semana'));
+  const g = await admin('admin_guardar_config', JSON.stringify({ cupoDiario: 3 }));
+  e = await rpc('estado', null);
+  ok('con cupo diario 3: hoy quedan 3 y manda el del DÍA', g.ok === true && e.premiosRestantes === 3 && e.limitadoPor === 'dia' && e.reglas.cupoDiario === 3, JSON.stringify([e.premiosRestantes, e.limitadoPor]));
+  for (let i = 0; i < 3; i++) await nuevoCodigo(120 + i);
+  e = await rpc('estado', null);
+  ok('agotado el cupo de hoy: «sin-premios» por el DÍA y vuelve mañana (no el lunes)', e.motivo === 'sin-premios' && e.limitadoPor === 'dia' && Date.parse(e.reiniciaEnISO) - Date.parse(e.ahoraISO) <= 86400e3 + 1000, JSON.stringify([e.motivo, e.limitadoPor, e.reiniciaEnISO]));
+  const r = await admin('admin_resumen');
+  ok('el resumen del panel dice que hoy quedan 0 de 3 y que manda el día', r.cupoDiario === 3 && r.premiosHoyRestantes === 0 && r.limitadoPor === 'dia' && r.premiosRestantes === 0, JSON.stringify([r.cupoDiario, r.premiosHoyRestantes, r.limitadoPor]));
+  await admin('admin_guardar_config', JSON.stringify({ cupoDiario: 0 }));
+  e = await rpc('estado', null);
+  ok('al apagar el cupo diario vuelve a mandar la semana (47 de 50) y el juego se reabre', e.limitadoPor === 'semana' && e.premiosRestantes === 47 && e.jugable === true && e.reglas.cupoDiario === 0, JSON.stringify([e.limitadoPor, e.premiosRestantes]));
+  await admin('admin_guardar_config', JSON.stringify({ cupoDiario: 10, premiosPorSemana: 4 }));
+  e = await rpc('estado', null);
+  ok('si el tope semanal es el más chico (1 de la semana vs 10 del día), manda la SEMANA', e.limitadoPor === 'semana' && e.premiosRestantes === 1, JSON.stringify([e.limitadoPor, e.premiosRestantes]));
+  await reiniciarConfig5();
+}
+
+seccion('21b. Limpieza de datos de prueba (supabase/sql/limpiar_pruebas.sql)');
+{
+  await sql(`insert into app.limites_red (clave, ventana, cuenta) values ('prueba:x', now(), 1) on conflict do nothing`);
+  await db.exec(await readFile(new URL('../supabase/sql/limpiar_pruebas.sql', import.meta.url), 'utf8'));
+  const n = async (t) => Number(await uno(`select count(*) from app.${t}`));
+  ok('borra los códigos, las partidas y los contadores por red', (await n('codigos')) === 0 && (await n('partidas')) === 0 && (await n('limites_red')) === 0);
+  ok('NO toca la configuración, el PIN ni los administradores', (await n('configuracion')) === 1 && (await uno('select pin_hash is not null from app.staff')) === true && (await n('admins')) === 1);
+}
+
 seccion('22. El archivo único supabase/todo-junto.sql (lo que se pega de una vez en Supabase)');
 {
   let actual = '';
@@ -862,6 +897,22 @@ seccion('22. El archivo único supabase/todo-junto.sql (lo que se pega de una ve
     otraVez = e.message;
   }
   ok('…y vuelto a pegar encima (como lo harás tú en tu Supabase) tampoco da errores y sigue «Todo en orden»', Array.isArray(otraVez) && otraVez.length === 1 && /Todo en orden/.test(otraVez[0].problema), JSON.stringify(otraVez));
+}
+
+seccion('23. La guía rápida (guia-rapida.md): todo su SQL funciona');
+{
+  const guia = await readFile(new URL('../guia-rapida.md', import.meta.url), 'utf8');
+  const bloques = [...guia.matchAll(/```sql\r?\n([\s\S]*?)```/g)].map((m) => m[1]);
+  ok(`la guía trae ${bloques.length} bloques de SQL (hay al menos 25)`, bloques.length >= 25);
+  const errores = [];
+  for (const [i, b] of bloques.entries()) {
+    try {
+      await db.exec(b);
+    } catch (e) {
+      errores.push(`bloque ${i + 1} («${b.trim().slice(0, 40)}…»): ${e.message}`);
+    }
+  }
+  ok('todos los bloques SQL de la guía se ejecutan sin error (los nombres de tablas y columnas siguen al día)', errores.length === 0, errores.join(' | '));
 }
 
 console.log(`\n${fallos === 0 ? '✅ TODO BIEN' : '❌ HAY FALLOS'} — ${total - fallos} de ${total} comprobaciones correctas.\n`);

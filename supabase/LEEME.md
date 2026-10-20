@@ -167,11 +167,11 @@ Es seguro repetirlo: no borra datos ni el PIN ni la lista de administradores.
 | **`diag_red()`** | Función pública que le devuelve a quien llama los encabezados de red que ve el servidor (solo los suyos): sirve para verificar que los límites reconocen bien la red (`npm run probar-ataques`). |
 | **`rls_auto_enable()`** | La función que crea Supabase con «Enable automatic RLS» quedaba ejecutable por el público; se le quita el permiso (el evento sigue funcionando). |
 
-### El cupo diario (te recomiendo activarlo)
-Los límites por red frenan, pero quien tenga varias redes distintas todavía podría vaciar los 50 premios de una semana. El **cupo diario** acota el daño: si lo pones en 8, un programa solo puede agotar **los 8 de ese día** y los siguientes días vuelve a haber premios. Se activa en el panel → Configuración → «Cupo diario» (0 = apagado). Con poco tráfico, ajusta mirando el Resumen del panel las primeras semanas.
+### El cupo diario (OPCIONAL: se prende y se apaga desde el panel)
+Los límites por red frenan, pero quien tenga varias redes distintas todavía podría vaciar los 50 premios de una semana. El **cupo diario** acota el daño: si lo pones en 8, un programa solo puede agotar **los 8 de ese día** y los siguientes días vuelve a haber premios. Es **opcional**: en el panel → Configuración → «Cupo diario (opcional)» marcas «Activar el cupo diario» y eliges cuántos premios por día (apagado = solo manda el tope de la semana). Con el cupo activo, el juego dice «Quedan N premios hoy» y, cuando se reparten los del día, «vuelve mañana»; el Resumen del panel muestra «Premios que quedan HOY». Con poco tráfico, ajusta mirando el Resumen las primeras semanas. (Para ver el «hoy» con el servidor real hay que volver a pegar `todo-junto.sql`.)
 
 ### Pruebas nuevas
-- `npm run probar-sql` — ahora **233** comprobaciones (límites por red, PIN por red, tiempo, auditoría, el archivo único).
+- `npm run probar-sql` — ahora **235** comprobaciones (límites por red, PIN por red, tiempo, auditoría, el archivo único).
 - `npm run probar-mutaciones` — rompe el SQL a propósito (9 formas) y comprueba que las pruebas lo notan.
 - `npm run probar-ataques` (y `-- --completo`) — te portas como un atacante contra el servidor real (30 pruebas).
 - `npm run probar-canje` — 25 cajeros simultáneos intentan canjear el mismo código (**te pide el PIN en tu terminal**; nunca lo escribas en el chat).
