@@ -43,4 +43,32 @@ await writeFile(MANIFIESTO, JSON.stringify(hitos, null, 2) + '\n', 'utf8');
 
 console.log(`Hito guardado: historial/${id}/`);
 console.log(`Ábrelo en:     http://localhost:5173/historial/${id}/${entrada}`);
+
+// Seguridad: avisa si Git va a IGNORAR algo del hito (así nunca se pierde en silencio).
+try {
+  const { execFileSync } = await import('node:child_process');
+  const archivos = [];
+  const recorrer = async (dir) => {
+    const { readdir } = await import('node:fs/promises');
+    for (const e of await readdir(dir, { withFileTypes: true })) {
+      const ruta = join(dir, e.name);
+      if (e.isDirectory()) await recorrer(ruta);
+      else archivos.push(ruta);
+    }
+  };
+  await recorrer(destino);
+  const ignorados = [];
+  for (const f of archivos) {
+    try {
+      execFileSync('git', ['check-ignore', '-q', '--', f], { cwd: RAIZ, stdio: 'ignore' });
+      ignorados.push(f); // código 0 = Git lo ignora
+    } catch {
+      /* código 1 = no se ignora: bien */
+    }
+  }
+  if (ignorados.length) console.log(`⚠ OJO: Git ignora ${ignorados.length} archivo(s) de este hito (no se subirían). Primero: ${ignorados[0]}`);
+  else console.log(`Git no ignora nada de este hito (${archivos.length} archivos). Recuerda hacer commit de la carpeta historial/.`);
+} catch {
+  console.log('(No se pudo comprobar con Git; revisa que historial/ aparezca en GitHub Desktop.)');
+}
 console.log('Tip: deja capturas en historial/' + id + '/capturas/ y anótalas en historial/hitos.json ("capturas": ["archivo.jpg"]).');

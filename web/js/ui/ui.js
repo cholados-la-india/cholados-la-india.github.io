@@ -13,10 +13,22 @@ const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&
 const vasos = (activos, total) => Array.from({ length: total }, (_, i) => `<span class="vida${i < activos ? '' : ' perdida'}">${SVG_VASO}</span>`).join('');
 const elegir = (lista) => lista[Math.floor(Math.random() * lista.length)];
 
+/** Deja solo dígitos y máximo 10 (si pegan "+57 312...", se quita el 57). */
+export function soloDigitosCelular(texto) {
+  let d = String(texto).replace(/\D/g, '');
+  if (d.length > 10 && d.startsWith('57')) d = d.slice(2);
+  return d.slice(0, 10);
+}
+
+/** "3123456789" → "312 345 6789" (el formato con el que se muestra mientras se escribe). */
+export function formatearCelular(digitos) {
+  const d = digitos.slice(0, 10);
+  return [d.slice(0, 3), d.slice(3, 6), d.slice(6, 10)].filter(Boolean).join(' ');
+}
+
 /** Celular colombiano: 10 dígitos que empiezan por 3 (acepta +57, espacios y guiones). */
 export function normalizarCelular(texto) {
-  let d = String(texto).replace(/\D/g, '');
-  if (d.length === 12 && d.startsWith('57')) d = d.slice(2);
+  const d = soloDigitosCelular(texto);
   return /^3\d{9}$/.test(d) ? d : null;
 }
 
@@ -39,12 +51,13 @@ export function crearUI(raiz, cfg) {
       </div>
       <button class="pausa" id="hud-pausa" type="button" data-accion="pausa" aria-label="Pausa">${SVG_PAUSA}</button>
     </div>
-    <div class="frutas">${SVG_FRESA}<b id="hud-frutas">0</b></div>`;
+    <div class="frutas" id="hud-frutas-caja">${SVG_FRESA}<b id="hud-frutas">0</b></div>`;
   const elVidas = $('#hud-vidas');
   const elReloj = $('#hud-reloj');
   const elBarra = $('#hud-barra');
   const elFrutas = $('#hud-frutas');
-  let ultimo = { vidas: -1, vidasMax: -1, reloj: '', barra: -1, frutas: -1 };
+  const elFrutasCaja = $('#hud-frutas-caja');
+  let ultimo = { vidas: -1, vidasMax: -1, reloj: '', barra: -1, frutas: -1, minimo: -1 };
 
   function actualizarHUD(p, tiempoRestante, progreso) {
     if (p.vidas !== ultimo.vidas || p.cfg.partida.vidas !== ultimo.vidasMax) {
@@ -63,14 +76,17 @@ export function crearUI(raiz, cfg) {
       elBarra.style.width = barra + '%';
       ultimo.barra = barra;
     }
-    if (p.frutas !== ultimo.frutas) {
-      elFrutas.textContent = p.frutas;
+    const minimo = p.cfg.partida.frutasMinimas ?? 0;
+    if (p.frutas !== ultimo.frutas || minimo !== ultimo.minimo) {
+      elFrutas.textContent = minimo > 0 ? `${p.frutas} / ${minimo}` : p.frutas; // "8 / 25": recogidas / mínimas para ganar
+      elFrutasCaja.classList.toggle('ok', minimo > 0 && p.frutas >= minimo); // se pone verde al llegar al mínimo
       ultimo.frutas = p.frutas;
+      ultimo.minimo = minimo;
     }
   }
   const mostrarHUD = (si) => {
     hud.hidden = !si;
-    if (si) ultimo = { vidas: -1, vidasMax: -1, reloj: '', barra: -1, frutas: -1 };
+    if (si) ultimo = { vidas: -1, vidasMax: -1, reloj: '', barra: -1, frutas: -1, minimo: -1 };
   };
 
   /* ───────────── Cuenta atrás y golpe ───────────── */
@@ -100,9 +116,10 @@ export function crearUI(raiz, cfg) {
           <img class="logo" src="assets/marca/logo.png" alt="${esc(T.negocio)}" width="380" height="157">
           <h1 class="titulo-juego">${esc(T.nombreJuego)}</h1>
           ${mostrarSelector ? `
-          <div class="selector" role="group" aria-label="Personaje (solo desarrollo)">
-            <button type="button" data-accion="personaje:cholado" class="${personaje === 'cholado' ? 'on' : ''}">Choladito</button>
-            <button type="button" data-accion="personaje:india" class="${personaje === 'india' ? 'on' : ''}">La India</button>
+          <p class="selector-etiqueta">${esc(T.personajes.titulo)}</p>
+          <div class="selector" role="group" aria-label="${esc(T.personajes.titulo)}">
+            <button type="button" data-accion="personaje:cholado" aria-pressed="${personaje === 'cholado'}" class="${personaje === 'cholado' ? 'on' : ''}">${esc(T.personajes.cholado)}</button>
+            <button type="button" data-accion="personaje:india" aria-pressed="${personaje === 'india'}" class="${personaje === 'india' ? 'on' : ''}">${esc(T.personajes.india)}</button>
           </div>` : ''}
         </header>
         <div class="panel panel-inicio">
@@ -128,7 +145,7 @@ export function crearUI(raiz, cfg) {
     ayuda: () => `
       <section class="pantalla centro fondo"><div class="panel ayuda">
         <h2>${T.ayuda.titulo}</h2>
-        <ol class="pasos">${T.ayuda.pasos.map((p) => `<li>${p}</li>`).join('')}</ol>
+        <ol class="pasos">${T.ayuda.pasos(cfg.partida.frutasMinimas, cfg.partida.vidas).map((p) => `<li>${p}</li>`).join('')}</ol>
         <p class="nota">${T.ayuda.premio(cfg.reglas.compraMinima)}</p>
         <button type="button" class="boton" data-accion="cerrar-ayuda">${T.ayuda.cerrar}</button>
       </div></section>`,
@@ -147,7 +164,7 @@ export function crearUI(raiz, cfg) {
         <label class="campo"><span>${T.ganaste.nombre}</span>
           <input name="nombre" type="text" autocomplete="name" maxlength="60" autocapitalize="words" required></label>
         <label class="campo"><span>${T.ganaste.celular}</span>
-          <input name="celular" type="tel" inputmode="numeric" autocomplete="tel-national" maxlength="16" placeholder="3XX XXX XXXX" required></label>
+          <input name="celular" type="tel" inputmode="numeric" autocomplete="tel-national" maxlength="12" placeholder="3XX XXX XXXX" required></label>
         <label class="consentimiento"><input name="consentimiento" type="checkbox">
           <span>${T.ganaste.consentimiento} <button type="button" class="enlace corto" data-accion="politica">${T.ganaste.verPolitica}</button></span></label>
         <p class="error" id="error-form" role="alert">${error ? esc(error) : ''}</p>
@@ -174,16 +191,26 @@ export function crearUI(raiz, cfg) {
         ${sinVolver ? '' : `<button type="button" class="boton secundario" data-accion="salir">${T.codigo.volver}</button>`}
       </div></section>`,
 
-    perdiste: ({ progreso, frutas, intentosRestantes }) => `
+    perdiste: ({ progreso, frutas, frutasMinimas, motivo, intentosRestantes }) => `
       <section class="pantalla centro fondo"><div class="panel">
-        <h2 class="grande-titulo">${esc(elegir(T.perdiste.titulos))}</h2>
-        <p class="mensaje">${T.perdiste.mensaje(Math.round(progreso * 100))}</p>
+        <h2 class="grande-titulo">${esc(motivo === 'frutas' ? T.perdiste.tituloFrutas : elegir(T.perdiste.titulos))}</h2>
+        <p class="mensaje">${motivo === 'frutas' ? T.perdiste.mensajeFrutas(frutas, frutasMinimas) : T.perdiste.mensaje(Math.round(progreso * 100))}</p>
         <div class="chips"><span class="chip">${SVG_FRESA}${esc(T.perdiste.frutas(frutas))}</span></div>
         <p class="mensaje">${T.perdiste.intentos(intentosRestantes)}</p>
         ${intentosRestantes > 0
           ? `<button type="button" class="boton grande" data-accion="jugar">${T.perdiste.otraVez}</button>
              <button type="button" class="boton secundario" data-accion="salir">${T.perdiste.salir}</button>`
           : `<button type="button" class="boton grande" data-accion="salir">${T.perdiste.salir}</button>`}
+      </div></section>`,
+
+    // El celular ya reclamó un cupón: se dice cuándo podrá reclamar otro (sin mostrar el código de ese número).
+    'ya-tienes-cupon': ({ puedeVolverMs, dias, tieneCodigo }) => `
+      <section class="pantalla centro fondo scroll"><div class="panel">
+        <h2>${T.yaTienesCupon.titulo}</h2>
+        <p class="mensaje">${T.yaTienesCupon.mensaje(dias, esc(fechaCortaBogota(puedeVolverMs)))}</p>
+        ${tieneCodigo ? `<button type="button" class="boton" data-accion="mi-codigo">${T.inicio.miCodigo}</button>` : ''}
+        <button type="button" class="boton secundario" data-accion="otro-numero">${T.yaTienesCupon.otroNumero}</button>
+        <button type="button" class="enlace" data-accion="salir">${T.yaTienesCupon.volver}</button>
       </div></section>`,
 
     'sin-intentos': ({ reiniciaEnISO, tieneCodigo }) => `
@@ -246,6 +273,11 @@ export function crearUI(raiz, cfg) {
   hud.addEventListener('click', (e) => {
     const b = e.target.closest('[data-accion]');
     if (b) manejadores.accion?.(b.dataset.accion, b);
+  });
+  // Celular: solo dígitos y máximo 10, con formato "312 345 6789" mientras se escribe (también al pegar)
+  contenedor.addEventListener('input', (e) => {
+    const el = e.target;
+    if (el.name === 'celular') el.value = formatearCelular(soloDigitosCelular(el.value));
   });
   contenedor.addEventListener('submit', (e) => {
     e.preventDefault();

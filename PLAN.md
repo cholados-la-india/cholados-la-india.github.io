@@ -7,7 +7,7 @@ Estado por etapas. Regla: solo se trabaja en la etapa que el usuario pida; al ce
 |---|---|---|
 | 1 | Contexto y preguntas (sin código) | ✅ Hecha (2026-10-19) |
 | 2 | Estilo gráfico (previews) | ✅ Hecha (2026-10-19). Elegido: **G = mezcla de D y F** |
-| 3 | Prototipo jugable sin backend | 🔄 Entregado el 2026-10-19, esperando feedback y visto bueno del usuario |
+| 3 | Prototipo jugable sin backend | 🔄 Ajustado tras el primer feedback (2026-10-19); esperando que el usuario lo pruebe de nuevo y dé el visto bueno |
 | 4 | Backend en Supabase y conexión | ⬜ |
 | 5 | Página del staff (PIN) y panel admin | ⬜ |
 | 6 | Pruebas, seguridad y compatibilidad | ⬜ |
@@ -40,7 +40,18 @@ Archivos tocados: `CLAUDE.md`, `PLAN.md`, `pendientes.md`, `.gitignore`.
 - [x] 3.6b Modo `?debug=1` (FPS, deslizadores en vivo, estadísticas, simulador con bot) y guía `documentos/calibrar-dificultad.md`.
 - [ ] 3.6 Sonido y música (pistas libres de licencia). **Aplazado**: el Prompt 3 no lo incluía; decidir con el usuario.
 - [ ] 3.7 Prueba en iPhone XR (por IP local, misma red wifi): FPS reales, controles táctiles, navegador de Instagram. **Pendiente del usuario.**
-- [ ] 3.8 Con el visto bueno: borrar `web/previews/` (ya está en `historial/`), guardar hito 03 definitivo con capturas, marcar la etapa ✅.
+- [ ] 3.8 Con el visto bueno final del usuario: guardar hito 04 (prototipo v2 con capturas) y marcar la etapa ✅.
+
+### Etapa 3 — ajustes antes de pasar a la Etapa 4 (Supabase / backend)
+Lista del feedback del usuario tras probar el prototipo (2026-10-19). El usuario lo volverá a probar y dirá si hay más; **no se pasa a la Etapa 4 hasta que dé el visto bueno**. Lo estético (detalles del cholado, La India y el escenario) queda para después de que todas las etapas estén completas.
+- [x] A1 Deslizar: **un gesto = un carril**, sin importar la fuerza (no saltarse el carril del medio).
+- [x] A2 **Selector Choladito / La India permanente** (decisión del usuario y su mamá: el cliente elige personaje).
+- [x] A3 **Mínimo de frutas para ganar** (hoy 25 de ~70; editable) además de llegar a la meta; HUD "x / 25"; pantalla "¡Te faltaron frutas!".
+- [x] A4 **Dificultad un poco mayor y velocidad creciente** (9,5 → 14,5; antes 9 → 13,5). Todo sigue editable.
+- [x] A5 **Celular limitado a 10 dígitos**, con formato "312 345 6789" y tolerante a pegar "+57".
+- [x] A6 **Un cupón por número** (cooldown `diasEntreCodigosPorCelular`, hoy 7): nueva pantalla que dice cuándo podrá reclamar otro, sin revelar el código. *(El servidor real lo hará de verdad en la Etapa 4.)*
+- [x] A7 **Historial protegido**: regla `!historial/**` en `.gitignore`, aviso en `npm run hito`, `web/previews/` borrado (vive en `historial/`).
+- [ ] A8 Pendiente del usuario: probar de nuevo (PC + iPhone XR) y reportar más detalles.
 
 ## Etapa 4 — Supabase
 - [ ] 4.1 Crear cuenta y proyecto (guiado) y verificar límites del plan gratis.

@@ -15,6 +15,8 @@ export const T = {
   lema: '¡Atrapa tu cholado!',
   negocio: 'Cholados La India',
 
+  personajes: { titulo: 'Elige tu personaje', cholado: 'Choladito', india: 'La India' },
+
   inicio: {
     jugar: '¡A correr!',
     comoSeJuega: '¿Cómo se juega?',
@@ -28,11 +30,11 @@ export const T = {
 
   ayuda: {
     titulo: '¿Cómo se juega?',
-    pasos: [
-      '<b>Desliza a los lados</b> para cambiar de carril.',
+    pasos: (frutasMinimas, vidas) => [
+      '<b>Desliza a los lados</b> para cambiar de carril (un deslizamiento = un carril).',
       '<b>Desliza hacia arriba</b> (o toca la pantalla) para saltar.',
       'Esquiva las cajas y salta las barras. Las <b>pilas altas</b> no se saltan: ¡esquívalas!',
-      'Aguanta hasta llegar a tu cholado. Tienes <b>3 vidas</b> y las frutas son un extra.',
+      `Recoge al menos <b>${frutasMinimas} frutas</b> por el camino y llega a tu cholado antes de que se acabe el tiempo. Tienes <b>${vidas} vidas</b>.`,
     ],
     premio: (compraMinima) => `Si llegas a la meta ganas un código para reclamar un regalo en el local: un <b>raspao personal</b> o un <b>cholado de 10 oz</b>, con una compra mínima de <b>${pesos(compraMinima)}</b> en productos (el regalo no cuenta).`,
     cerrar: 'Entendido',
@@ -61,7 +63,7 @@ export const T = {
       consentimiento: 'Necesitamos tu autorización para guardar tus datos.',
       sinPremios: 'Uy, justo se acabaron los premios de esta semana. ¡Vuelve el lunes!',
       partidaInvalida: 'No pudimos validar tu partida. Intenta jugar de nuevo.',
-      yaTienesCodigo: 'Este celular ya reclamó un código esta semana. Solo se puede uno cada 7 días.',
+      yaTienesCodigo: 'Este celular ya reclamó un código.',
       generico: 'No pudimos reclamar el premio. Intenta de nuevo.',
     },
     politica: {
@@ -92,6 +94,17 @@ export const T = {
     intentos: (n) => (n === 1 ? 'Te queda <b>1</b> intento esta semana.' : `Te quedan <b>${n}</b> intentos esta semana.`),
     otraVez: 'Intentar de nuevo',
     salir: 'Volver al inicio',
+    // Llegó a la meta pero sin las frutas mínimas
+    tituloFrutas: '¡Te faltaron frutas!',
+    mensajeFrutas: (frutas, minimo) => `Llegaste a tu cholado, pero recogiste <b>${frutas} de ${minimo}</b> frutas. Necesitas mínimo <b>${minimo}</b> para ganar.`,
+  },
+
+  yaTienesCupon: {
+    titulo: '¡Este número ya tiene un cupón!',
+    mensaje: (dias, cuando) => `Solo se puede reclamar <b>un cupón por número cada ${dias} días</b>, para que más gente conozca el local. Podrás reclamar otro a partir del <b>${cuando}</b>`,
+    // (Por privacidad NO se muestra el código que ya tiene ese número: solo quien lo reclamó lo ve, en su navegador.)
+    otroNumero: 'Me equivoqué de número',
+    volver: 'Volver al inicio',
   },
 
   sinIntentos: {

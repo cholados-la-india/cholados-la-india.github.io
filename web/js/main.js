@@ -64,7 +64,8 @@ async function irInicio(recargar = true) {
     ui.mostrar(estadoServidor.motivo, { ...estadoServidor, tieneCodigo });
     return;
   }
-  ui.mostrar('inicio', { estado: estadoServidor, personaje: escena.personaje, mostrarSelector: cfg.desarrollo.selectorPersonaje, tieneCodigo });
+  // El selector Choladito / La India es PERMANENTE: cada cliente elige con quién juega (se recuerda en su navegador).
+  ui.mostrar('inicio', { estado: estadoServidor, personaje: escena.personaje, mostrarSelector: true, tieneCodigo });
 }
 
 async function iniciarJuego() {
@@ -107,10 +108,18 @@ document.addEventListener('visibilitychange', () => {
 /* ───────────── Fin de la partida ───────────── */
 function alTerminarPartida(p) {
   terminada = true;
-  const resumen = { gano: p.estado === 'gano', progreso: progreso(p), frutas: p.frutas, choques: p.choques, segundos: p.t };
+  const resumen = {
+    gano: p.estado === 'gano',
+    motivo: p.motivoFin, // 'vidas' | 'frutas' | null
+    progreso: progreso(p),
+    frutas: p.frutas,
+    frutasMinimas: cfg.partida.frutasMinimas,
+    choques: p.choques,
+    segundos: p.t,
+  };
   const pedido = api.terminarPartida({ token, gano: resumen.gano, progreso: resumen.progreso, frutas: resumen.frutas }).catch((error) => ({ error }));
   hooks.alTerminar.forEach((f) => f(resumen));
-  const espera = resumen.gano ? cfg.partida.celebracionS * 1000 : 900;
+  const espera = resumen.gano || resumen.motivo === 'frutas' ? cfg.partida.celebracionS * 1000 : 900; // si llegó a la meta, pasa bajo el arco
   setTimeout(async () => {
     const r = await pedido;
     mostrarResultado(resumen, r);
@@ -129,7 +138,13 @@ function mostrarResultado(resumen, r) {
   } else if (resumen.gano) {
     ui.mostrar('error', { mensaje: T.ganaste.errores.partidaInvalida }); // el servidor no validó la victoria (token o tiempo jugado)
   } else {
-    ui.mostrar('perdiste', { progreso: resumen.progreso, frutas: resumen.frutas, intentosRestantes: estadoServidor.intentosRestantes });
+    ui.mostrar('perdiste', {
+      progreso: resumen.progreso,
+      frutas: resumen.frutas,
+      frutasMinimas: resumen.frutasMinimas,
+      motivo: resumen.motivo,
+      intentosRestantes: estadoServidor.intentosRestantes,
+    });
   }
 }
 
@@ -159,10 +174,7 @@ async function reclamar() {
   }
   ui.enviando(false);
   if (r.motivo === 'ya-tienes-codigo') {
-    ultimoCodigo = r.codigo;
-    almacen.escribir('cholado-mi-codigo', { codigo: r.codigo, venceISO: r.venceISO, esDePrueba: true });
-    ui.errorFormulario(T.ganaste.errores.yaTienesCodigo);
-    ui.mostrar('codigo', { codigo: r.codigo, venceMs: Date.parse(r.venceISO), esDePrueba: true });
+    ui.mostrar('ya-tienes-cupon', { puedeVolverMs: Date.parse(r.puedeVolverISO), dias: r.dias, tieneCodigo: Boolean(leerCodigoGuardado()) });
   } else if (r.motivo === 'sin-premios') {
     ui.errorFormulario(T.ganaste.errores.sinPremios);
   } else if (r.motivo === 'partida-invalida') {
@@ -224,6 +236,9 @@ ui.alAccion((accion, el) => {
       break;
     case 'reclamar':
       reclamar();
+      break;
+    case 'otro-numero':
+      ui.mostrar('ganaste', {}); // se equivocó de número: vuelve al formulario (la partida sigue siendo válida)
       break;
     default:
       break;

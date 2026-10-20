@@ -10,6 +10,7 @@ Toda la dificultad vive en `web/js/config.js` (secciones `partida`, `velocidad`,
 |---|---|
 | Que sea **más fácil** | Subir `obstaculos.separacionInicialS` y `separacionFinalS` (más tiempo entre obstáculos), bajar `velocidad.inicial` / `final`, subir `partida.toleranciaColision` o `partida.vidas`, subir el peso de `cajaBaja` (se saltan) y bajar el de `doble` |
 | Que sea **más difícil** | Lo contrario. Lo que más pesa es la **velocidad final** y la **separación final** (el último tramo) |
+| Que las frutas pesen más o menos | `partida.frutasMinimas` (cuántas hay que recoger) y `frutas.cadaS` (cada cuántos segundos sale una hilera; menos segundos = más frutas) |
 | Cambiar la sensación de salto | `salto.alto`, `salto.duracionS` |
 
 ## Opción A: medir con el simulador (rápido, aproximado)
@@ -19,9 +20,21 @@ Un bot juega miles de partidas en segundos. Sirve para **comparar** configuracio
 - En el juego: abre `http://localhost:5173/?debug=1` → botón **Debug** → **Simular 1.000 partidas × 3 perfiles**.
 - Desde la terminal: `npm run simular` (también acepta cambios: `npm run simular -- 2000 velocidad.final=14`).
 
-Los perfiles: **Novato**, **Normal** y **Experto**. Una guía para leerlos: el perfil *Normal* debería ganar entre 15 % y 30 %, el *Novato* poquito (menos de 10 %) y el *Experto* mucho (más de 85 %).
+Los perfiles: **Novato**, **Normal** y **Experto** (los tres también persiguen frutas, cada uno con distinta ambición). Una guía para leerlos: el *Novato* casi nunca gana, el *Normal* gana poquito y el *Experto* gana cerca de la mitad. Si tú, jugando, ganas bastante más que el Experto, el juego está fácil para ti; lo importante es cómo les va a las demás personas.
 
-Valores iniciales (los que están en `config.js`): Novato ~2 %, Normal ~19 %, Experto ~92 %.
+### Referencias (simulador, 2.000 partidas por perfil)
+
+Desde el 2026-10-19 para ganar hay que **llegar a la meta Y recoger un mínimo de frutas** (`partida.frutasMinimas`). Salen unas 70 frutas por partida; quien las ignora recoge ~24 de casualidad (por eso un mínimo bajo, como 15, no obligaba a nada) y quien las busca ~32. Tres puntos de referencia:
+
+| Ajuste | Velocidad | Frutas mín. | Novato | Normal | Experto |
+|---|---|---|---|---|---|
+| **Suave** | 9 → 13,5 | 18 | 1,7 % | 12,6 % | 58,9 % |
+| **Actual** (`config.js`) | 9,5 → 14,5 | 25 | 0,5 % | 6,2 % | 46,1 % |
+| **Difícil** | 10 → 15,5 | 32 | 0,7 % | 4,2 % | 26,0 % |
+
+(Antes de pedir frutas mínimas y subir la velocidad, el juego daba Novato ~2 %, Normal ~19 %, Experto ~92 %.)
+
+⚠️ El bot, ahora que persigue frutas, **choca más de lo que chocaría una persona atenta**: sus números son una guía pesimista. Úsalos para comparar ajustes entre sí, no para predecir el porcentaje real. Si al probar con familia y amigos casi nadie gana, baja `partida.frutasMinimas` y/o `velocidad.final`; si casi todos ganan, súbelos.
 
 ## Opción B: medir jugando (lo que de verdad cuenta)
 

@@ -359,8 +359,8 @@ export function crearEscena(canvas, contenedor, cfg, tema = {}) {
     if (estado === 'gano') {
       bote += Math.abs(Math.sin(p.tFin * 6)) * 0.35;
       gira += p.tFin * 5;
-    } else if (estado === 'perdio') {
-      cae = Math.min(1.35, p.tFin * 3.5);
+    } else if (estado === 'perdio' && p.motivoFin !== 'frutas') {
+      cae = Math.min(1.35, p.tFin * 3.5); // se cae al quedarse sin vidas; si llegó sin frutas, solo se detiene bajo el arco
     }
     pj.g.position.set(px, py + bote, 0);
     pj.g.rotation.set(-cae, gira, corriendo ? inclinacion : 0);

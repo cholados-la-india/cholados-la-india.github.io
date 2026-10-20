@@ -24,7 +24,10 @@
 //   reclamarPremio({ token, nombre, celular, consentimiento })  →
 //       { ok:true, codigo, emitidoISO, venceISO, esDePrueba }
 //       { ok:false, motivo }  motivo: 'partida-invalida' | 'sin-premios' | 'consentimiento' | 'datos'
-//                                      | 'ya-tienes-codigo' (+ codigo, venceISO)
+//                                      | 'ya-tienes-codigo' (+ dias, puedeVolverISO: cuándo podrá reclamar otro ese celular;
+//                                        el servidor NO debe devolver el código que ya tiene ese número)
+//       Reglas del servidor: un código por celular cada `diasEntreCodigosPorCelular` días; la victoria exige token válido,
+//       tiempo mínimo jugado y frutas >= `partida.frutasMinimas`.
 //
 // Para el panel de pruebas existe `api.debug` (solo en la API falsa).
 import * as falsa from './api-falsa.js';

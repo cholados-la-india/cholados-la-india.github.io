@@ -61,6 +61,8 @@ button { font: inherit; color: inherit; cursor: pointer; border: 0; background: 
 .pausa svg { width: 18px; height: 18px; fill: currentColor; }
 .frutas { margin-top: 12px; align-self: flex-start; display: inline-flex; align-items: center; gap: 6px; color: #fff; font-size: 22px; padding: 4px 16px 4px 8px; border-radius: 99px; background: linear-gradient(180deg, #ff7ab8, var(--magenta) 60%, #b01a66); box-shadow: inset 0 2px 0 rgba(255, 255, 255, 0.6), 0 5px 12px rgba(80, 0, 50, 0.35); }
 .frutas svg { width: 22px; height: 22px; }
+.frutas b { font-weight: 600; font-variant-numeric: tabular-nums; }
+.frutas.ok { color: #2f4000; background: linear-gradient(180deg, #e3ff6e, var(--lima) 55%, #8fc200); box-shadow: inset 0 2px 0 rgba(255, 255, 255, 0.8), 0 5px 12px rgba(30, 0, 40, 0.35); }
 
 /* iconos de las vasitos */
 .s-vaso { fill: #fff; }
@@ -101,7 +103,8 @@ button { font: inherit; color: inherit; cursor: pointer; border: 0; background: 
 .inicio-cabeza .selector { pointer-events: auto; }
 .logo { width: min(58%, 240px); height: auto; display: block; margin: 0 auto; filter: drop-shadow(0 4px 8px rgba(60, 0, 40, 0.5)); }
 .titulo-juego { margin-top: 6px; font-family: var(--titulos); font-weight: 400; font-size: 30px; line-height: 1; color: #fff; text-shadow: 0 3px 0 var(--ciruela), 0 0 18px rgba(216, 40, 127, 0.7); }
-.selector { align-self: center; display: inline-flex; gap: 4px; padding: 4px; border-radius: 99px; background: rgba(58, 15, 51, 0.6); margin-top: 8px; }
+.selector-etiqueta { margin-top: 6px; font-size: 13px; color: #fff; text-shadow: 0 2px 6px rgba(58, 15, 51, 0.8); }
+.selector { display: inline-flex; gap: 4px; padding: 4px; border-radius: 99px; background: rgba(58, 15, 51, 0.6); margin-top: 4px; }
 .selector button { padding: 7px 14px; border-radius: 99px; font-size: 14px; color: #fff; }
 .selector button.on { background: #fff; color: var(--ciruela); }
 .panel-inicio { gap: 10px; padding: 16px 16px 14px; }

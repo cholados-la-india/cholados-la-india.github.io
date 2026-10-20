@@ -134,6 +134,7 @@ export function crearGenerador(cfg, rng) {
           else continue;
         }
         p.frutasLista.push({ tipo, carril, d, y, recogida: false });
+        p.frutasGeneradas += 1;
       }
       g.dFruta = d0 + largo * f.separacion + f.cadaS * velocidadEn(cfg, tAt) * (0.7 + 0.6 * rng());
     }

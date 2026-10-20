@@ -1,6 +1,7 @@
 // controles.js — Deslizar (izquierda/derecha/arriba), tocar y teclado. Una sola API para todo.
 //
 //   · Deslizar a los lados  → cambiar de carril.       · Deslizar hacia arriba (o tocar) → saltar.
+//   · Cada toque hace UN solo gesto (un deslizamiento = un carril, sin importar la fuerza). Para moverte dos carriles, deslizas dos veces.
 //   · Deslizar hacia abajo se ignora por ahora (agacharse queda fuera; ver CLAUDE.md).
 //   · Teclado (para probar en el PC): ← → / A D, ↑ / W / Espacio, Esc o P para pausa.
 // Funciona con la misma lógica para dedo y mouse (Pointer Events), también en el navegador interno de Instagram.
@@ -21,15 +22,14 @@ export function crearControles(elemento, cfg, { alIzquierda, alDerecha, alSaltar
   };
   const mover = (e) => {
     if (!toque || e.pointerId !== toque.id || !activo()) return;
+    if (toque.huboGesto) return; // UN gesto por toque: da igual lo fuerte o largo que deslices, mueve un solo carril (como Subway Surfers)
     const dx = e.clientX - toque.x;
     const dy = e.clientY - toque.y;
     if (Math.hypot(dx, dy) < umbral()) return;
     toque.huboGesto = true;
     if (Math.abs(dx) > Math.abs(dy)) (dx < 0 ? alIzquierda : alDerecha)();
     else if (dy < 0) alSaltar();
-    // dy > 0 (deslizar hacia abajo): ignorado a propósito
-    toque.x = e.clientX; // se puede encadenar otro gesto sin levantar el dedo
-    toque.y = e.clientY;
+    // dy > 0 (deslizar hacia abajo): ignorado a propósito. Para otro gesto hay que levantar el dedo.
   };
   const arriba = (e) => {
     if (!toque || e.pointerId !== toque.id) return;

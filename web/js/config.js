@@ -15,6 +15,7 @@ export const CONFIG = {
   partida: {
     duracionS: 60, // duración de la partida; la meta aparece al terminar este tiempo
     vidas: 3, // choques que aguanta antes de perder
+    frutasMinimas: 25, // para ganar NO basta llegar a la meta: hay que haber recogido al menos tantas frutas (salen ~70 por partida; 0 = no se exige)
     cuentaAtrasS: 3, // 3, 2, 1... ¡a correr!
     invulnerabilidadS: 1.3, // tras un choque no te pueden quitar otra vida durante este tiempo
     toleranciaColision: 0.18, // 0 = hitbox exacta · 0.18 = se perdona un 18 % del borde · 0.4 = muy permisivo
@@ -23,8 +24,8 @@ export const CONFIG = {
 
   /* ───────────── Velocidad del mundo (unidades por segundo) ───────────── */
   velocidad: {
-    inicial: 9,
-    final: 13.5, // sube linealmente de la inicial a la final durante la partida
+    inicial: 9.5,
+    final: 14.5, // sube linealmente de la inicial a la final durante la partida (era 9 → 13,5; se subió un poco)
     multiplicador: 1, // multiplica ambas (para probar rápido con el deslizador de debug)
   },
 
@@ -102,8 +103,8 @@ export const CONFIG = {
 
   /* ───────────── Solo para desarrollo ───────────── */
   desarrollo: {
-    selectorPersonaje: true, // botones "Choladito / La India" en la pantalla de inicio (no irán en el build final)
-    personajeInicial: 'india', // 'india' | 'cholado'
+    // (El selector Choladito / La India ya es permanente: cada cliente elige su personaje.)
+    personajeInicial: 'india', // con quién arranca quien entra por primera vez: 'india' | 'cholado'
     latenciaApiMs: [120, 320], // la API falsa simula esta demora
     invencible: false, // para probar el recorrido sin perder vidas (también se activa desde ?debug=1)
     autoPausa: true, // pausar solo al salir de la pestaña/app (dejarlo en true; solo se apaga para pruebas automáticas)

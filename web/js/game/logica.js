@@ -36,8 +36,10 @@ export function crearPartida(cfg, { semilla = Date.now(), sinCuenta = false, inv
     vidas: cfg.partida.vidas,
     invulHasta: -1,
     invencible,
-    frutas: 0,
+    frutas: 0, // frutas recogidas
+    frutasGeneradas: 0, // frutas que han salido en el camino (para saber cuántas había disponibles)
     choques: 0,
+    motivoFin: null, // si perdió: 'vidas' (se quedó sin vidas) o 'frutas' (llegó a la meta sin las frutas mínimas)
     tFin: 0, // segundos desde que terminó (ganó o perdió)
     obstaculos: [],
     frutasLista: [],
@@ -101,10 +103,17 @@ export function paso(p, dt) {
 
   if (p.estado === 'jugando') {
     if (p.t >= T) {
-      p.estado = 'gano';
+      // Llegar a la meta NO basta: también hay que haber recogido las frutas mínimas.
       p.tFin = 0;
       p.dMeta = p.D;
-      p.eventos.push({ tipo: 'meta' });
+      if (p.frutas >= (cfg.partida.frutasMinimas ?? 0)) {
+        p.estado = 'gano';
+        p.eventos.push({ tipo: 'meta' });
+      } else {
+        p.estado = 'perdio';
+        p.motivoFin = 'frutas';
+        p.eventos.push({ tipo: 'perdio' });
+      }
     } else {
       p.dMeta = p.D + distanciaEntre(cfg, p.t, T);
     }
@@ -115,9 +124,10 @@ export function paso(p, dt) {
 function terminando(p, dt) {
   const cfg = p.cfg;
   p.tFin += dt;
-  const duracion = p.estado === 'gano' ? cfg.partida.celebracionS * 0.75 : 0.5;
+  const llegoALaMeta = p.estado === 'gano' || p.motivoFin === 'frutas'; // sigue un momento y pasa bajo el arco
+  const duracion = llegoALaMeta ? cfg.partida.celebracionS * 0.75 : 0.5;
   const k = Math.max(0, 1 - p.tFin / duracion);
-  p.vel = velocidadEn(cfg, Math.min(p.t, cfg.partida.duracionS)) * k * (p.estado === 'gano' ? 0.7 : 1);
+  p.vel = velocidadEn(cfg, Math.min(p.t, cfg.partida.duracionS)) * k * (llegoALaMeta ? 0.7 : 1);
   p.D += p.vel * dt;
   p.x += (((p.carrilObjetivo - 1) * cfg.carriles.ancho) - p.x) * Math.min(1, dt * 12);
 }
@@ -144,6 +154,7 @@ function colisiones(p) {
     p.eventos.push({ tipo: 'choque', obstaculo: o });
     if (p.vidas <= 0) {
       p.estado = 'perdio';
+      p.motivoFin = 'vidas';
       p.tFin = 0;
       p.eventos.push({ tipo: 'perdio' });
       return;

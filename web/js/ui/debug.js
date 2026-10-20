@@ -13,6 +13,7 @@ const SLIDERS = [
   ['Partida', null],
   ['Duración (s)', 'partida.duracionS', 15, 120, 1],
   ['Vidas', 'partida.vidas', 1, 6, 1],
+  ['Frutas mínimas para ganar (0 = no se exige)', 'partida.frutasMinimas', 0, 60, 1],
   ['Tolerancia de colisión', 'partida.toleranciaColision', 0, 0.4, 0.01],
   ['Invulnerabilidad tras choque (s)', 'partida.invulnerabilidadS', 0.3, 3, 0.1],
   ['Velocidad', null],
@@ -83,7 +84,7 @@ export function iniciarDebug({ cfg, escena, api, hooks, reiniciar, obtenerPartid
 
   /* ───────────── Estadísticas de partidas reales ───────────── */
   const CLAVE_STATS = 'cholado-debug-stats';
-  const firma = () => JSON.stringify([cfg.partida.duracionS, cfg.partida.vidas, r2(cfg.partida.toleranciaColision), r2(cfg.velocidad.inicial), r2(cfg.velocidad.final), cfg.velocidad.multiplicador, r2(cfg.obstaculos.separacionInicialS), r2(cfg.obstaculos.separacionFinalS), Object.values(cfg.obstaculos.tipos).map((t) => t.peso)]);
+  const firma = () => JSON.stringify([cfg.partida.duracionS, cfg.partida.vidas, cfg.partida.frutasMinimas, r2(cfg.partida.toleranciaColision), r2(cfg.velocidad.inicial), r2(cfg.velocidad.final), cfg.velocidad.multiplicador, r2(cfg.obstaculos.separacionInicialS), r2(cfg.obstaculos.separacionFinalS), Object.values(cfg.obstaculos.tipos).map((t) => t.peso)]);
   hooks.alTerminar.push((res) => {
     const lista = almacen.leer(CLAVE_STATS, []);
     lista.push({ ts: Date.now(), firma: firma(), gano: res.gano, progreso: res.progreso, choques: res.choques, frutas: res.frutas });
@@ -176,7 +177,7 @@ export function iniciarDebug({ cfg, escena, api, hooks, reiniciar, obtenerPartid
     for (const perfil of Object.values(PERFILES)) {
       await esperar(30); // deja pintar la pantalla entre perfil y perfil
       const r = simular(cfg, perfil, 1000, { semillaBase: 777 });
-      texto += `${perfil.nombre.padEnd(8)} gana ${(r.tasa * 100).toFixed(1).padStart(5)} %  (1 de cada ${r.ganadas ? (1 / r.tasa).toFixed(1) : '—'})  choques ${r.choquesPorPartida.toFixed(1)}\n`;
+      texto += `${perfil.nombre.padEnd(8)} gana ${(r.tasa * 100).toFixed(1).padStart(5)} %  (1 de cada ${r.ganadas ? (1 / r.tasa).toFixed(1) : '—'})  choques ${r.choquesPorPartida.toFixed(1)}\n         frutas ${r.frutasPorPartida.toFixed(0)}/${r.frutasGeneradasPorPartida.toFixed(0)} · pierde por frutas ${(r.derrotasPorFrutas * 100).toFixed(1)} %\n`;
       res.textContent = texto + '...';
     }
     res.textContent = texto.trim();
@@ -223,7 +224,7 @@ export function iniciarDebug({ cfg, escena, api, hooks, reiniciar, obtenerPartid
       desde = ahora;
       const i = escena.info();
       const p = obtenerPartida();
-      mini.textContent = `${fps} fps · ${i.llamadas} llamadas · ${(i.triangulos / 1000).toFixed(1)}k tri\n${i.ancho}×${i.alto} (DPR ${i.dpr.toFixed(2)}) · calidad ${NIVELES[i.calidad]}${p ? `\nt ${p.t.toFixed(1)} s · v ${p.vel.toFixed(1)} · vidas ${p.vidas}` : ''}`;
+      mini.textContent = `${fps} fps · ${i.llamadas} llamadas · ${(i.triangulos / 1000).toFixed(1)}k tri\n${i.ancho}×${i.alto} (DPR ${i.dpr.toFixed(2)}) · calidad ${NIVELES[i.calidad]}${p ? `\nt ${p.t.toFixed(1)} s · v ${p.vel.toFixed(1)} · vidas ${p.vidas} · frutas ${p.frutas}/${p.frutasGeneradas} (mín ${cfg.partida.frutasMinimas})` : ''}`;
     }
     requestAnimationFrame(medir);
   })(performance.now());

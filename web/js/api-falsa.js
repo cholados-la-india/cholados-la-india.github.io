@@ -75,7 +75,7 @@ export async function iniciarPartida() {
   return { ok: true, token, intentosRestantes: calcular(s).intentosRestantes };
 }
 
-export async function terminarPartida({ token, gano }) {
+export async function terminarPartida({ token, gano, frutas }) {
   await latencia();
   const s = cargar();
   fallaSimulada(s);
@@ -83,7 +83,10 @@ export async function terminarPartida({ token, gano }) {
   if (s.partida && s.partida.token === token && !s.partida.reclamada) {
     // Tiempo mínimo jugado: el servidor conoce la duración configurada y exige haber jugado casi toda.
     const minimo = (s.dbg.tiempoMinimoS ?? Math.min(cfg.reglas.minimoJugadoParaGanarS, 0.75 * cfg.partida.duracionS)) * 1000;
-    puedeReclamar = Boolean(gano) && ahora() - s.partida.inicioMs >= minimo;
+    // Victoria válida = llegó a la meta + recogió las frutas mínimas + jugó el tiempo mínimo. (El servidor real solo puede
+    // confiar a medias en `frutas`, que viene del celular; es aceptable con el nivel de antifraude bajo.)
+    const frutasOk = (frutas ?? 0) >= (cfg.partida.frutasMinimas ?? 0);
+    puedeReclamar = Boolean(gano) && frutasOk && ahora() - s.partida.inicioMs >= minimo;
     s.partida.gano = puedeReclamar;
     guardar(s);
   }
@@ -117,7 +120,11 @@ export async function reclamarPremio({ token, nombre, celular, consentimiento })
   // Un código por persona (por celular) cada 7 días
   const t = ahora();
   const previo = s.codigos.find((c) => c.celular === cel && t - c.emitidoMs < cfg.reglas.diasEntreCodigosPorCelular * 86400e3);
-  if (previo) return { ok: false, motivo: 'ya-tienes-codigo', codigo: previo.codigo, venceISO: new Date(previo.venceMs).toISOString() };
+  if (previo) {
+    // Ese celular ya reclamó: solo se dice cuándo podrá volver a hacerlo (NO se revela su código a quien escriba el número).
+    const dias = cfg.reglas.diasEntreCodigosPorCelular;
+    return { ok: false, motivo: 'ya-tienes-codigo', dias, puedeVolverISO: new Date(previo.emitidoMs + dias * 86400e3).toISOString() };
+  }
 
   if (calcular(s).premiosRestantes <= 0) return { ok: false, motivo: 'sin-premios' };
 

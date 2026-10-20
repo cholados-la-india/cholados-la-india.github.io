@@ -8,7 +8,7 @@ Lo que NO está decidido o falta. Mientras tanto se usan placeholders visibles e
 | 1 | **Dirección y horario de caja del local** (el usuario no los tiene a mano) | `[DIRECCIÓN DEL LOCAL]`, `[HORARIO DE CAJA]` | Etapa 3 (pantalla de premio) | ⏳ |
 | 2 | **Datos personales (Ley 1581)**: responsable (nombre o razón social, cédula/NIT), correo o teléfono de contacto, plazo de conservación, política breve | `[RESPONSABLE DE DATOS]`, `[CORREO DE CONTACTO]` | Etapa 3 (texto) / 7 (publicar) | ⏳ ver análisis abajo |
 | 3 | **Nombre del juego** (Atrapa tu cholado / Corre por tu cholado / Cholado Run) | `Cholado Runner` | Etapa 2–3 | ⏳ |
-| 4 | **Personaje** (choladito vs. La India). Ambos existen con el mismo estilo y se alternan con el botón; recomendación de Claude: La India corre y el cholado es la meta | botón Choladito / La India | durante Etapa 3 | ⏳ |
+| 4 | **Personaje**: ✅ DECIDIDO (2026-10-19): el cliente elige entre Choladito y La India con un selector permanente en el inicio | selector en la pantalla de inicio | Etapa 3 | ✅ |
 | 5 | **Calibrar dificultad** (vidas, velocidad, ~35 % de victoria) | 3 vidas provisional | tras Etapa 3 | ⏳ |
 | 6 | **Cupo diario** del banco y tráfico esperado (desconocido) | desactivado | Etapa 4 | ⏳ |
 | 7 | **Dispositivo del staff** para canjear y quién usa el PIN | PIN compartido | Etapa 5 | ⏳ |
@@ -26,7 +26,10 @@ Lo que NO está decidido o falta. Mientras tanto se usan placeholders visibles e
 | 19 | **Probar el juego en el iPhone XR** (FPS reales, deslizar, tocar, formulario con teclado) y en el navegador interno de Instagram | — | Etapa 3.7 / 6 | ⏳ del usuario |
 | 20 | **Calibrar la dificultad con gente real** (estadísticas de `?debug=1`; ver `documentos/calibrar-dificultad.md`). El bot dice Normal ~19 %; falta contrastarlo con personas | valores de `config.js` | Etapa 3.7 | ⏳ |
 | 21 | Detalles visuales del juego: el cartel ¡META! se lee poco a distancia; el escenario es repetitivo (más elementos); animación de choque/caída simple; en el iPhone en modo de bajo consumo (30 fps) la imagen no mejora aunque baje la calidad | — | después de Etapa 3 | ⏳ |
-| 22 | Decidir si "Girar" y el selector Choladito / La India se mantienen en el prototipo o se quitan; y cuál es el personaje definitivo | `desarrollo.selectorPersonaje` | Etapa 3 | ⏳ |
+| 22 | ~~Decidir si el selector de personaje se queda~~ → se queda (ver #4). "Girar" no está en el juego. | — | — | ✅ |
+| 23 | **Calibrar el mínimo de frutas** (hoy 25 de ~70) y la velocidad con gente real; el bot es pesimista (persigue frutas y choca más). Si casi nadie gana: bajar `partida.frutasMinimas` o `velocidad.final` | `config.js` | Etapa 3 / 6 | ⏳ |
+| 24 | **Confirmar los días de espera por número**: el usuario habló de "2 o 3 días"; se dejó 7 (la regla original) en `reglas.diasEntreCodigosPorCelular`. En la Etapa 4 el servidor real lo aplica | 7 días | Etapa 4 | ⏳ confirmar |
+| 25 | **Detalles estéticos** (pospuestos a propósito hasta terminar todas las etapas): cholado con frutas "adentro" del vaso, bola de helado mejor pintada, más detalle en La India y el escenario, posible cambio de colores | — | después de la Etapa 7 | ⏳ |
 
 ## Análisis: ¿aplica la Ley 1581 de 2012? (2026-10-19)
 Conclusión: **sí aplica, pero la carga es liviana.** No soy abogado; conviene confirmarlo con el contador o un abogado antes de lanzar.

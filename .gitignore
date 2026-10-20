@@ -153,3 +153,7 @@ referencias-diseno/
 
 # Configuración local de la app de Claude (lleva rutas de tu PC)
 .claude/
+
+# El historial del proceso (hitos) NUNCA se ignora, aunque algun patron de arriba (out, dist, logs...) coincida con algo de adentro
+!historial/
+!historial/**
