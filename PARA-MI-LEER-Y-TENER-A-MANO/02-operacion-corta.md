@@ -1,6 +1,6 @@
 # Operación corta — lo de todos los días en una hoja
 
-Cinco tareas. Todas se hacen desde el **panel de administrador** (`https://cholados-la-india.github.io/admin/`); el SQL (Supabase → SQL Editor) es solo para lo que el panel no hace. Si algo no sale como aquí, mira `documentos/guia-del-administrador.md` («¿qué hago si pasa esto?»).
+Cinco tareas. Todas se hacen desde el **panel de administrador** (`https://cholados-la-india.github.io/admin/`); el SQL (Supabase → SQL Editor) es solo para lo que el panel no hace. Si algo no sale como aquí, mira `03-guia-del-administrador.md` («¿qué hago si pasa esto?»).
 
 Última actualización: 2026-10-20, noche (Etapa 7).
 
@@ -40,7 +40,7 @@ update app.codigos set estado = 'desactivado' where estado = 'activo';
 
 3. **Guarda el resultado:** Resumen (captura de pantalla de los números y de «¿De dónde vienen los jugadores?», con «Todo») y **Exportar CSV** (Cuenta). Guárdalos en un lugar privado.
 4. **Pon una alarma en el calendario para 6 meses después de la fecha de cierre:** ese día se borran los datos personales (siguiente punto). La política de datos que ve la gente promete exactamente eso.
-5. **Una temporada nueva:** vuelve a abrir poniendo nuevas fechas en «Campaña» (o déjalas vacías = siempre abierta). Si cambias la campaña de los QR: `npm run qr -- --campana=nombre-nuevo` (`documentos/publicacion.md` §D).
+5. **Una temporada nueva:** vuelve a abrir poniendo nuevas fechas en «Campaña» (o déjalas vacías = siempre abierta). Si cambias la campaña de los QR: `npm run qr -- --campana=nombre-nuevo` (`05-publicacion.md` §D).
 
 ## 5. Borrar los datos personales al terminar
 La política dice: **los datos se conservan hasta 6 meses después de que termine la campaña y luego se borran.** El día de la alarma:
@@ -59,5 +59,5 @@ where emitido_en <= '2027-06-30 23:59:59-05' and nombre <> '(borrado)';
 select count(*) as con_datos_personales from app.codigos where emitido_en <= '2027-06-30 23:59:59-05' and nombre <> '(borrado)';
 ```
 
-4. Si prefieres **borrar todo** (códigos, partidas y contadores) y empezar de cero: `guia-rapida.md` 5.1. **Nunca** con clientes reales que aún tengan un código vigente.
-5. **Si una persona te escribe pidiendo que borres sus datos antes de ese plazo:** `guia-del-administrador.md` §7 (hay una receta para una sola persona). Respóndele por correo cuando esté hecho.
+4. Si prefieres **borrar todo** (códigos, partidas y contadores) y empezar de cero: `04-guia-rapida.md` 5.1. **Nunca** con clientes reales que aún tengan un código vigente.
+5. **Si una persona te escribe pidiendo que borres sus datos antes de ese plazo:** `03-guia-del-administrador.md` §7 (hay una receta para una sola persona). Respóndele por correo cuando esté hecho.

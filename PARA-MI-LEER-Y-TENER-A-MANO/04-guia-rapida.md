@@ -2,7 +2,7 @@
 
 Todo lo que conviene tener a mano para manejar el proyecto: comandos, SQL para copiar y pegar, qué se hace desde el panel y recordatorios de cómo funciona cada cosa. Si algo no está aquí y lo necesitas, pídeselo a Claude y se agrega.
 
-Última actualización: 2026-10-20, noche (Etapa 7). **Para «¿qué hago si pasa esto?» mira [documentos/guia-del-administrador.md](documentos/guia-del-administrador.md); para lo de todos los días en una hoja, [documentos/operacion-corta.md](documentos/operacion-corta.md); para publicar, [documentos/publicacion.md](documentos/publicacion.md) y [documentos/lista-de-lanzamiento.md](documentos/lista-de-lanzamiento.md).**
+Última actualización: 2026-10-20, noche (Etapa 7). **Para «¿qué hago si pasa esto?» mira [03-guia-del-administrador.md](03-guia-del-administrador.md); para lo de todos los días en una hoja, [02-operacion-corta.md](02-operacion-corta.md); para publicar, [05-publicacion.md](05-publicacion.md) y [01-lista-de-lanzamiento.md](01-lista-de-lanzamiento.md).**
 
 > **Nota para Claude (no borrar):** cada vez que agregues una funcionalidad clave, un comando nuevo, un cambio en cómo se opera el servidor o cualquier cosa que el dueño deba recordar, **añádela a esta guía** (en la sección que le toque) y actualiza la fecha de arriba **antes de cerrar la etapa**. Todo el SQL de los bloques ` ```sql ` se ejecuta en `npm run probar-sql`: si cambias una tabla o una función, esa prueba te avisa si algún bloque quedó roto. Los bloques de ejemplo que NO deben ejecutarse se marcan con ` ```text `. Esta guía está escrita para una persona que **no es experta**: tuteo, pasos cortos, cero jerga sin explicar.
 
@@ -48,7 +48,7 @@ Si alguna vez crees que se filtró algo: Supabase → Project Settings → API K
 | El historial de versiones guardadas | `http://localhost:5173/historial/` |
 
 3. **En el celular** (misma wifi que el computador): usa la dirección que la terminal muestra como **«En tu celular: http://192.168.x.x:5173/»** y agrégale la ruta (por ejemplo `…/diagnostico/`). Si no abre: Windows pregunta si deja a *Node.js* usar la red → **Permitir**.
-4. Para probar **dentro de Instagram o Facebook**: mándate esa dirección por mensaje directo y tócala desde la app. Guía completa: [documentos/pruebas-en-celulares.md](documentos/pruebas-en-celulares.md).
+4. Para probar **dentro de Instagram o Facebook**: mándate esa dirección por mensaje directo y tócala desde la app. Guía completa: [documentos/pruebas-en-celulares.md](../documentos/pruebas-en-celulares.md).
 
 ---
 
@@ -69,9 +69,9 @@ Siempre se escriben en la terminal, **dentro de la carpeta del proyecto**. Prime
 | `npm run probar-canje` | 25 cajeros simultáneos contra un mismo código (te pide el PIN **en tu terminal**). Antes: limpiar (5.1). | **Sí → luego limpiar (5.1)** |
 | `npm run simular` | Un bot juega miles de partidas y dice qué tan difícil está el juego. Acepta cambios: `npm run simular -- 2000 velocidad.final=14` | No |
 | `npm run hito -- "nombre" "Título" "Descripción" "ruta/"` | Guarda una copia congelada del proyecto en `historial/` (Claude la usa al cerrar cada etapa). | No |
-| `npm run qr` | Genera los **QR** (mostrador y vasos) y los **4 enlaces con etiquetas** (mostrador, vasos, instagram, facebook) en la carpeta `qr/`. `-- --campana=nombre` cambia la campaña. **No imprimas hasta que la dirección funcione.** | No |
+| `npm run qr` | Genera los **QR** (mostrador y vasos) y los **4 enlaces con etiquetas** (mostrador, vasos, instagram, facebook) en la carpeta `QR-para-imprimir/`. `-- --campana=nombre` cambia la campaña. **No imprimas hasta que la dirección funcione.** | No |
 | `npm run probar-canal` | Prueba (sin navegador) cómo el juego lee las etiquetas de los enlaces (≈ 1 s). | No |
-| `npm run textos-legales` | Escribe `documentos/textos-legales.md`: lo que el juego dice sobre premio, datos y local, para revisarlo. | No |
+| `npm run textos-legales` | Escribe `06-textos-legales.md`: lo que el juego dice sobre premio, datos y local, para revisarlo. | No |
 | `npm run vendor` | Regenera Three.js recortado. **Solo** cuando el código del juego use una clase nueva de Three.js. | No |
 
 ---
@@ -389,12 +389,12 @@ Claude **nunca** hace commit ni push: lo haces tú. Las carpetas `node_modules/`
 
 | Archivo | Qué es |
 |---|---|
-| `guia-rapida.md` | **Esta guía.** |
-| `documentos/operacion-corta.md` | Una hoja: cambiar configuración, cambiar el PIN, ver canjes, cerrar la temporada, borrar datos personales. |
-| `documentos/publicacion.md` | Publicar en GitHub Pages paso a paso, verificar el aviso diario, enlaces UTM y QR. |
-| `documentos/lista-de-lanzamiento.md` | La lista de chequeo ordenada para abrir al público. |
-| `documentos/textos-legales.md` | Todo lo que el juego dice sobre premio, datos y local (generado). |
-| `documentos/guia-del-administrador.md` | **Situaciones del día a día** («¿qué hago si…?»): lista para abrir al público, borrar un código de prueba, pausar el juego, caja bloqueada, trampa, privacidad… |
+| `04-guia-rapida.md` | **Esta guía.** |
+| `02-operacion-corta.md` | Una hoja: cambiar configuración, cambiar el PIN, ver canjes, cerrar la temporada, borrar datos personales. |
+| `05-publicacion.md` | Publicar en GitHub Pages paso a paso, verificar el aviso diario, enlaces UTM y QR. |
+| `01-lista-de-lanzamiento.md` | La lista de chequeo ordenada para abrir al público. |
+| `06-textos-legales.md` | Todo lo que el juego dice sobre premio, datos y local (generado). |
+| `03-guia-del-administrador.md` | **Situaciones del día a día** («¿qué hago si…?»): lista para abrir al público, borrar un código de prueba, pausar el juego, caja bloqueada, trampa, privacidad… |
 | `PLAN.md` | El estado de las etapas. |
 | `pendientes.md` | Lo que falta decidir o hacer. |
 | `CLAUDE.md` | El contexto del proyecto para Claude (reglas, decisiones, arquitectura). |

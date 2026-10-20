@@ -20,7 +20,7 @@ Las etiquetas (`utm_source`, `utm_medium`, `utm_campaign`) las lee el juego al a
 - `qr-mostrador.svg` y `qr-vasos.svg` son **vectoriales**: mándale esos al impresor (se ven nítidos a cualquier tamaño). Los `.png` (2400 px) son para pantallas o por si el impresor no acepta SVG.
 - Son negros sobre blanco a propósito (es lo que mejor escanea; con colores de marca a veces fallan en celulares viejos). Déjales el **borde blanco** alrededor.
 - Mínimo en vasos: **3 cm**. En el mostrador: **8 a 12 cm**, a la altura de los ojos o de la mano, con una frase corta al lado.
-- **Antes de imprimir 500 stickers**: haz **doble clic** en el archivo `qr/imprimir.html` (se abre en el navegador; no hace falta `npm run dev`), imprímela al 100 % y escanéala con 2 celulares distintos (uno viejo) y con la cámara de Instagram.
+- **Antes de imprimir 500 stickers**: haz **doble clic** en el archivo `imprimir.html` (está en esta misma carpeta) (se abre en el navegador; no hace falta `npm run dev`), imprímela al 100 % y escanéala con 2 celulares distintos (uno viejo) y con la cámara de Instagram.
 - El QR **no cambia aunque cambies el juego**: lleva la dirección, no el juego. Por eso la dirección no debe cambiar una vez impresos (ver `pendientes.md` #14).
 
 ## Instagram y Facebook

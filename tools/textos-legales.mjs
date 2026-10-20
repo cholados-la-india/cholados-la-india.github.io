@@ -1,4 +1,4 @@
-// textos-legales.mjs — Escribe documentos/textos-legales.md: TODO lo que el juego le dice a la gente sobre el premio, los datos
+// textos-legales.mjs — Escribe 06-textos-legales.md: TODO lo que el juego le dice a la gente sobre el premio, los datos
 // y el local, tal como lo va a leer, para que lo revise una persona (la dueña, su mamá, un abogado si quieren) sin abrir el código.
 //
 //   Uso:  npm run textos-legales     (se vuelve a escribir cada vez que cambies web/js/textos.js)
@@ -60,14 +60,14 @@ Cuadro «${T.codigo.canjeaAqui}»: **${LOCAL.direccion.toUpperCase()}** · ${LOC
 
 ## 6. Lo que debe cumplirse en la práctica (no está en el texto del juego)
 
-- **Los datos se guardan hasta 6 meses después de que termine la campaña** y luego se borran. Cómo: \`documentos/operacion-corta.md\` («Borrar los datos personales»). **Anótalo en el calendario** el día que cierres la campaña.
-- Si alguien escribe a **${LOCAL.correoContacto}** pidiendo consultar, corregir o borrar sus datos, hay que responderle y hacerlo (receta en \`documentos/guia-del-administrador.md\`, sección 7). La Ley 1581 (arts. 14 y 15) da **10 días hábiles** para atender una consulta y **15 días hábiles** para un reclamo.
+- **Los datos se guardan hasta 6 meses después de que termine la campaña** y luego se borran. Cómo: \`02-operacion-corta.md\` («Borrar los datos personales»). **Anótalo en el calendario** el día que cierres la campaña.
+- Si alguien escribe a **${LOCAL.correoContacto}** pidiendo consultar, corregir o borrar sus datos, hay que responderle y hacerlo (receta en \`03-guia-del-administrador.md\`, sección 7). La Ley 1581 (arts. 14 y 15) da **10 días hábiles** para atender una consulta y **15 días hábiles** para un reclamo.
 - Los datos viven en Supabase (servidores fuera de Colombia): la política lo dice.
 - El nombre y el celular **solo** se piden al ganar, con casilla de autorización sin premarcar; sin autorización no hay código.
 - La caja **no ve** el nombre ni el celular del cliente; solo el administrador los ve.
 `;
 
-await writeFile(fileURLToPath(new URL('../documentos/textos-legales.md', import.meta.url)), texto, 'utf8');
-console.log('Listo: documentos/textos-legales.md');
+await writeFile(fileURLToPath(new URL('../PARA-MI-LEER-Y-TENER-A-MANO/06-textos-legales.md', import.meta.url)), texto, 'utf8');
+console.log('Listo: PARA-MI-LEER-Y-TENER-A-MANO/06-textos-legales.md');
 void listaRegalos;
 void pesos;

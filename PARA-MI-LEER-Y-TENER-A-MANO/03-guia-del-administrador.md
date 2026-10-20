@@ -2,9 +2,9 @@
 
 Esta guía es para ti, como dueña o dueño del juego. Está hecha **por situaciones**: buscas lo que te pasó, sigues los pasos y listo. Si algo no está aquí, cuéntale a Claude qué pasó (hay una plantilla al final) y se agrega.
 
-Última actualización: 2026-10-20, noche (Etapa 7). Hermanas de esta guía: [operacion-corta.md](operacion-corta.md) (lo de todos los días), [publicacion.md](publicacion.md) (GitHub y Supabase) y [lista-de-lanzamiento.md](lista-de-lanzamiento.md) (para abrir).
+Última actualización: 2026-10-20, noche (Etapa 7). Hermanas de esta guía: [02-operacion-corta.md](02-operacion-corta.md) (lo de todos los días), [05-publicacion.md](05-publicacion.md) (GitHub y Supabase) y [01-lista-de-lanzamiento.md](01-lista-de-lanzamiento.md) (para abrir).
 
-> **Nota para Claude (no borrar):** cada vez que aparezca una situación nueva de operación (algo que el dueño tuvo que resolver o preguntó), **agrégala aquí** y actualiza la fecha. Todo el SQL de los bloques ` ```sql ` se ejecuta en `npm run probar-sql` (sección 24): si cambias una tabla o una función, esa prueba avisa si algún bloque quedó roto. Los ejemplos que no deben ejecutarse van en ` ```text `. Texto simple, tuteo, cero jerga sin explicar. Esta guía **no repite** lo que ya está en `guia-rapida.md` (comandos, todo el SQL de uso diario, reglas de fábrica): la completa y la apunta con «(guía rápida 5.x)».
+> **Nota para Claude (no borrar):** cada vez que aparezca una situación nueva de operación (algo que el dueño tuvo que resolver o preguntó), **agrégala aquí** y actualiza la fecha. Todo el SQL de los bloques ` ```sql ` se ejecuta en `npm run probar-sql` (sección 24): si cambias una tabla o una función, esa prueba avisa si algún bloque quedó roto. Los ejemplos que no deben ejecutarse van en ` ```text `. Texto simple, tuteo, cero jerga sin explicar. Esta guía **no repite** lo que ya está en `04-guia-rapida.md` (comandos, todo el SQL de uso diario, reglas de fábrica): la completa y la apunta con «(guía rápida 5.x)».
 
 **Índice:** [Las 3 herramientas](#las-3-herramientas) · [1. Antes de abrir al público](#1-antes-de-abrir-al-público) · [2. Códigos](#2-códigos) · [3. Premios, intentos y pausar el juego](#3-premios-intentos-y-pausar-el-juego) · [4. La caja y el PIN](#4-la-caja-y-el-pin) · [5. No puedo entrar / algo no carga](#5-no-puedo-entrar--algo-no-carga) · [6. Cambiar textos del juego](#6-cambiar-textos-del-juego-dirección-horario-nombre) · [7. Datos personales](#7-datos-personales-y-privacidad) · [8. Alguien está haciendo trampa](#8-alguien-está-haciendo-trampa) · [9. De dónde vienen los jugadores](#9-de-dónde-vienen-los-jugadores-mostrador-vasos-instagram-facebook) · [10. Cómo pedirle ayuda a Claude](#10-cómo-pedirle-ayuda-a-claude)
 
@@ -18,7 +18,7 @@ Esta guía es para ti, como dueña o dueño del juego. Está hecha **por situaci
 | **El SQL Editor de Supabase** | Lo que el panel no hace a propósito (borrar un código de prueba, extender un código, pausar rápido) | Pega **un bloque a la vez**, lee lo que dice abajo. Los que dicen `delete`, `truncate` o `update` **cambian o borran**. Antes de correr uno que borra, **mira primero** lo que va a borrar (cada receta trae su «mirar»). |
 | **GitHub Desktop** | Cambiar textos del juego (dirección, horario…) | Solo cuando lo que quieres cambiar es una frase del juego (sección 6). |
 
-Cómo abrir el SQL Editor y todo el SQL de uso diario: `guia-rapida.md` (secciones 1 y 5). **Nunca** escribas el PIN, tu contraseña ni las claves de Supabase en el chat con Claude ni en un archivo del proyecto.
+Cómo abrir el SQL Editor y todo el SQL de uso diario: `04-guia-rapida.md` (secciones 1 y 5). **Nunca** escribas el PIN, tu contraseña ni las claves de Supabase en el chat con Claude ni en un archivo del proyecto.
 
 ---
 
@@ -39,7 +39,7 @@ from app.codigos;
 
 ### 1.2 Lista para «abrir la puerta» (en este orden)
 
-*(La versión completa y ordenada, con publicar en GitHub, probar por QR y la primera semana, está en [lista-de-lanzamiento.md](lista-de-lanzamiento.md); esta es la parte del servidor.)*
+*(La versión completa y ordenada, con publicar en GitHub, probar por QR y la primera semana, está en [01-lista-de-lanzamiento.md](01-lista-de-lanzamiento.md); esta es la parte del servidor.)*
 
 Hazla cuando termines **todas** tus pruebas: la limpieza va de **último**, porque cada prueba deja datos.
 
@@ -229,7 +229,9 @@ Estas frases **no** están en Supabase: están en el código del juego, en `web/
 - **Dirección, horario y contacto del local:** la parte `LOCAL` (arriba del archivo).
 - **Nombre del juego y demás frases:** el resto del archivo.
 
-Pasos: pídele a Claude el cambio (o edítalo tú) → mira cómo quedó con `npm run dev` → en **GitHub Desktop** haz el commit y el push. **Cuando el juego esté publicado, el cambio le llega al público después del push** (cuánto demora y cómo verificarlo se deja escrito en la Etapa 7).
+Pasos: pídele a Claude el cambio (o edítalo tú) → mira cómo quedó con `npm run dev` → en **GitHub Desktop** haz el commit y el push. **Cuando el juego está publicado, el cambio le llega al público 1 o 2 minutos después del push** (mira la pestaña Actions de GitHub: «Publicar el juego» en verde).
+
+**Las imágenes de marca** (la que sale al compartir el enlace y los íconos del celular) son una foto del Choladito y de La India: si algún día cambia cómo se ven, hay que rehacerlas — pídeselo a Claude (receta en `tools/generar-imagenes-marca.browser.js`). WhatsApp, Instagram y Facebook guardan la vista previa vieja un tiempo; en Facebook/Instagram se fuerza en <https://developers.facebook.com/tools/debug/> → «Scrape Again».
 
 ---
 
@@ -271,8 +273,8 @@ Panel → **Resumen** → tarjeta **«¿De dónde vienen los jugadores?»**: eli
 | Pasa esto | Qué hacer |
 |---|---|
 | La tarjeta dice «Falta actualizar el servidor» | No se pegó el SQL nuevo: `npm run sql` y pegar `supabase/todo-junto.sql` (guía rápida 5.9) |
-| Mostrador/vasos casi no aparecen | Probablemente el QR se escanea con la cámara y abre el navegador normal: **debería** contarse igual. Comprueba el QR con `qr/imprimir.html` y mira que el enlace tenga `utm_source=mostrador` |
-| Instagram/Facebook salen como «entró directo» | El enlace de la biografía o del anuncio no tiene las etiquetas: usa los de `qr/LEEME.md` tal cual |
+| Mostrador/vasos casi no aparecen | Probablemente el QR se escanea con la cámara y abre el navegador normal: **debería** contarse igual. Comprueba el QR con `QR-para-imprimir/imprimir.html` y mira que el enlace tenga `utm_source=mostrador` |
+| Instagram/Facebook salen como «entró directo» | El enlace de la biografía o del anuncio no tiene las etiquetas: usa los de `QR-para-imprimir/LEEME.md` tal cual |
 | Quiero un canal nuevo (volante, influencer…) | Se agrega en `tools/generar-qr.mjs` (lista `CANALES`) y `npm run qr`; el panel lo cuenta solo |
 | Quiero empezar de cero con otra campaña | `npm run qr -- --campana=nombre-nuevo` y se usan los enlaces nuevos; el panel muestra cada campaña en su propia fila |
 

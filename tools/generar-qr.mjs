@@ -4,7 +4,7 @@
 //         npm run qr -- --campana=temporada-2          (cambia la campaña que llevan los enlaces; por defecto «lanzamiento»)
 //         npm run qr -- --url=https://otra-direccion/  (otra dirección base; por defecto la oficial)
 //
-// Escribe en la carpeta qr/ (NO se publica: está fuera de web/):
+// Escribe en la carpeta PARA-MI-LEER-Y-TENER-A-MANO/QR-para-imprimir/ (NO se publica: está fuera de web/):
 //   · qr-mostrador.svg / .png  y  qr-vasos.svg / .png   → los QR (el SVG es vectorial: ese es el que se manda a imprimir)
 //   · imprimir.html                                      → una hoja para ver los QR a su tamaño real y probar a escanearlos
 //   · LEEME.md                                           → los 4 enlaces con sus etiquetas y cómo usar cada uno
@@ -22,7 +22,7 @@ const DIRECCION_OFICIAL = 'https://cholados-la-india.github.io/';
 const arg = (nombre, defecto) => process.argv.find((a) => a.startsWith(`--${nombre}=`))?.slice(nombre.length + 3) ?? defecto;
 const BASE = arg('url', DIRECCION_OFICIAL);
 const CAMPANA = arg('campana', 'lanzamiento');
-const SALIDA = fileURLToPath(new URL('../qr/', import.meta.url));
+const SALIDA = fileURLToPath(new URL('../PARA-MI-LEER-Y-TENER-A-MANO/QR-para-imprimir/', import.meta.url));
 
 const CANALES = [
   { fuente: 'mostrador', medio: 'qr', qr: true, donde: 'El QR que va en el mostrador del local.' },
@@ -51,7 +51,7 @@ for (const c of CANALES.filter((x) => x.qr)) {
   SVGS[c.fuente] = await QRCode.toString(url, { ...OPCIONES, type: 'svg' });
   await writeFile(`${SALIDA}qr-${c.fuente}.svg`, SVGS[c.fuente], 'utf8');
   await QRCode.toFile(`${SALIDA}qr-${c.fuente}.png`, url, { ...OPCIONES, width: 2400 });
-  console.log(`✓ qr/qr-${c.fuente}.svg y .png  →  ${url}`);
+  console.log(`✓ PARA-MI-LEER-Y-TENER-A-MANO/QR-para-imprimir/qr-${c.fuente}.svg y .png  →  ${url}`);
 }
 
 await writeFile(`${SALIDA}imprimir.html`, `<!doctype html>
@@ -97,7 +97,7 @@ Las etiquetas (\`utm_source\`, \`utm_medium\`, \`utm_campaign\`) las lee el jueg
 - \`qr-mostrador.svg\` y \`qr-vasos.svg\` son **vectoriales**: mándale esos al impresor (se ven nítidos a cualquier tamaño). Los \`.png\` (2400 px) son para pantallas o por si el impresor no acepta SVG.
 - Son negros sobre blanco a propósito (es lo que mejor escanea; con colores de marca a veces fallan en celulares viejos). Déjales el **borde blanco** alrededor.
 - Mínimo en vasos: **3 cm**. En el mostrador: **8 a 12 cm**, a la altura de los ojos o de la mano, con una frase corta al lado.
-- **Antes de imprimir 500 stickers**: haz **doble clic** en el archivo \`qr/imprimir.html\` (se abre en el navegador; no hace falta \`npm run dev\`), imprímela al 100 % y escanéala con 2 celulares distintos (uno viejo) y con la cámara de Instagram.
+- **Antes de imprimir 500 stickers**: haz **doble clic** en el archivo \`imprimir.html\` (está en esta misma carpeta) (se abre en el navegador; no hace falta \`npm run dev\`), imprímela al 100 % y escanéala con 2 celulares distintos (uno viejo) y con la cámara de Instagram.
 - El QR **no cambia aunque cambies el juego**: lleva la dirección, no el juego. Por eso la dirección no debe cambiar una vez impresos (ver \`pendientes.md\` #14).
 
 ## Instagram y Facebook
@@ -107,7 +107,7 @@ Las etiquetas (\`utm_source\`, \`utm_medium\`, \`utm_campaign\`) las lee el jueg
 - Los dos abren el juego dentro del navegador de la app; las etiquetas viajan igual.
 `, 'utf8');
 
-console.log('\n✓ qr/imprimir.html (hoja para probar a escanear) y qr/LEEME.md (los 4 enlaces)\n');
+console.log('\n✓ PARA-MI-LEER-Y-TENER-A-MANO/QR-para-imprimir/imprimir.html (hoja para probar a escanear) y PARA-MI-LEER-Y-TENER-A-MANO/QR-para-imprimir/LEEME.md (los 4 enlaces)\n');
 console.log('Enlaces:');
 for (const c of CANALES) console.log(`  ${c.fuente.padEnd(10)} ${enlace(c)}`);
 console.log('\n⚠️  No imprimas nada hasta que la dirección funcione de verdad.');

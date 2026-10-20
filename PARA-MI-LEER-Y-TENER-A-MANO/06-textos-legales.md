@@ -47,8 +47,8 @@ Cuadro «Canjéalo aquí»: **CHOLADOS LA INDIA, CANCHAS PANAMERICANAS** · Todo
 
 ## 6. Lo que debe cumplirse en la práctica (no está en el texto del juego)
 
-- **Los datos se guardan hasta 6 meses después de que termine la campaña** y luego se borran. Cómo: `documentos/operacion-corta.md` («Borrar los datos personales»). **Anótalo en el calendario** el día que cierres la campaña.
-- Si alguien escribe a **choladoslaindia6@gmail.com** pidiendo consultar, corregir o borrar sus datos, hay que responderle y hacerlo (receta en `documentos/guia-del-administrador.md`, sección 7). La Ley 1581 (arts. 14 y 15) da **10 días hábiles** para atender una consulta y **15 días hábiles** para un reclamo.
+- **Los datos se guardan hasta 6 meses después de que termine la campaña** y luego se borran. Cómo: `02-operacion-corta.md` («Borrar los datos personales»). **Anótalo en el calendario** el día que cierres la campaña.
+- Si alguien escribe a **choladoslaindia6@gmail.com** pidiendo consultar, corregir o borrar sus datos, hay que responderle y hacerlo (receta en `03-guia-del-administrador.md`, sección 7). La Ley 1581 (arts. 14 y 15) da **10 días hábiles** para atender una consulta y **15 días hábiles** para un reclamo.
 - Los datos viven en Supabase (servidores fuera de Colombia): la política lo dice.
 - El nombre y el celular **solo** se piden al ganar, con casilla de autorización sin premarcar; sin autorización no hay código.
 - La caja **no ve** el nombre ni el celular del cliente; solo el administrador los ve.

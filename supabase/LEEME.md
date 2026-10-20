@@ -192,4 +192,4 @@ Cada enlace que se reparte lleva etiquetas (`?utm_source=mostrador&utm_medium=qr
 | Cómo se actualiza | `npm run sql` y pegar `todo-junto.sql` (seguro de repetir; no borra datos) |
 | Pruebas | `probar-sql` sección 25 (qué acepta y qué no, conteos por canal, periodos, permisos) y 3 mutaciones nuevas en `probar-mutaciones` |
 
-Para **borrar datos personales** al terminar una temporada y **cerrar el juego**: `documentos/operacion-corta.md`.
+Para **borrar datos personales** al terminar una temporada y **cerrar el juego**: `PARA-MI-LEER-Y-TENER-A-MANO/02-operacion-corta.md`.

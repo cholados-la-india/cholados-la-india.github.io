@@ -1,7 +1,7 @@
 # PLAN.md — Cholado Runner
 
 Estado por etapas. **Regla:** solo se trabaja en la etapa que el usuario pida; al cerrar cada una se resume (qué se hizo, archivos tocados, frase de commit), se espera el visto bueno y se actualiza este archivo y los demás documentos.
-Última actualización: 2026-10-20 (noche): Etapas 1–6 y Fases A y B **cerradas**; **Etapa 7 hecha en el repositorio, a la espera del visto bueno del usuario** (falta que él la ponga en marcha en GitHub y Supabase: `documentos/lista-de-lanzamiento.md`). URL: `https://cholados-la-india.github.io/` (organización y repo ya creados).
+Última actualización: 2026-10-20 (noche): Etapas 1–6 y Fases A y B **cerradas**; **Etapa 7 hecha en el repositorio, a la espera del visto bueno del usuario** (falta que él la ponga en marcha en GitHub y Supabase: `PARA-MI-LEER-Y-TENER-A-MANO/01-lista-de-lanzamiento.md`). URL: `https://cholados-la-india.github.io/` (organización y repo ya creados).
 Contexto completo en `CLAUDE.md`; historia detallada en `documentos/bitacora.md`; lo abierto en `pendientes.md`.
 
 | # | Etapa | Estado |
@@ -14,7 +14,7 @@ Contexto completo en `CLAUDE.md`; historia detallada en `documentos/bitacora.md`
 | 6 | Pruebas, seguridad y compatibilidad | ✅ **Cerrada** (2026-10-20): 244 pruebas SQL; servidor real 43 + 30 + 19 ✓; canje doble y limpieza hechos por el usuario; celulares reales en pendientes |
 | A | **Fase bonus A**: revisión de bugs en localhost | ✅ **Hecha por ahora** (Claude arregló 9 bugs; el usuario dijo «no más bugs por ahora»; la prueba en el XR queda opcional, `pendientes.md` #36) |
 | B | **Fase bonus B**: mejoras estéticas | ✅ **Cerrada** (2026-10-20): cholado final «Mermelada», sonido sin aplausos, textos; hito `historial/09-fase-b-cierre/` |
-| 7 | Publicación, QR y lista de lanzamiento | ✅ **Hecha en el repo (2026-10-20), esperando visto bueno**: Pages + aviso diario como workflows, UTM por canal y panel, QR, textos legales, guías y lista de lanzamiento. **Falta que el usuario la active** (`documentos/lista-de-lanzamiento.md`) |
+| 7 | Publicación, QR y lista de lanzamiento | ✅ **Hecha en el repo (2026-10-20), esperando visto bueno**: Pages + aviso diario como workflows, UTM por canal y panel, QR, textos legales, guías y lista de lanzamiento. **Falta que el usuario la active** (`PARA-MI-LEER-Y-TENER-A-MANO/01-lista-de-lanzamiento.md`) |
 
 ## Etapa 1 — Contexto y preguntas ✅
 Revisión de las 19 referencias y el menú; 10 preguntas respondidas por el usuario; análisis de la Ley 1581; creación de `CLAUDE.md`, `PLAN.md`, `pendientes.md`; `referencias-diseno/` agregada a `.gitignore`.
@@ -72,7 +72,7 @@ Reporte: `documentos/reporte-etapa6.md` · Guía de celulares: `documentos/prueb
 - [x] 6.4 Textos legales visibles: «Condiciones» (no acumulable, compra mínima, vigencia, un código por celular, temporada, cupo diario) en inicio/formulario/ticket; regalos dinámicos desde el servidor.
 - [x] 6.5 Compatibilidad y rendimiento: página `/diagnostico/`, `modulepreload`, celulares ≤ 2 GB arrancan con menos resolución, anti-clickjacking, peso de carga ≈ 272 KB.
 - [x] 6.6 Contra el servidor real: `probar-seguridad` 19 ✓, `probar-ataques --completo` 30 ✓, `probar-supabase` 43 ✓ (100 ganadores simultáneos con 40 premios → exactamente 40; límite por red exacto), auditoría de permisos «✅ Todo en orden» (confirmada por el usuario), `probar-canje` y limpieza de datos de prueba hechos por el usuario («todo bien»).
-- [x] 6.7 `guia-rapida.md` (raíz): comandos, SQL y recordatorios para el dueño; su SQL se prueba en `probar-sql`. **Claude debe mantenerla al día** (nota dentro del archivo).
+- [x] 6.7 `PARA-MI-LEER-Y-TENER-A-MANO/04-guia-rapida.md` (raíz): comandos, SQL y recordatorios para el dueño; su SQL se prueba en `probar-sql`. **Claude debe mantenerla al día** (nota dentro del archivo).
 - **Decisiones del usuario al cerrar:** el **cupo diario** queda como opción del panel (prender/apagar y cuántos por día; lo decidirá con su mamá, hoy apagado); las **pruebas en celulares reales quedan en pendientes** (en su iPhone XR ya funciona); aprobó cerrar la etapa.
 
 ## Fase bonus A — Revisión de bugs en localhost ✅ (hecha por ahora, 2026-10-20)
@@ -99,18 +99,19 @@ Lo que el usuario dijo que quería mejorar al final (ver `pendientes.md` #16): c
 - [x] **Segunda vuelta, tanda 2** (el usuario probó en el XR, `bitacora.md` §13.12): la música seguía sin sonar a salsa → **segunda ronda de investigación** y reescritura (marcha de congas, bajo anticipado, guajeo, coro, redoble); los **aplausos y la hinchada no se oían** (estaban 20 dB por debajo de la música): subidos y con la música bajando mientras suenan; **bug del iPhone: «Gira tu celular» salía con el teclado abierto** → ahora se mira la orientación del aparato; **robustez de «¡Tu premio te espera!»** (vale 2 h, máx. 3 avisos, se olvida si el celular ya tiene cupón, muestra el código si ya se reclamó); festejo a 4 s.
 - [x] **Segunda vuelta, tanda 3** (el usuario probó en un XR, un iPhone 13 Pro y un Android de gama baja —fluido—; `bitacora.md` §13.13): **fuera aplausos, hinchada y coro** (sonaban a distorsión); música a **168 BPM**; el texto del formulario ahora dice «plazo máximo de N días para usar tu código (una sola vez)»; datos del local ya llenos.
 - [x] **B.9 Cholado final «Mermelada»**: sin helado; morro de piña picadita tapado con mermelada de mora; leche condensada cálida con la uvita encima y centrada; vaso de almíbar rojo fuerte con frutas reconocibles por dentro; cuchara con el mango afuera. Se presentaron 3 interpretaciones (`documentos/cholado-3-versiones.png`) y el usuario eligió la 2.ª con 3 detalles que se corrigieron. `bitacora.md` §13.13.
-- [x] B.10 **Visto bueno del usuario** («esa versión 2 quedó perfecta»; «da por terminada esta fase B»). Hito `historial/09-fase-b-cierre/`. **Guía del administrador** (`documentos/guia-del-administrador.md`) hecha a pedido del usuario. **Siguiente: Etapa 7** cuando el usuario pegue su prompt.
+- [x] B.10 **Visto bueno del usuario** («esa versión 2 quedó perfecta»; «da por terminada esta fase B»). Hito `historial/09-fase-b-cierre/`. **Guía del administrador** (`PARA-MI-LEER-Y-TENER-A-MANO/03-guia-del-administrador.md`) hecha a pedido del usuario. **Siguiente: Etapa 7** cuando el usuario pegue su prompt.
 
 ## Etapa 7 — Publicación ✅ (hecha en el repo; falta el visto bueno y que el usuario la active)
 Pidió al empezar: canje **todos los días** 2–9 p. m. ✅, **dirección y horario más visibles** ✅, **datos 6 meses + correo para borrar** ✅.
-- [x] 7.1 **GitHub Pages**: `.github/workflows/publicar.yml` (solo `web/`; revisa secretos antes) + `web/404.html`. Pasos en la interfaz de GitHub: `documentos/publicacion.md` §A.
-- [x] 7.2 **Aviso diario a Supabase**: `.github/workflows/mantener-supabase-despierto.yml` (`ping()` + `estado()`; rojo = alarma por correo). Cómo verificarlo: `publicacion.md` §B. Probado a mano contra el servidor real.
+- [x] 7.1 **GitHub Pages**: `.github/workflows/publicar.yml` (solo `web/`; revisa secretos antes) + `web/404.html`. Pasos en la interfaz de GitHub: `PARA-MI-LEER-Y-TENER-A-MANO/05-publicacion.md` §A.
+- [x] 7.2 **Aviso diario a Supabase**: `.github/workflows/mantener-supabase-despierto.yml` (`ping()` + `estado()`; rojo = alarma por correo). Cómo verificarlo: `PARA-MI-LEER-Y-TENER-A-MANO/05-publicacion.md` §B. Probado a mano contra el servidor real.
 - [x] 7.3 **UTM por canal** (mostrador, vasos, instagram, facebook): `web/js/canal.js`, `registrar_canal` y `admin_canales` (`0004_canales.sql`), tarjeta «¿De dónde vienen los jugadores?» en el Resumen del panel (y en la demo `?api=falsa`). `probar-sql` §25, `probar-canal`, 3 mutaciones nuevas.
-- [x] 7.4 **QR**: `npm run qr` → `qr/` (mostrador y vasos en SVG y PNG 2400 px + hoja para probarlos + los 4 enlaces). Decodificados y verificados.
-- [x] 7.5 **Textos legales** definitivos (sin «provisional») y `documentos/textos-legales.md` para revisarlos.
-- [x] 7.6 **Documentos**: `operacion-corta.md` (config, PIN, canjes, cerrar temporada, borrar datos), `publicacion.md`, `lista-de-lanzamiento.md` (ordenada, 29 pasos), `guia-del-administrador.md` y `guia-rapida.md` al día.
-- [ ] 7.7 **Visto bueno del usuario** y hito `historial/10-etapa-7-publicacion/`.
-- [ ] 7.8 **Lo que hace el usuario** (lista de lanzamiento): commit y push → Settings → Pages → Source = GitHub Actions → correr «Publicar el juego» → pegar `todo-junto.sql` → probar con el juego publicado → limpiar datos de prueba → imprimir los QR → abrir.
+- [x] 7.4 **QR**: `npm run qr` → `PARA-MI-LEER-Y-TENER-A-MANO/QR-para-imprimir/` (mostrador y vasos en SVG y PNG 2400 px + hoja para probarlos + los 4 enlaces). Decodificados y verificados.
+- [x] 7.5 **Textos legales** definitivos (sin «provisional») y `PARA-MI-LEER-Y-TENER-A-MANO/06-textos-legales.md` para revisarlos.
+- [x] 7.6b **Carpeta del dueño** `PARA-MI-LEER-Y-TENER-A-MANO/` (2026-10-20): las guías que el usuario debe leer se movieron ahí, numeradas, con `00-EMPIEZA-AQUI.md` (qué hacer ahora). Se actualizaron las referencias, `probar-sql` (280 ✓) y los generadores (`npm run qr`, `npm run textos-legales`).
+- [x] 7.6 **Documentos**: `PARA-MI-LEER-Y-TENER-A-MANO/02-operacion-corta.md` (config, PIN, canjes, cerrar temporada, borrar datos), `PARA-MI-LEER-Y-TENER-A-MANO/05-publicacion.md`, `PARA-MI-LEER-Y-TENER-A-MANO/01-lista-de-lanzamiento.md` (ordenada, 29 pasos), `PARA-MI-LEER-Y-TENER-A-MANO/03-guia-del-administrador.md` y `PARA-MI-LEER-Y-TENER-A-MANO/04-guia-rapida.md` al día.
+- [ ] 7.7 **Visto bueno del usuario** y hito `historial/10-etapa-7-publicacion/` (el usuario ya publicó el sitio el 2026-10-20; falta que confirme que quedó bien).
+- [ ] 7.8 **Lo que hace el usuario** (`PARA-MI-LEER-Y-TENER-A-MANO/00-EMPIEZA-AQUI.md`): ✅ commit, push y Pages activado (publicado) → pegar `todo-junto.sql` (comprobar en el panel) → probar con el juego publicado → limpiar datos de prueba → probar e imprimir QR → abrir.
 
 ## Después de la Etapa 7
 El usuario seguirá haciendo cambios después de publicar. Las mejoras estéticas que antes iban aquí **se adelantaron** (Fase bonus B): quiere publicar con todo lo más pulido posible.

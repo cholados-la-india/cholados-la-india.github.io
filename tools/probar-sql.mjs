@@ -900,9 +900,9 @@ seccion('22. El archivo único supabase/todo-junto.sql (lo que se pega de una ve
   ok('…y vuelto a pegar encima (como lo harás tú en tu Supabase) tampoco da errores y sigue «Todo en orden»', Array.isArray(otraVez) && otraVez.length === 1 && /Todo en orden/.test(otraVez[0].problema), JSON.stringify(otraVez));
 }
 
-seccion('23. La guía rápida (guia-rapida.md): todo su SQL funciona');
+seccion('23. La guía rápida (PARA-MI-LEER-Y-TENER-A-MANO/04-guia-rapida.md): todo su SQL funciona');
 {
-  const guia = await readFile(new URL('../guia-rapida.md', import.meta.url), 'utf8');
+  const guia = await readFile(new URL('../PARA-MI-LEER-Y-TENER-A-MANO/04-guia-rapida.md', import.meta.url), 'utf8');
   const bloques = [...guia.matchAll(/```sql\r?\n([\s\S]*?)```/g)].map((m) => m[1]);
   ok(`la guía trae ${bloques.length} bloques de SQL (hay al menos 25)`, bloques.length >= 25);
   const errores = [];
@@ -916,9 +916,9 @@ seccion('23. La guía rápida (guia-rapida.md): todo su SQL funciona');
   ok('todos los bloques SQL de la guía se ejecutan sin error (los nombres de tablas y columnas siguen al día)', errores.length === 0, errores.join(' | '));
 }
 
-seccion('24. La guía del administrador y la operación corta (documentos/guia-del-administrador.md y operacion-corta.md): su SQL funciona y hace lo que dice');
+seccion('24. La guía del administrador y la operación corta (PARA-MI-LEER-Y-TENER-A-MANO/03-guia-del-administrador.md y PARA-MI-LEER-Y-TENER-A-MANO/02-operacion-corta.md): su SQL funciona y hace lo que dice');
 {
-  const guia = (await readFile(new URL('../documentos/guia-del-administrador.md', import.meta.url), 'utf8')) + '\n' + (await readFile(new URL('../documentos/operacion-corta.md', import.meta.url), 'utf8'));
+  const guia = (await readFile(new URL('../PARA-MI-LEER-Y-TENER-A-MANO/03-guia-del-administrador.md', import.meta.url), 'utf8')) + '\n' + (await readFile(new URL('../PARA-MI-LEER-Y-TENER-A-MANO/02-operacion-corta.md', import.meta.url), 'utf8'));
   const bloques = [...guia.matchAll(/```sql\r?\n([\s\S]*?)```/g)].map((m) => m[1]);
   ok(`las dos guías traen ${bloques.length} bloques de SQL (hay al menos 15)`, bloques.length >= 15);
   const errores = [];
@@ -972,7 +972,7 @@ seccion('24. La guía del administrador y la operación corta (documentos/guia-d
   ok('receta 3.2 (devolver intentos): borra los intentos sueltos pero NO los códigos ni sus partidas', (await cuenta('select count(*) n from app.codigos')) === 1 && (await cuenta('select count(*) n from app.partidas')) === 1);
   await db.exec('truncate app.codigos, app.partidas, app.limites_red restart identity cascade');
 
-  // Cerrar la temporada y borrar los datos personales (operacion-corta.md §4 y §5)
+  // Cerrar la temporada y borrar los datos personales (PARA-MI-LEER-Y-TENER-A-MANO/02-operacion-corta.md §4 y §5)
   const borrarDatos = bloques.find((b) => b.includes("set nombre = '(borrado)'") && b.includes("emitido_en <= '2027-06-30"));
   const contarDatos = bloques.find((b) => b.includes('con_datos_personales'));
   const desactivarTodo = bloques.find((b) => b.includes("set estado = 'desactivado' where estado = 'activo'") && !b.includes('codigo ='));

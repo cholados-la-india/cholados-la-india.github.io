@@ -6,7 +6,7 @@ Minijuego web de **Cholados La India** (Cali, Colombia): un runner vertical para
 
 | Archivo | Qué contiene |
 |---|---|
-| [guia-rapida.md](guia-rapida.md) | **La guía del dueño:** todos los comandos, el SQL para pegar en Supabase, el panel, la caja y qué hacer si algo falla |
+| [PARA-MI-LEER-Y-TENER-A-MANO/04-guia-rapida.md](PARA-MI-LEER-Y-TENER-A-MANO/04-guia-rapida.md) | **La guía del dueño:** todos los comandos, el SQL para pegar en Supabase, el panel, la caja y qué hacer si algo falla |
 | [CLAUDE.md](CLAUDE.md) | Reglas, decisiones vigentes, arquitectura y cómo probar (fuente de verdad) |
 | [PLAN.md](PLAN.md) | Estado de las 7 etapas |
 | [pendientes.md](pendientes.md) | Lo que falta decidir o hacer |
@@ -42,9 +42,9 @@ Minijuego web de **Cholados La India** (Cali, Colombia): un runner vertical para
 | `npm run probar-mutaciones` | Rompe el SQL a propósito y comprueba que `probar-sql` lo detecta |
 | `npm run probar-seguridad` | Comprueba en 3 s, contra el servidor real, que lo del administrador está cerrado para el público (no deja datos) |
 | `npm run probar-supabase` | Prueba el servidor REAL (seguridad y concurrencia). Deja datos de prueba: luego `supabase/sql/limpiar_pruebas.sql` |
-| `npm run qr` | Genera los QR (mostrador, vasos) y los 4 enlaces con etiquetas UTM en `qr/` |
+| `npm run qr` | Genera los QR (mostrador, vasos) y los 4 enlaces con etiquetas UTM en `PARA-MI-LEER-Y-TENER-A-MANO/QR-para-imprimir/` |
 | `npm run probar-canal` | Prueba cómo el juego lee las etiquetas UTM de los enlaces |
-| `npm run textos-legales` | Escribe `documentos/textos-legales.md` (lo que el juego dice sobre premio, datos y local) para revisarlo |
+| `npm run textos-legales` | Escribe `PARA-MI-LEER-Y-TENER-A-MANO/06-textos-legales.md` (lo que el juego dice sobre premio, datos y local) para revisarlo |
 | `npm run hito -- "nombre" "Título" "Descripción" "ruta/"` | Guarda una copia congelada del proyecto en `historial/` |
 
 El historial del proceso (cómo empezó todo) se ve en <http://localhost:5173/historial/>.

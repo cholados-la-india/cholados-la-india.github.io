@@ -6,7 +6,7 @@
 # Qué hace: llama a las funciones públicas ping() y estado() (las mismas que usa el juego; no gastan intentos ni premios y no
 #           guardan nada). Si el servidor NO responde bien, la tarea sale en ROJO y GitHub te manda un correo: es tu alarma.
 # Cómo ver que corre: pestaña Actions → «Mantener Supabase despierto» → debe haber una fila verde por día. Para probarla ya mismo:
-#           Run workflow (botón a la derecha). Detalle en documentos/publicacion.md.
+#           Run workflow (botón a la derecha). Detalle en PARA-MI-LEER-Y-TENER-A-MANO/05-publicacion.md.
 # ⚠️ Límite de GitHub: en repositorios públicos, las tareas programadas se APAGAN solas si pasan 60 días sin ninguna actividad
 #    (ningún commit). Si un día ves el aviso «scheduled workflows disabled», entra a Actions y pulsa «Enable workflow».
 name: Mantener Supabase despierto

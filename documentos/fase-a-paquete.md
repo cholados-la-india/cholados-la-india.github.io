@@ -15,7 +15,7 @@ Tú ejecutas todo (en el computador y en tu iPhone XR), anotas lo que no se ve o
 3. **Dos formas de probar, para no gastar premios de verdad:**
    - 🧪 **Modo práctica** (`api=falsa`): todo es simulado en tu navegador, intentos ilimitados, sin servidor. Úsalo para casi todo el juego. Los códigos que salen dicen «Código de PRUEBA».
    - 🌐 **Modo real** (sin `api=falsa`): habla con tu Supabase de verdad (3 intentos por dispositivo, 50 premios por semana, códigos reales `LAINDIA-XXXX`). Úsalo para las pruebas de extremo a extremo (sección 6) y **al terminar limpia** (sección 9).
-4. **Truco para tener 3 intentos nuevos en modo real:** abre el juego en una **ventana privada/incógnito** (PC) o una **pestaña privada** de Safari (XR): es un «dispositivo nuevo». Alternativa: SQL de `guia-rapida.md` 5.1 (borra todas las partidas).
+4. **Truco para tener 3 intentos nuevos en modo real:** abre el juego en una **ventana privada/incógnito** (PC) o una **pestaña privada** de Safari (XR): es un «dispositivo nuevo». Alternativa: SQL de `PARA-MI-LEER-Y-TENER-A-MANO/04-guia-rapida.md` 5.1 (borra todas las partidas).
 5. **Truco para reiniciar el modo práctica:** botón **Debug** (abajo a la derecha) → «Reiniciar la semana» o «Borrar datos del "servidor"».
 
 ---
@@ -35,7 +35,7 @@ Tú ejecutas todo (en el computador y en tu iPhone XR), anotas lo que no se ve o
 | **Diagnóstico del celular** (mide el celular y la conexión) | `http://localhost:5173/diagnostico/` | real (solo lee) | No |
 | El historial de versiones guardadas (hitos con capturas) | `http://localhost:5173/historial/` | — | No |
 
-**Comandos que también puedes correr** (guía completa en `guia-rapida.md` sección 4): `npm run simular` (un bot juega miles de partidas y dice qué tan difícil está), `npm run probar-sql`, `npm run probar-seguridad`, `npm run probar-ataques`, `npm run revisar-secretos`.
+**Comandos que también puedes correr** (guía completa en `PARA-MI-LEER-Y-TENER-A-MANO/04-guia-rapida.md` sección 4): `npm run simular` (un bot juega miles de partidas y dice qué tan difícil está), `npm run probar-sql`, `npm run probar-seguridad`, `npm run probar-ataques`, `npm run revisar-secretos`.
 
 **Teclado en el PC:** ← → o A D (carril), ↑ W o espacio (saltar), Esc o P (pausa). **En el XR:** deslizar izquierda/derecha (un deslizamiento = un carril), deslizar arriba o tocar (saltar).
 
@@ -139,7 +139,7 @@ Primero en el **PC** y luego repite lo marcado con 📱 en el **XR**.
 - [ ] **Configuración:** cambia un valor de cada sección → Guardar → comprueba en el **juego** que cambió (premios, intentos, regalos, fechas, frutas mínimas, dificultad). Pon un valor absurdo (intentos = 0): debe rechazarlo con un mensaje y **no guardar nada**. «Volver la dificultad a los valores de fábrica». Interruptor del **cupo diario**.
 - [ ] **Cuenta:** cambia el PIN (el viejo deja de servir), «Desbloquear ahora», «Descargar todos los códigos (CSV)».
 - [ ] 📱 El panel en el XR: ¿se puede usar? ¿las pestañas se deslizan? ¿los botones se alcanzan?
-- [ ] Al terminar: restaura las reglas (`guia-rapida.md` 5.2) y limpia los datos de prueba (5.1).
+- [ ] Al terminar: restaura las reglas (`PARA-MI-LEER-Y-TENER-A-MANO/04-guia-rapida.md` 5.2) y limpia los datos de prueba (5.1).
 
 ### J. Diagnóstico y modo Debug
 - [ ] `/diagnostico/` en el XR: todo ✔; anota los FPS, la «Hora del celular vs el servidor», las «Zonas seguras».
@@ -232,7 +232,7 @@ Claude recorrió el código y el juego en el navegador (partida completa, perder
 | F8 | En `?debug=1&api=falsa` los **intentos son ilimitados por defecto** y nada lo avisaba (por eso en tu prueba del XR no se gastaban) | El cuadrito de arriba dice «INTENTOS ILIMITADOS»; desmarca la casilla en «Debug» para probar el gasto real |
 | F9 | El texto que sale al compartir el link decía «Atrapa tu cholado» (el nombre del juego es «Corre por tu cholado») | — |
 
-**Sobre tu prueba en el XR:** con `?debug=1` los intentos ilimitados vienen activados a propósito (para poder calibrar sin gastar el banco), por eso ni perdiendo ni ganando bajaban los 3 intentos. Además, **no hace falta recoger todas las frutas**: se necesitan 25 de las ~71 que salen (si llegas a la meta con menos, pierdes con «¡Te faltaron frutas!»). Para probar el juego como lo vería un cliente: abre `http://IP:5173/` **sin** `?debug=1` (gasta intentos y premios de verdad; luego limpias con el SQL 5.1 de `guia-rapida.md`) o `?api=falsa` sin debug (simulado, con 3 intentos reales de mentira).
+**Sobre tu prueba en el XR:** con `?debug=1` los intentos ilimitados vienen activados a propósito (para poder calibrar sin gastar el banco), por eso ni perdiendo ni ganando bajaban los 3 intentos. Además, **no hace falta recoger todas las frutas**: se necesitan 25 de las ~71 que salen (si llegas a la meta con menos, pierdes con «¡Te faltaron frutas!»). Para probar el juego como lo vería un cliente: abre `http://IP:5173/` **sin** `?debug=1` (gasta intentos y premios de verdad; luego limpias con el SQL 5.1 de `PARA-MI-LEER-Y-TENER-A-MANO/04-guia-rapida.md`) o `?api=falsa` sin debug (simulado, con 3 intentos reales de mentira).
 
 ---
 
@@ -261,7 +261,7 @@ Ej.: 3. [🟠] Juego, después de ganar · escribí mi celular con +57 · espera
 
 ## 9. Al terminar: dejar todo limpio
 
-1. En el panel → Configuración: devuelve cualquier valor que hayas movido (o corre el SQL de reglas de fábrica: `guia-rapida.md` 5.2). Apaga el cupo diario si lo probaste (a menos que lo quieras).
-2. Borra los códigos y partidas de prueba: `guia-rapida.md` **5.1** (una sola línea de SQL).
+1. En el panel → Configuración: devuelve cualquier valor que hayas movido (o corre el SQL de reglas de fábrica: `PARA-MI-LEER-Y-TENER-A-MANO/04-guia-rapida.md` 5.2). Apaga el cupo diario si lo probaste (a menos que lo quieras).
+2. Borra los códigos y partidas de prueba: `PARA-MI-LEER-Y-TENER-A-MANO/04-guia-rapida.md` **5.1** (una sola línea de SQL).
 3. Cierra la terminal con `Ctrl + C`.
 4. Si cambiaste el PIN para probar, deja el que quieras usar de verdad (panel → Cuenta).

@@ -11,7 +11,7 @@ Para publicar el juego en internet **no hay que programar nada**: ya está todo 
 | Publicar el juego | `.github/workflows/publicar.yml` | Cada vez que subes un cambio dentro de `web/`, GitHub lo publica en `https://cholados-la-india.github.io/` |
 | Mantener Supabase despierto | `.github/workflows/mantener-supabase-despierto.yml` | Una vez al día llama al servidor para que el plan gratis no se pause |
 | Seguimiento por canal | `web/js/canal.js` + `supabase/migrations/0004_canales.sql` | Cuenta de dónde vienen los jugadores (mostrador, vasos, instagram, facebook) |
-| QR y enlaces | `npm run qr` → carpeta `qr/` | Los QR para imprimir y los 4 enlaces con etiquetas |
+| QR y enlaces | `npm run qr` → carpeta `QR-para-imprimir/` | Los QR para imprimir y los 4 enlaces con etiquetas |
 
 ---
 
@@ -20,8 +20,8 @@ Para publicar el juego en internet **no hay que programar nada**: ya está todo 
 **Antes de empezar, comprueba:** (1) el repositorio se llama `cholados-la-india.github.io` y está dentro de la organización `cholados-la-india` (ya lo hiciste: mira la dirección `github.com/cholados-la-india/cholados-la-india.github.io`); (2) ya hiciste commit y push de todo lo que Claude dejó en esta etapa (si no, GitHub Desktop → «Commit to main» → «Push origin»).
 
 1. Entra a `https://github.com/cholados-la-india/cholados-la-india.github.io`.
-2. Pestaña **Settings** (arriba a la derecha, con un engranaje). Si no la ves: no estás con una cuenta que sea dueña/administradora de la organización.
-3. En el menú de la izquierda, sección «Code and automation» → **Pages**.
+2. Pestaña **Settings** **del repositorio** (la que está en la fila de pestañas del repo: Code · Issues · Pull requests · Actions · … · Settings). **Ojo: no es la «Settings» de la organización** (la que sale al entrar a `github.com/cholados-la-india`, con «Verified domains», «Billing», «Member privileges»…): esa no sirve para esto. Si no ves la pestaña Settings del repo, no estás con una cuenta que sea dueña/administradora.
+3. En el menú de la izquierda, sección «Code and automation» → **Pages**. (Atajo directo: `https://github.com/cholados-la-india/cholados-la-india.github.io/settings/pages`.) Ahí debe aparecer «Build and deployment» con «Source»; si en cambio ves «Verified domains» o «There are no verified domains…», estás en la Settings de la organización: vuelve al repositorio.
 4. En **«Build and deployment» → «Source»** elige **GitHub Actions** (no «Deploy from a branch»). No hay botón de guardar: se guarda al elegir.
 5. Menú izquierdo → **Actions → General** (también dentro de Settings). Revisa dos cosas:
    - «Actions permissions»: que diga **Allow all actions and reusable workflows** (o, si prefieres lo más estricto, «Allow actions created by GitHub»; el proyecto solo usa acciones oficiales de GitHub).
@@ -38,7 +38,7 @@ Para publicar el juego en internet **no hay que programar nada**: ya está todo 
 - entra a `https://cholados-la-india.github.io/admin/` con tu correo y contraseña;
 - escribe una dirección que no existe (`.../hola`): debe salir la página «Esa página no existe»;
 - pega el enlace en una conversación de WhatsApp/Instagram: debe mostrar la imagen y el título bonitos (vista previa).
-Luego **borra los datos de prueba** (`documentos/guia-del-administrador.md` §1.1 o `guia-rapida.md` 5.1).
+Luego **borra los datos de prueba** (`03-guia-del-administrador.md` §1.1 o `04-guia-rapida.md` 5.1).
 
 > **No renombres la organización ni el repositorio después de imprimir los QR:** GitHub no redirige esas direcciones y los QR dejarían de funcionar. (Un dominio propio, por ejemplo `cholados.co`, se puede agregar más adelante en Settings → Pages → Custom domain; hazlo y pruébalo antes de imprimir si lo quieres.)
 
@@ -46,7 +46,7 @@ Luego **borra los datos de prueba** (`documentos/guia-del-administrador.md` §1.
 
 | Qué ves | Qué significa | Qué hacer |
 |---|---|---|
-| En Actions, **«Revisar que no se haya colado ningún secreto»** en rojo | El comprobador encontró algo parecido a una clave, un PIN o un correo personal en el repositorio | Abre el paso y lee qué archivo y qué línea. **No publica nada** hasta que se arregle. Quita ese dato, haz commit y push. Si era una clave real (secret key, contraseña), cámbiala en Supabase (`guia-rapida.md` §2) |
+| En Actions, **«Revisar que no se haya colado ningún secreto»** en rojo | El comprobador encontró algo parecido a una clave, un PIN o un correo personal en el repositorio | Abre el paso y lee qué archivo y qué línea. **No publica nada** hasta que se arregle. Quita ese dato, haz commit y push. Si era una clave real (secret key, contraseña), cámbiala en Supabase (`04-guia-rapida.md` §2) |
 | **«Comprobar que lo mínimo está en web/»** en rojo | Falta un archivo importante dentro de `web/` | Dile a Claude qué archivo dice |
 | **«Preparar GitHub Pages»** o **«Publicar»** en rojo, con un mensaje como «Get Pages site failed», «Pages is not enabled» o «environment» | Falta el paso 4 (Source = **GitHub Actions**) o el entorno `github-pages` tiene una regla de ramas | Repite el paso 4 y vuelve a correr el workflow (Re-run all jobs). Si sigue: Settings → Environments → `github-pages` → «Deployment branches» = `main` |
 | La página sale 404 en `https://cholados-la-india.github.io/` | Aún no termina de publicarse, o el repo no se llama exactamente `cholados-la-india.github.io` | Espera 2 min; revisa el nombre del repo (Settings → General → Repository name) |
@@ -77,8 +77,8 @@ Luego **borra los datos de prueba** (`documentos/guia-del-administrador.md` §1.
 |---|---|
 | Un texto o el juego (todo lo que está en `web/`) | Commit + push desde GitHub Desktop. Se publica solo en 1-2 minutos (mira Actions) |
 | Reglas del juego (premios, intentos, vigencia, dificultad, fechas…) | Nada de GitHub: panel de administrador → Configuración. Es inmediato |
-| Algo del servidor (SQL en `supabase/migrations/`) | `npm run sql` y pegar `supabase/todo-junto.sql` en el SQL Editor (`guia-rapida.md` 5.9). Después, commit + push |
-| Un documento (`.md`) o `qr/` | Commit + push; **no** republica el juego (solo se republica con cambios dentro de `web/`) |
+| Algo del servidor (SQL en `supabase/migrations/`) | `npm run sql` y pegar `supabase/todo-junto.sql` en el SQL Editor (`04-guia-rapida.md` 5.9). Después, commit + push |
+| Un documento (`.md`) o `QR-para-imprimir/` | Commit + push; **no** republica el juego (solo se republica con cambios dentro de `web/`) |
 
 ---
 
@@ -86,7 +86,7 @@ Luego **borra los datos de prueba** (`documentos/guia-del-administrador.md` §1.
 
 **Cómo funciona:** cada enlace trae tres etiquetas: `utm_source` (el canal: `mostrador`, `vasos`, `instagram`, `facebook`), `utm_medium` (`qr` o `social`) y `utm_campaign` (la campaña, hoy `lanzamiento`). El juego las lee al abrirse, las recuerda 30 días en ese celular y se las manda al servidor cuando alguien **empieza una partida**. No identifican a nadie y no hay que instalar nada.
 
-**Los QR y enlaces:** `npm run qr` los (re)genera en la carpeta `qr/`. Ahí está también `qr/LEEME.md` con los 4 enlaces y consejos de impresión.
+**Los QR y enlaces:** `npm run qr` los (re)genera en la carpeta `QR-para-imprimir/`. Ahí está también `QR-para-imprimir/LEEME.md` con los 4 enlaces y consejos de impresión.
 
 | Canal | Enlace |
 |---|---|
