@@ -2,7 +2,16 @@
 
 Minijuego web de **Cholados La India** (Cali, Colombia): un runner vertical para celular; si llegas a la meta ganas un código para reclamar un regalo en el local.
 
-Contexto completo y decisiones: [CLAUDE.md](CLAUDE.md) · Estado por etapas: [PLAN.md](PLAN.md) · Pendientes: [pendientes.md](pendientes.md)
+## Documentación
+
+| Archivo | Qué contiene |
+|---|---|
+| [CLAUDE.md](CLAUDE.md) | Reglas, decisiones vigentes, arquitectura y cómo probar (fuente de verdad) |
+| [PLAN.md](PLAN.md) | Estado de las 7 etapas |
+| [pendientes.md](pendientes.md) | Lo que falta decidir o hacer |
+| [documentos/bitacora.md](documentos/bitacora.md) | Registro detallado de todo lo hablado, decidido y descubierto |
+| [documentos/calibrar-dificultad.md](documentos/calibrar-dificultad.md) | Cómo medir y ajustar la dificultad |
+| [historial/](historial/LEEME.md) | Evidencias del proceso (hitos jugables congelados) |
 
 ## Cómo verlo en tu computador
 

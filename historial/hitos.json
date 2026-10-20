@@ -44,5 +44,19 @@
       "10-como-se-juega.jpg",
       "11-debug-simulador.jpg"
     ]
+  },
+  {
+    "id": "04-prototipo-v2",
+    "titulo": "Preview 5: prototipo ajustado (cierre de la Etapa 3)",
+    "descripcion": "El prototipo tras el primer feedback: un deslizamiento = un carril, selector Choladito / La India permanente, minimo de frutas para ganar (HUD 22 / 25), celular de 10 digitos, un cupon por numero y mas velocidad. Sigue con la API falsa; el siguiente paso es el backend (Etapa 4).",
+    "fecha": "2026-10-19",
+    "entrada": "",
+    "capturas": [
+      "01-inicio-la-india-con-selector.jpg",
+      "02-inicio-choladito-con-selector.jpg",
+      "03-carrera-frutas-22-de-25.jpg",
+      "04-te-faltaron-frutas.jpg",
+      "05-este-numero-ya-tiene-cupon.jpg"
+    ]
   }
 ]
