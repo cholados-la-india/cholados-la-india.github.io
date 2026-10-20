@@ -1,6 +1,6 @@
 # CLAUDE.md — Cholado Runner (Cholados La India, Cali, Colombia)
 
-Fuente de verdad del proyecto. **Léelo SIEMPRE antes de trabajar.** Última actualización: 2026-10-20 (Etapa 6 **cerrada**; **Fase bonus A en curso**: Claude ya buscó bugs por su cuenta y arregló 9 —F1–F9, ver §13b y `documentos/fase-a-paquete.md` §7a—; falta la prueba del usuario en su XR; luego **Fase bonus B** —estética— y por último la **Etapa 7**, que será la última).
+Fuente de verdad del proyecto. **Léelo SIEMPRE antes de trabajar.** Última actualización: 2026-10-20 (noche): Etapa 6 **cerrada**; **Fase bonus A hecha por ahora** (Claude buscó bugs por su cuenta y arregló 9 —F1–F9, ver §13b y `documentos/fase-a-paquete.md` §7a—; el usuario dijo «no más bugs por ahora»); **siguiente: Fase bonus B (estética) mañana**, y por último la **Etapa 7** (publicación, la última). Para la URL el usuario prefiere crear una **organización gratuita de GitHub** con el nombre del negocio (nombre: se decide mañana; `pendientes.md` #14).
 
 ## 0. Mapa de documentos (qué hay y dónde)
 | Archivo | Para qué |
@@ -74,7 +74,7 @@ Minijuego web (se abre desde el celular, sin instalar nada) tipo **runner vertic
 - **Personajes y objetos generados por código** con formas básicas (el usuario no tiene tiempo de modelar; a futuro quizá modelos GLB hechos con otro chat). Fotos reales reducidas permitidas en pantallas de premio.
 - Interfaz en **español colombiano caleño** (tuteo, toques suaves). Todos los textos en `web/js/textos.js`.
 - **Sonido y música: sí** (ambiente fresco/caleño, salsa), pero **solo pistas con licencia libre o generadas**; aún sin hacer (ver `pendientes.md`).
-- URL final: `https://hachescc.github.io/cholado-runner/` (cuenta `hachescc`, definitiva). **No renombrar usuario ni repo** una vez impresos los QR. Dominio propio: según cómo vaya, no se paga por ahora.
+- URL final: **por decidir mañana**. Hoy el repo vive en `hachescc/cholado-runner` (`https://hachescc.github.io/cholado-runner/`), pero el usuario prefiere (2026-10-20, noche) **crear una organización gratuita de GitHub con el nombre del negocio** y transferir el repo antes de publicar (gratis, mejor imagen; ver `pendientes.md` #14: pasos y advertencias). **No imprimir QR ni publicar antes de decidirlo; no renombrar cuenta/repo una vez impresos los QR.** Dominio propio: opcional, no se paga por ahora.
   - **El 2026-10-19 el usuario preguntó si la URL se puede personalizar** (para que no lleve su usuario de GitHub). Respuesta: sí, y hay que decidirlo **antes de imprimir los QR** (`pendientes.md` #14): (a) dominio propio apuntando a GitHub Pages (pago pequeño anual; el QR no depende de dónde se aloje), (b) organización gratuita de GitHub con el nombre del negocio → `nombre.github.io/cholado-runner` (mover el repo antes de imprimir), (c) seguir con `hachescc.github.io`. Supabase **no** es el link (es solo el servidor).
 
 ## 6. Controles y juego (decidido)
