@@ -392,3 +392,12 @@ Doble toque en «¡A correr!», «Reclamar» y «Marcar como canjeado» (un solo
 
 ### 12.7 Qué falta
 Que el usuario pruebe en el XR lo que solo se siente en la mano (controles, fluidez, teclado, girar el celular, Instagram) y mande su lista numerada; Claude la ordena y arregla. Luego visto bueno → **Fase bonus B** (estética) → **Etapa 7**. Nada de esto se ha commiteado (los commits los hace el usuario).
+
+
+## 13. Fase bonus B y decisiones previas (inicio de la Fase B)
+
+### 13.1 URL del juego (decidido)
+- El usuario pidió «lo del nombre de la organización» como primera cosa pendiente. Se comprobó con la API pública de GitHub que estos nombres estaban **libres** (404 en `api.github.com/users/<nombre>` y en `github.com/<nombre>`; `hachescc` daba 200 como control): `cholados-la-india`, `choladoslaindia`, `cholados-laindia`, `laindia-cholados`, `cholados-la-india-cali`, `cholado-la-india`, `cholados-india`.
+- **Elegido:** organización gratuita **`cholados-la-india`**, **sin ruta** → `https://cholados-la-india.github.io/` (el repo se renombra a `cholados-la-india.github.io`). Se descartó la variante con ruta (`…/cholado-runner/`) porque queda menos limpia en los vasos y los QR; la carpeta local puede seguir llamándose `cholado-runner`.
+- **Qué hace el usuario** (crear cuentas no lo hace Claude): commit y push de lo pendiente → crear la organización (plan Free) → transferir el repo → renombrarlo → actualizar el remoto en GitHub Desktop; en la Etapa 7 se activa Pages con GitHub Actions. Pasos exactos en `pendientes.md` #14. **Estado: la organización aún no está creada.**
+- Advertencia que se le dio: GitHub **no** redirige los `github.io` viejos si se mueve un repo ya publicado; por eso se hace antes de publicar ni imprimir nada.

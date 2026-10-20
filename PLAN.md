@@ -1,7 +1,7 @@
 # PLAN.md — Cholado Runner
 
 Estado por etapas. **Regla:** solo se trabaja en la etapa que el usuario pida; al cerrar cada una se resume (qué se hizo, archivos tocados, frase de commit), se espera el visto bueno y se actualiza este archivo y los demás documentos.
-Última actualización: 2026-10-20 (noche; Etapa 6 **cerrada**; Fase A hecha por ahora). Orden decidido por el usuario: **Fase bonus A (bugs) ✅ por ahora → Fase bonus B (estética, MAÑANA) → Etapa 7 (publicación, la última)**. En la Etapa 7 el usuario quiere crear antes una **organización gratuita de GitHub** con el nombre del negocio para la URL (se decide el nombre mañana; `pendientes.md` #14).
+Última actualización: 2026-10-20 (noche; Etapa 6 **cerrada**; Fase A hecha por ahora). Orden decidido por el usuario: **Fase bonus A (bugs) ✅ por ahora → Fase bonus B (estética, MAÑANA) → Etapa 7 (publicación, la última)**. URL **decidida**: organización gratuita de GitHub `cholados-la-india`, sin ruta → `https://cholados-la-india.github.io/` (el usuario la crea y transfiere el repo antes de la Etapa 7; `pendientes.md` #14).
 Contexto completo en `CLAUDE.md`; historia detallada en `documentos/bitacora.md`; lo abierto en `pendientes.md`.
 
 | # | Etapa | Estado |
@@ -87,7 +87,7 @@ Claude le entrega el juego, la caja y el panel para que el usuario los ejecute e
 Lo que el usuario dijo que quería mejorar al final (ver `pendientes.md` #16): cholado con frutas «adentro» del vaso, bola de helado, más detalle en La India y el escenario, más elementos de escenario, posibles cambios de color, sonido y música (#10), cartel ¡META! legible, animación de choque.
 
 ## Etapa 7 — Publicación ⬜
-- [ ] GitHub Pages desde `web/` con workflow; URL permanente `https://hachescc.github.io/cholado-runner/`; QR de alta resolución (mostrador y vasos); términos y condiciones; aviso de datos (Ley 1581); plan de contingencia; lista de lanzamiento; hito final en `historial/`.
+- [ ] GitHub Pages desde `web/` con workflow; URL permanente `https://cholados-la-india.github.io/` (organización `cholados-la-india`; repo renombrado a `cholados-la-india.github.io`); QR de alta resolución (mostrador y vasos); términos y condiciones; aviso de datos (Ley 1581); plan de contingencia; lista de lanzamiento; hito final en `historial/`.
 
 ## Después de la Etapa 7
 El usuario seguirá haciendo cambios después de publicar. Las mejoras estéticas que antes iban aquí **se adelantaron** (Fase bonus B): quiere publicar con todo lo más pulido posible.
