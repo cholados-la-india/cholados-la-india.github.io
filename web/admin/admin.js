@@ -13,6 +13,13 @@ import { vistaConfig } from './vista-config.js';
 import { vistaCuenta } from './vista-cuenta.js';
 import { vistaResumen } from './vista-resumen.js';
 
+// Anti «clickjacking»: el panel no debe poder abrirse DENTRO de otra página (con una capa invisible encima que te haga tocar
+// «Desactivar» sin querer). GitHub Pages no deja poner el encabezado X-Frame-Options, así que se hace así.
+if (window.top !== window.self) {
+  document.body.replaceChildren(document.createTextNode('Esta página no se puede abrir dentro de otra. Ábrela directamente.'));
+  throw new Error('página embebida');
+}
+
 const raiz = document.querySelector('#app');
 const barraPestanas = document.querySelector('#pestanas');
 const quien = document.querySelector('#quien');

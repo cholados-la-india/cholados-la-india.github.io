@@ -49,6 +49,9 @@ function aplicarServidor(estado) {
   if (!APLICAR_SERVIDOR) return; // con ?debug=1 mandan config.js y los deslizadores
   if (estado.juego) fusionar(cfg, estado.juego);
   if (estado.reglas) fusionar(cfg.reglas, estado.reglas);
+  // Para el texto de las condiciones (premios e intentos por semana vienen en el estado, no en "reglas")
+  if (estado.premiosPorSemana != null) cfg.reglas.premiosPorSemana = estado.premiosPorSemana;
+  if (estado.intentosPorSemana != null) cfg.reglas.intentosPorSemana = estado.intentosPorSemana;
 }
 
 /** ¿Este dispositivo tiene un código vigente? (lo dice el servidor, no el navegador). */
@@ -111,6 +114,10 @@ async function iniciarJuego() {
   iniciando = true;
   try {
     const r = await api.iniciarPartida();
+    if (!r.ok && r.motivo === 'limite-red') {
+      ui.toast(T.limiteRed.partidas); // demasiadas partidas desde esta red: no se gastó ningún intento
+      return;
+    }
     if (!r.ok) {
       estadoServidor = null;
       await irInicio(true); // el estado dirá por qué no se puede (sin intentos, sin premios...)
@@ -223,6 +230,8 @@ async function reclamar() {
       /* si falla, simplemente no se ofrece el botón */
     }
     ui.mostrar('ya-tienes-cupon', { puedeVolverMs: Date.parse(r.puedeVolverISO), dias: r.dias, tieneCodigo: tiene });
+  } else if (r.motivo === 'limite-red') {
+    ui.errorFormulario(T.limiteRed.codigos);
   } else if (r.motivo === 'sin-premios') {
     ui.errorFormulario(T.ganaste.errores.sinPremios);
   } else if (r.motivo === 'partida-invalida') {
@@ -254,7 +263,11 @@ ui.alAccion((accion, el) => {
       break;
     case 'cerrar-ayuda':
     case 'cerrar-politica':
+    case 'cerrar-condiciones':
       ui.cerrarModal();
+      break;
+    case 'condiciones':
+      ui.mostrarModal('condiciones');
       break;
     case 'politica':
       ui.mostrarModal('politica');

@@ -38,6 +38,9 @@ let cfg = {
   largoCodigo: 4,
   pinIntentosMax: 5,
   pinBloqueoMin: 5,
+  pinIntentosMaxGlobal: 30,
+  limitePartidasIpHora: 150,
+  limiteCodigosIpDia: 8,
   juego: {},
   actualizadoISO: iso(ahora()),
 };
@@ -178,6 +181,8 @@ const RANGOS = {
   duracionPartidaS: [15, 300, 'Duración de la partida'], frutasMinimas: [0, 500, 'Frutas mínimas'], minimoJugadoS: [0, 300, 'Tiempo mínimo jugado'],
   ventanaReclamoMin: [1, 240, 'Minutos que se aparta el premio'], largoCodigo: [4, 10, 'Largo del código'],
   pinIntentosMax: [3, 20, 'Intentos de PIN antes del bloqueo'], pinBloqueoMin: [1, 240, 'Minutos del primer bloqueo del PIN'],
+  pinIntentosMaxGlobal: [3, 1000, 'PIN malos (sumando todas las redes) antes del bloqueo general'],
+  limitePartidasIpHora: [0, 100000, 'Partidas por hora desde una misma red'], limiteCodigosIpDia: [0, 10000, 'Códigos por día desde una misma red'],
 };
 
 function guardarConfig(p) {

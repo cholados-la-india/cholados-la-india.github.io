@@ -1,9 +1,9 @@
 // ui.js — HUD y pantallas del juego (HTML sobre el canvas). Los textos viven en textos.js.
 //
 // Las pantallas se pintan con plantillas; los botones llevan `data-accion="..."` y main.js decide qué hace cada acción.
-import { LOCAL, T, pesos } from '../textos.js';
+import { LOCAL, T, pesos, textoCampana } from '../textos.js';
 import { reloj } from '../reloj.js';
-import { fechaCortaBogota, fechaHoraBogota, formatoRestante } from '../util.js';
+import { fechaCortaBogota, fechaDiaBogota, fechaHoraBogota, formatoRestante } from '../util.js';
 
 /* ───────────── Iconos (SVG en línea, sin imágenes) ───────────── */
 const SVG_VASO = '<svg viewBox="0 0 24 32" aria-hidden="true"><path class="s-pit" d="M15 9 L20.5 1.5"/><path class="s-vaso" d="M3.5 13h17l-2.6 17.2a1.6 1.6 0 0 1-1.6 1.3H7.7a1.6 1.6 0 0 1-1.6-1.3z"/><path class="s-baja" d="M5.2 21h13.6l-.9 6.8a1 1 0 0 1-1 .9H7.1a1 1 0 0 1-1-.9z"/><circle class="s-bola" cx="12" cy="10.5" r="7.2"/></svg>';
@@ -109,6 +109,7 @@ export function crearUI(raiz, cfg) {
   }
 
   /* ───────────── Pantallas ───────────── */
+  const campana = () => textoCampana(cfg.reglas.campana, fechaDiaBogota); // la temporada, si el servidor manda fechas
   const plantillas = {
     inicio({ estado, personaje, mostrarSelector, tieneCodigo }) {
       return `
@@ -125,11 +126,13 @@ export function crearUI(raiz, cfg) {
         </header>
         <div class="panel panel-inicio">
           <div class="pastilla lima">${T.inicio.premios(estado.premiosRestantes)}</div>
+          ${campana() ? `<p class="campana">${campana()}</p>` : ''}
           <div class="intentos"><span class="vasos">${vasos(estado.intentosRestantes, estado.intentosPorSemana)}</span><span>${T.inicio.intentos(estado.intentosRestantes, estado.intentosPorSemana)}</span></div>
           <button type="button" class="boton grande" data-accion="jugar">${T.inicio.jugar}</button>
           <div class="enlaces">
             <button type="button" class="enlace" data-accion="ayuda">${T.inicio.comoSeJuega}</button>
             ${tieneCodigo ? `<button type="button" class="enlace" data-accion="mi-codigo">${T.inicio.miCodigo}</button>` : ''}
+            <button type="button" class="enlace" data-accion="condiciones">${T.inicio.condiciones}</button>
           </div>
         </div>
       </section>`;
@@ -147,7 +150,7 @@ export function crearUI(raiz, cfg) {
       <section class="pantalla centro fondo"><div class="panel ayuda">
         <h2>${T.ayuda.titulo}</h2>
         <ol class="pasos">${T.ayuda.pasos(cfg.partida.frutasMinimas, cfg.partida.vidas).map((p) => `<li>${p}</li>`).join('')}</ol>
-        <p class="nota">${T.ayuda.premio(cfg.reglas.compraMinima)}</p>
+        <p class="nota">${T.ayuda.premio(cfg.reglas.compraMinima, cfg.reglas.regalos)}</p>
         <button type="button" class="boton" data-accion="cerrar-ayuda">${T.ayuda.cerrar}</button>
       </div></section>`,
 
@@ -169,9 +172,18 @@ export function crearUI(raiz, cfg) {
           <input name="celular" type="tel" inputmode="numeric" autocomplete="tel-national" maxlength="12" placeholder="3XX XXX XXXX" required></label>
         <label class="consentimiento"><input name="consentimiento" type="checkbox">
           <span>${T.ganaste.consentimiento} <button type="button" class="enlace corto" data-accion="politica">${T.ganaste.verPolitica}</button></span></label>
+        <p class="nota chico">${T.ganaste.resumen(cfg.reglas)} <button type="button" class="enlace corto" data-accion="condiciones">${T.ganaste.verCondiciones}</button></p>
         <p class="error" id="error-form" role="alert">${error ? esc(error) : ''}</p>
         <button type="submit" class="boton grande" id="btn-reclamar">${T.ganaste.boton}</button>
       </form></section>`,
+
+    condiciones: () => `
+      <section class="pantalla centro fondo scroll"><div class="panel ayuda">
+        <h2>${T.condiciones.titulo}</h2>
+        <ul class="condiciones">${T.condiciones.lista(cfg.reglas, fechaDiaBogota, cfg.reglas.intentosPorSemana, cfg.reglas.premiosPorSemana, cfg.partida.frutasMinimas).map((x) => `<li>${x}</li>`).join('')}</ul>
+        <p class="nota">${T.condiciones.provisional}</p>
+        <button type="button" class="boton" data-accion="cerrar-condiciones">${T.condiciones.cerrar}</button>
+      </div></section>`,
 
     politica: () => `
       <section class="pantalla centro fondo"><div class="panel ayuda">
@@ -198,8 +210,9 @@ export function crearUI(raiz, cfg) {
         <h2>${T.codigo.titulo}</h2>
         <div class="codigo" id="codigo-texto"><small>${esc(prefijo)}-</small>${esc(resto ?? '')}</div>
         ${estados[estado] ?? estados.activo}
-        ${estado === 'activo' ? `<ol class="pasos">${T.codigo.pasos(cfg.reglas.compraMinima).map((p) => `<li>${p}</li>`).join('')}</ol>
-        <p class="local"><b>${esc(LOCAL.direccion)}</b><br>${esc(LOCAL.horario)}</p>` : puedeMas}
+        ${estado === 'activo' ? `<ol class="pasos">${T.codigo.pasos(cfg.reglas.compraMinima, cfg.reglas.regalos).map((p) => `<li>${p}</li>`).join('')}</ol>
+        <p class="local"><b>${esc(LOCAL.direccion)}</b><br>${esc(LOCAL.horario)}</p>
+        <button type="button" class="enlace" data-accion="condiciones">${T.codigo.condiciones}</button>` : puedeMas}
         ${esDePrueba ? `<p class="prueba">${T.codigo.prueba}</p>` : ''}
         ${estado === 'activo' ? `<p class="nota">${T.codigo.consejo}</p>
         <button type="button" class="boton" data-accion="copiar" id="btn-copiar">${T.codigo.copiar}</button>` : ''}
@@ -246,12 +259,19 @@ export function crearUI(raiz, cfg) {
         <button type="button" class="enlace" data-accion="ayuda">${T.inicio.comoSeJuega}</button>
       </div></section>`,
 
-    'campana-inactiva': ({ tieneCodigo }) => `
+    'campana-inactiva': ({ tieneCodigo }) => {
+      const { inicioISO, finISO } = cfg.reglas.campana ?? {};
+      const ahora = reloj.ahora();
+      const cuando = inicioISO && ahora < Date.parse(inicioISO) ? T.campanaInactiva.empieza(fechaDiaBogota(Date.parse(inicioISO)))
+        : finISO && ahora > Date.parse(finISO) ? T.campanaInactiva.termino(fechaDiaBogota(Date.parse(finISO))) : '';
+      return `
       <section class="pantalla centro"><div class="panel">
         <h2>${T.campanaInactiva.titulo}</h2>
+        ${cuando ? `<p class="mensaje">${cuando}</p>` : ''}
         <p class="mensaje">${T.campanaInactiva.mensaje}</p>
         ${tieneCodigo ? `<button type="button" class="boton" data-accion="mi-codigo">${T.inicio.miCodigo}</button>` : ''}
-      </div></section>`,
+      </div></section>`;
+    },
   };
 
   // Cuenta regresiva del código (con la hora del SERVIDOR, no la del celular)

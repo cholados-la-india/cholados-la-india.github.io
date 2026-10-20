@@ -87,5 +87,19 @@
       "05-admin-codigos.jpg",
       "06-admin-cuenta-y-pin.jpg"
     ]
+  },
+  {
+    "id": "07-endurecimiento",
+    "titulo": "Preview 8: endurecimiento y textos legales (Etapa 6)",
+    "descripcion": "Condiciones de la promocion visibles (no acumulable, compra minima, vigencia, un codigo por celular, fechas de la temporada), regalos tomados del servidor, limites por red, pagina /diagnostico/ para probar celulares reales. Usar ?api=falsa para el juego de practica.",
+    "fecha": "2026-10-19",
+    "entrada": "diagnostico/",
+    "capturas": [
+      "01-condiciones-de-la-promocion.jpg",
+      "02-formulario-con-letra-pequena.jpg",
+      "03-ticket-no-acumulable.jpg",
+      "04-campana-fuera-de-fechas.jpg",
+      "05-diagnostico-del-celular.jpg"
+    ]
   }
 ]

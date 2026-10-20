@@ -60,6 +60,7 @@ function calcular(s) {
       diasEntreCodigosPorCelular: r.diasEntreCodigosPorCelular,
       regalos: r.regalos,
       ventanaReclamoMin: r.ventanaReclamoMin,
+      campana: r.campana, // fechas de la temporada (null = sin fechas), como las manda el servidor real
     },
     juego: {}, // la API falsa no cambia la dificultad: manda config.js (y los deslizadores de ?debug=1)
   };

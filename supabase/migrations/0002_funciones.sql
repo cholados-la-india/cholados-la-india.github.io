@@ -50,6 +50,86 @@ create or replace function app.config() returns app.configuracion language sql s
   select * from app.configuracion where id = 1
 $$;
 
+-- ── Límites por red (Etapa 6) ──
+-- La IP de quien llama, tal como la ve el servidor (Supabase pasa los encabezados a la base). Prioridad: el encabezado
+-- que pone Cloudflare (cf-connecting-ip: el cliente no lo puede falsear porque Cloudflare lo sobrescribe), luego el primer
+-- valor de x-forwarded-for y luego x-real-ip. Si no se puede saber (null) los límites por red simplemente NO se aplican:
+-- ante la duda se deja jugar, nunca se bloquea a una persona real.
+create or replace function app.ip_cliente() returns text language plpgsql stable as $$
+declare
+  h json;
+  v text;
+begin
+  begin
+    h := nullif(current_setting('request.headers', true), '')::json;
+  exception when others then
+    return null;
+  end;
+  if h is null then
+    return null;
+  end if;
+  v := coalesce(nullif(btrim(h ->> 'cf-connecting-ip'), ''),
+                nullif(btrim(split_part(coalesce(h ->> 'x-forwarded-for', ''), ',', 1)), ''),
+                nullif(btrim(h ->> 'x-real-ip'), ''));
+  if v is null or length(v) > 64 then
+    return null;
+  end if;
+  return v;
+end $$;
+
+-- La "huella" de la IP: un hash con una sal secreta. Así se cuentan las acciones por red sin guardar la IP de nadie.
+create or replace function app.huella_red() returns text language plpgsql stable as $$
+declare
+  ip text := app.ip_cliente();
+begin
+  if ip is null then
+    return null;
+  end if;
+  return left(encode(sha256(convert_to(ip || '|' || (select sal_red from app.configuracion where id = 1), 'UTF8')), 'hex'), 24);
+end $$;
+
+-- Suma 1 a una acción de esta red en la ventana dada y devuelve el total (null si no se conoce la red).
+-- Es atómico: llamadas simultáneas suman bien.
+create or replace function app.sumar_red(p_accion text, p_ventana timestamptz) returns int language plpgsql volatile as $$
+declare
+  h text := app.huella_red();
+  n int;
+begin
+  if h is null then
+    return null;
+  end if;
+  insert into app.limites_red as l (clave, ventana, cuenta) values (p_accion || ':' || h, p_ventana, 1)
+  on conflict (clave, ventana) do update set cuenta = l.cuenta + 1
+  returning l.cuenta into n;
+  if random() < 0.02 then   -- de vez en cuando se borran los contadores viejos (sin tareas programadas)
+    delete from app.limites_red where ventana < now() - interval '3 days';
+  end if;
+  return n;
+end $$;
+
+-- Cuenta una acción de esta red y dice si TODAVÍA está dentro del máximo (p_max <= 0 = apagado; sin IP conocida = permitido).
+create or replace function app.limitar(p_accion text, p_ventana timestamptz, p_max int) returns boolean language plpgsql volatile as $$
+declare
+  n int;
+begin
+  if p_max is null or p_max <= 0 then
+    return true;
+  end if;
+  n := app.sumar_red(p_accion, p_ventana);
+  return n is null or n <= p_max;
+end $$;
+
+-- Cuántas veces ha contado esta red una acción en esa ventana (sin sumar). null = no se conoce la red.
+create or replace function app.contar_red(p_accion text, p_ventana timestamptz) returns int language plpgsql stable as $$
+declare
+  h text := app.huella_red();
+begin
+  if h is null then
+    return null;
+  end if;
+  return coalesce((select cuenta from app.limites_red where clave = p_accion || ':' || h and ventana = p_ventana), 0);
+end $$;
+
 -- Un código nuevo: PREFIJO-XXXX con un alfabeto SIN 0/O/1/I (32 símbolos). Aleatorio criptográfico (uuid v4).
 create or replace function app.codigo_nuevo(p_prefijo text, p_largo int) returns text language plpgsql volatile as $$
 declare
@@ -138,7 +218,11 @@ begin
       'vigenciaDias', c.vigencia_dias,
       'diasEntreCodigosPorCelular', c.dias_entre_codigos_por_celular,
       'regalos', c.regalos,
-      'ventanaReclamoMin', c.ventana_reclamo_min),
+      'ventanaReclamoMin', c.ventana_reclamo_min,
+      -- Fechas de la temporada (null = sin fechas, siempre activa): el juego las muestra en las condiciones
+      'campana', jsonb_build_object(
+        'inicioISO', case when c.campana_inicio is not null then app.iso(c.campana_inicio) end,
+        'finISO', case when c.campana_fin is not null then app.iso(c.campana_fin) end)),
     'juego', v_juego);
 end $$;
 
@@ -193,8 +277,10 @@ $$;
 create or replace function public.iniciar_partida(p_device uuid) returns jsonb
 language plpgsql volatile security definer set search_path = app, pg_temp as $$
 declare
+  c app.configuracion := app.config();
   e jsonb;
   v_id uuid;
+  v_hora timestamptz := date_trunc('hour', now());
 begin
   if p_device is null then
     return jsonb_build_object('ok', false, 'motivo', 'dispositivo');
@@ -203,6 +289,10 @@ begin
   e := app.estado_json(p_device);
   if not (e ->> 'jugable')::boolean then
     return jsonb_build_object('ok', false, 'motivo', e ->> 'motivo', 'estado', e);
+  end if;
+  -- Límite por red: tope de partidas por hora desde un mismo internet (frena a quien invente miles de dispositivos)
+  if not app.limitar('partidas', v_hora, c.limite_partidas_ip_hora) then
+    return jsonb_build_object('ok', false, 'motivo', 'limite-red', 'reiniciaEnISO', app.iso(v_hora + interval '1 hour'));
   end if;
   insert into app.partidas (device_id, semana) values (p_device, app.semana_de(now())) returning id into v_id;
   return jsonb_build_object(
@@ -314,7 +404,9 @@ begin
       'emitidoISO', app.iso(v_prev.emitido_en), 'venceISO', app.iso(v_prev.vence_en), 'ahoraISO', app.iso(v_now));
   end if;
 
-  if pa.resultado is distinct from 'gano_validado' or v_now > pa.fin + interval '6 hours' then
+  -- (reclamos_fallidos: con un mismo token solo se pueden probar 5 celulares que ya tenían código; si no, alguien con un
+  --  token ganador podría ir preguntando número por número "¿este ya ganó?")
+  if pa.resultado is distinct from 'gano_validado' or v_now > pa.fin + interval '6 hours' or pa.reclamos_fallidos >= 5 then
     return jsonb_build_object('ok', false, 'motivo', 'partida-invalida');
   end if;
   if not coalesce(p_consentimiento, false) then
@@ -336,6 +428,7 @@ begin
    where celular = v_cel and emitido_en > v_now - make_interval(days => c.dias_entre_codigos_por_celular)
    order by emitido_en desc limit 1;
   if found then
+    update app.partidas set reclamos_fallidos = reclamos_fallidos + 1 where id = pa.id;
     return jsonb_build_object(
       'ok', false, 'motivo', 'ya-tienes-codigo',
       'dias', c.dias_entre_codigos_por_celular,
@@ -347,6 +440,11 @@ begin
     if (select restantes from app.cupos(pa.id)) <= 0 then
       return jsonb_build_object('ok', false, 'motivo', 'sin-premios');
     end if;
+  end if;
+
+  -- Límite por red: tope de códigos por día desde un mismo internet (se cuenta justo antes de crear, así solo suman los que sí salen)
+  if not app.limitar('codigos', app.inicio_dia(v_now), c.limite_codigos_ip_dia) then
+    return jsonb_build_object('ok', false, 'motivo', 'limite-red');
   end if;
 
   -- Crear el código (si por casualidad ya existe uno igual, la restricción UNIQUE lo rechaza y se inventa otro)
@@ -403,9 +501,41 @@ begin
     'ahoraISO', app.iso(v_now));
 end $$;
 
+-- Diagnóstico de red (Etapa 6): le devuelve a QUIEN LLAMA los encabezados de red que ve el servidor (solo los suyos) y si
+-- el servidor logra reconocer su red. Sirve para comprobar que los límites por IP funcionan con los encabezados de Supabase.
+create or replace function public.diag_red() returns jsonb
+language plpgsql stable security definer set search_path = app, pg_temp as $$
+declare
+  h json;
+begin
+  begin
+    h := nullif(current_setting('request.headers', true), '')::json;
+  exception when others then
+    h := null;
+  end;
+  return jsonb_build_object(
+    'cfConnectingIp', h ->> 'cf-connecting-ip',
+    'xForwardedFor', h ->> 'x-forwarded-for',
+    'xRealIp', h ->> 'x-real-ip',
+    'ipReconocida', app.ip_cliente() is not null,
+    'huella', app.huella_red(),
+    'ahoraISO', app.iso(now()));
+end $$;
+
 -- ───────────────────────────────── permisos ─────────────────────────────────
--- Solo las 6 funciones del juego se pueden llamar con la clave pública. Todo lo demás queda cerrado.
+-- Solo las funciones del juego (y las 2 de la caja, de 0003) se pueden llamar con la clave pública. Todo lo demás queda cerrado.
 revoke all on all functions in schema app from public, anon, authenticated;
+
+-- Supabase crea public.rls_auto_enable() (un «event trigger» que activa RLS en toda tabla nueva) cuando al crear el proyecto se
+-- deja marcado «Enable automatic RLS», y la deja ejecutable por anon/authenticated. Desde afuera no sirve para nada (solo funciona
+-- dentro del evento de Supabase), pero no tiene por qué ser pública (la auditoría de la Etapa 6 la marcó). El evento SIGUE funcionando:
+-- un event trigger no revisa el permiso de ejecución de quien crea la tabla (probado).
+do $$
+begin
+  if to_regprocedure('public.rls_auto_enable()') is not null then
+    revoke all on function public.rls_auto_enable() from public, anon, authenticated;
+  end if;
+end $$;
 
 revoke all on function public.ping() from public;
 revoke all on function public.estado(uuid) from public;
@@ -413,6 +543,7 @@ revoke all on function public.iniciar_partida(uuid) from public;
 revoke all on function public.terminar_partida(uuid, boolean, numeric, int) from public;
 revoke all on function public.reclamar_codigo(uuid, text, text, boolean) from public;
 revoke all on function public.mi_codigo(uuid) from public;
+revoke all on function public.diag_red() from public;
 
 grant execute on function public.ping() to anon, authenticated;
 grant execute on function public.estado(uuid) to anon, authenticated;
@@ -420,3 +551,4 @@ grant execute on function public.iniciar_partida(uuid) to anon, authenticated;
 grant execute on function public.terminar_partida(uuid, boolean, numeric, int) to anon, authenticated;
 grant execute on function public.reclamar_codigo(uuid, text, text, boolean) to anon, authenticated;
 grant execute on function public.mi_codigo(uuid) to anon, authenticated;
+grant execute on function public.diag_red() to anon, authenticated;

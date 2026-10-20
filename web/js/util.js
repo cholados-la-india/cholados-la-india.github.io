@@ -36,6 +36,12 @@ export function fechaCortaBogota(ms) {
   return `${DIAS[b.getUTCDay()]} ${b.getUTCDate()} de ${MESES[b.getUTCMonth()]} a las ${horaBogota(ms)}`;
 }
 
+/** "26 de octubre" (solo el día, en hora de Bogotá) */
+export function fechaDiaBogota(ms) {
+  const b = enBogota(ms);
+  return `${b.getUTCDate()} de ${MESES[b.getUTCMonth()]}`;
+}
+
 /** Lee/escribe localStorage sin romper si está bloqueado (modo privado, navegadores internos de apps). */
 export const almacen = {
   leer(clave, porDefecto = null) {

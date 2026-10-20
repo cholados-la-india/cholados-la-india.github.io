@@ -3,6 +3,13 @@ import { crearCanje } from '../js/panel/canje-ui.js';
 import { el, reemplazar } from '../js/panel/dom.js';
 import { DEMO, rpc } from '../js/panel/rpc.js';
 
+// Anti «clickjacking»: esta página no debe poder abrirse DENTRO de otra (con una capa invisible encima para que la gente toque sin querer).
+// (GitHub Pages no permite poner el encabezado X-Frame-Options, así que se hace así.)
+if (window.top !== window.self) {
+  document.body.replaceChildren(document.createTextNode('Esta página no se puede abrir dentro de otra. Ábrela directamente.'));
+  throw new Error('página embebida');
+}
+
 const canje = crearCanje({
   conPin: true,
   consultar: ({ pin, codigo }) => rpc('canje_consultar', { p_pin: pin, p_codigo: codigo }),

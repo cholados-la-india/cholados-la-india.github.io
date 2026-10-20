@@ -95,10 +95,13 @@ export function vistaConfig(ctx) {
           dificultad('partida.toleranciaColision', 'Perdón en los choques', '0 = exacto; 0,18 = se perdona un 18 %.'),
           dificultad('frutas.cadaS', 'Segundos entre hileras de frutas', 'Más bajo = más frutas (más fácil llegar al mínimo).')),
         el('button', { type: 'button', class: 'boton secundario chico', onclick: () => { for (const { input } of Object.values(campos.dificultad)) input.value = ''; marcar(); } }, 'Volver la dificultad a los valores de fábrica')),
-      seccion('Seguridad del PIN de la caja', 'Tras tantos PIN malos seguidos, la caja se bloquea; cada bloqueo seguido dura el doble (hasta 60 min). Tú puedes desbloquearla en la pestaña Cuenta.',
+      seccion('Seguridad: PIN de la caja y límites por red', 'Cada red (internet) tiene sus propios intentos de PIN, así que alguien que se equivoque a propósito solo se bloquea a sí mismo. Tú puedes desbloquear la caja en la pestaña Cuenta. Los límites de partidas y códigos frenan a quien use un programa para gastar los premios; son generosos para no molestar a la gente (muchos comparten el mismo internet). 0 = apagado.',
         el('div', { class: 'rejilla' },
-          numero('pinIntentosMax', 'PIN malos antes del bloqueo', null, { min: 3, max: 20 }),
-          numero('pinBloqueoMin', 'Minutos del primer bloqueo', null, { min: 1, max: 240 }))),
+          numero('pinIntentosMax', 'PIN malos por red antes del bloqueo', 'Bloquea esa red 15 minutos.', { min: 3, max: 20 }),
+          numero('pinIntentosMaxGlobal', 'PIN malos de todas las redes juntas', 'Si se llega a esto, se bloquea la caja para todos (ataque repartido).', { min: 3, max: 1000 }),
+          numero('pinBloqueoMin', 'Minutos del primer bloqueo general', 'Cada bloqueo seguido dura el doble (tope 60 min).', { min: 1, max: 240 }),
+          numero('limitePartidasIpHora', 'Partidas por hora desde una red', '150 es holgado incluso para el wifi del local.', { min: 0, max: 100000 }),
+          numero('limiteCodigosIpDia', 'Códigos por día desde una red', 'Con 8, una red no puede llevarse más de 8 premios al día.', { min: 0, max: 10000 }))),
       el('div', { class: 'barra-guardar' }, botonGuardar, botonDescartar, estadoGuardado),
     );
     contenedor.oninput = () => marcar();

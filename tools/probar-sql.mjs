@@ -3,15 +3,49 @@
 //   Uso:  npm run probar-sql
 //
 // Usa PGlite (un Postgres que corre dentro de Node) con los mismos archivos que pegarás en Supabase.
-// Comprueba las reglas (intentos, semana, cupos, reservas, un código por celular, vigencia, permisos...) y, desde la\n// Etapa 5, el PIN del staff, el canje en caja y las funciones del panel de administrador.
-// OJO: aquí no hay concurrencia real (una sola conexión); eso se prueba contra Supabase con
-// `npm run probar-concurrencia`.
+// Comprueba las reglas (intentos, semana, cupos, reservas, un código por celular, vigencia, permisos...) y, desde la Etapa 5,
+// el PIN del staff, el canje en caja y las funciones del panel de administrador; desde la Etapa 6, los límites por red (IP),
+// los casos de tiempo (vencimiento exacto, lunes 00:00) y la auditoría de permisos.
+// OJO: aquí no hay concurrencia real (una sola conexión); eso se prueba contra Supabase con `npm run probar-supabase`.
 import { readFile } from 'node:fs/promises';
 import { randomUUID } from 'node:crypto';
 import { PGlite } from '@electric-sql/pglite';
 import { pgcrypto } from '@electric-sql/pglite/contrib/pgcrypto';
+import { armar } from './juntar-sql.mjs';
 
-const db = new PGlite({ extensions: { pgcrypto } });
+/** Una base vacía con lo que Supabase ya trae: roles, permisos por defecto, esquema auth y el esquema de extensiones. */
+async function baseNueva() {
+  const b = new PGlite({ extensions: { pgcrypto } });
+  // Los roles que Supabase ya trae; aquí hay que crearlos
+  await b.exec(`create role anon nologin; create role authenticated nologin; create role service_role nologin;`);
+  // Supabase da permiso de ejecución por defecto a anon/authenticated en las funciones nuevas de "public". Se imita para
+  // que las pruebas de permisos comprueben de verdad que las migraciones se los quitan a las funciones admin.
+  await b.exec(`alter default privileges in schema public grant execute on functions to anon, authenticated;`);
+  // «Enable automatic RLS» de Supabase: una función + un event trigger que activa RLS en toda tabla nueva. La auditoría de la
+  // Etapa 6 encontró que quedaba ejecutable por anon/authenticated; las migraciones se lo quitan (y el evento debe seguir sirviendo).
+  await b.exec(`
+    create function public.rls_auto_enable() returns event_trigger language plpgsql security definer set search_path = pg_catalog as $$
+    declare cmd record;
+    begin
+      for cmd in select * from pg_event_trigger_ddl_commands() where command_tag in ('CREATE TABLE') and object_type in ('table')
+      loop execute format('alter table if exists %s enable row level security', cmd.object_identity); end loop;
+    end $$;
+    create event trigger ensure_rls on ddl_command_end when tag in ('CREATE TABLE') execute function public.rls_auto_enable();
+    grant create, usage on schema public to authenticated;
+  `);
+  // Supabase Auth (el esquema "auth" lo trae Supabase; aquí se imita lo mínimo: usuarios y auth.uid() desde el "token")
+  await b.exec(`
+    create schema auth;
+    create table auth.users (id uuid primary key default gen_random_uuid(), email text unique);
+    create function auth.uid() returns uuid language sql stable as $$ select nullif(current_setting('request.jwt.claim.sub', true), '')::uuid $$;
+    grant usage on schema auth to anon, authenticated;
+    grant execute on function auth.uid() to anon, authenticated;
+    create schema extensions;
+  `);
+  return b;
+}
+
+const db = await baseNueva();
 let fallos = 0;
 let total = 0;
 const ok = (nombre, cond, detalle = '') => {
@@ -21,20 +55,6 @@ const ok = (nombre, cond, detalle = '') => {
 };
 const seccion = (t) => console.log(`\n${t}`);
 
-// Los roles que Supabase ya trae; aquí hay que crearlos
-await db.exec(`create role anon nologin; create role authenticated nologin; create role service_role nologin;`);
-// Supabase da permiso de ejecución por defecto a anon/authenticated en las funciones nuevas de "public". Se imita para
-// que las pruebas de permisos (Etapa 5) comprueben de verdad que las migraciones se los quitan a las funciones admin.
-await db.exec(`alter default privileges in schema public grant execute on functions to anon, authenticated;`);
-// Supabase Auth (el esquema "auth" lo trae Supabase; aquí se imita lo mínimo: usuarios y auth.uid() desde el "token")
-await db.exec(`
-  create schema auth;
-  create table auth.users (id uuid primary key default gen_random_uuid(), email text unique);
-  create function auth.uid() returns uuid language sql stable as $$ select nullif(current_setting('request.jwt.claim.sub', true), '')::uuid $$;
-  grant usage on schema auth to anon, authenticated;
-  grant execute on function auth.uid() to anon, authenticated;
-  create schema extensions;
-`);
 const migraciones = ['0001_tablas.sql', '0002_funciones.sql', '0003_staff_admin.sql'];
 for (const f of migraciones) await db.exec(await readFile(new URL(`../supabase/migrations/${f}`, import.meta.url), 'utf8'));
 
@@ -322,7 +342,7 @@ const reiniciarStaff = () => sql(`update app.staff set fallos=0, bloqueos=0, ult
 const reiniciarConfig5 = () =>
   sql(`update app.configuracion set premios_por_semana=50, intentos_por_semana=3, cupo_diario=0, vigencia_dias=7, compra_minima=30000, ventana_reclamo_min=15,
          regalos='["Un raspao personal","Un cholado de 10 oz"]'::jsonb, campana_inicio=null, campana_fin=null, prefijo_codigo='LAINDIA', largo_codigo=4,
-         pin_intentos_max=5, pin_bloqueo_min=5, juego='{}', frutas_minimas=25, duracion_partida_s=60 where id=1`);
+         pin_intentos_max=5, pin_bloqueo_min=5, pin_intentos_max_global=30, limite_partidas_ip_hora=150, limite_codigos_ip_dia=8, juego='{}', frutas_minimas=25, duracion_partida_s=60 where id=1`);
 async function nuevoCodigo(n, nombre = 'Marcela Escobar') {
   const g = await ganar(randomUUID());
   const r = await rpc('reclamar_codigo', g.token, nombre, CEL(n), true);
@@ -609,7 +629,200 @@ await reiniciarConfig5();
   ok('un usuario que no es administrador no puede guardar configuración', (await otro('admin_guardar_config', JSON.stringify({ premiosPorSemana: 1 }))).motivo === 'no-autorizado' && (await rpc('estado', null)).premiosPorSemana === 50);
 }
 
-seccion('16. Volver a correr las migraciones no rompe nada');
+// ════════════════════════════════════ ETAPA 6: endurecimiento ════════════════════════════════════
+FIRMAS.diag_red = '';
+/** Ejecuta `fn` como si la petición viniera de esa red: así llegan los encabezados a la base (Supabase los pone en request.headers). */
+const conRed = async (cab, fn) => {
+  await db.query(`select set_config('request.headers', $1, false)`, [cab ? JSON.stringify(cab) : '']);
+  try {
+    return await fn();
+  } finally {
+    await db.query(`select set_config('request.headers', '', false)`);
+  }
+};
+const red = (ip) => ({ 'cf-connecting-ip': ip, 'user-agent': 'prueba' });
+const RED_A = '203.0.113.7';
+const RED_B = '198.51.100.9';
+
+seccion('16. Etapa 6 — Límites por red (IP): frenan a un script sin molestar a la gente');
+await reiniciarDatos();
+await reiniciarConfig5();
+await sql(`truncate app.limites_red`);
+{
+  await sql(`update app.configuracion set limite_partidas_ip_hora = 2 where id = 1`);
+  const sinIp = [];
+  for (let i = 0; i < 4; i++) sinIp.push((await rpc('iniciar_partida', randomUUID())).ok);
+  ok('sin IP conocida los límites por red NO se aplican (ante la duda se deja jugar)', sinIp.every(Boolean), JSON.stringify(sinIp));
+  await reiniciarDatos();
+  await sql(`truncate app.limites_red`);
+
+  const devs = Array.from({ length: 4 }, () => randomUUID());
+  const r = [];
+  await conRed(red(RED_A), async () => { for (let i = 0; i < 3; i++) r.push(await rpc('iniciar_partida', devs[i])); });
+  ok('la red A: 2 partidas bien y la 3.ª → limite-red (con la hora en que se renueva)', r[0].ok && r[1].ok && r[2].ok === false && r[2].motivo === 'limite-red' && /:00:00\.000Z$/.test(r[2].reiniciaEnISO), JSON.stringify(r[2]));
+  ok('la partida bloqueada NO gastó intentos del dispositivo', (await rpc('estado', devs[2])).intentosRestantes === 3);
+  ok('otra red (B) no se afecta', (await conRed(red(RED_B), () => rpc('iniciar_partida', devs[3]))).ok === true);
+  const cambiaXff = await conRed({ 'cf-connecting-ip': RED_A, 'x-forwarded-for': '9.9.9.9, 8.8.8.8' }, () => rpc('iniciar_partida', randomUUID()));
+  ok('cf-connecting-ip manda sobre x-forwarded-for (no se escapa inventando ese encabezado)', cambiaXff.ok === false && cambiaXff.motivo === 'limite-red');
+  const soloXff = await conRed({ 'x-forwarded-for': `${RED_A}, 10.0.0.1` }, () => rpc('iniciar_partida', randomUUID()));
+  ok('sin cf-connecting-ip se usa el primer valor de x-forwarded-for (misma red A → bloqueada)', soloXff.motivo === 'limite-red');
+  const claves = (await sql(`select clave from app.limites_red`)).map((x) => x.clave);
+  ok('la IP nunca se guarda en claro (solo una huella con sal secreta)', claves.length >= 2 && claves.every((k) => /^partidas:[0-9a-f]{24}$/.test(k)) && !claves.some((k) => k.includes('203.0.113')), JSON.stringify(claves));
+  await sql(`update app.limites_red set ventana = ventana - interval '1 hour'`);
+  ok('al pasar la hora la red A vuelve a poder jugar', (await conRed(red(RED_A), () => rpc('iniciar_partida', randomUUID()))).ok === true);
+  await sql(`update app.configuracion set limite_partidas_ip_hora = 0 where id = 1`);
+  const apagado = await conRed(red(RED_A), async () => { const x = []; for (let i = 0; i < 6; i++) x.push((await rpc('iniciar_partida', randomUUID())).ok); return x; });
+  ok('con el límite en 0 queda apagado', apagado.every(Boolean));
+
+  // Códigos por día desde una misma red
+  await reiniciarDatos();
+  await reiniciarConfig5();
+  await sql(`truncate app.limites_red`);
+  await sql(`update app.configuracion set limite_codigos_ip_dia = 2 where id = 1`);
+  const gs = [];
+  for (let i = 0; i < 3; i++) gs.push(await ganar(randomUUID()));
+  const cl = [];
+  await conRed(red(RED_A), async () => { for (let i = 0; i < 3; i++) cl.push(await rpc('reclamar_codigo', gs[i].token, 'Persona ' + i, CEL(70 + i), true)); });
+  ok('desde una misma red solo salen 2 códigos al día; el 3.º → limite-red', cl[0].ok && cl[1].ok && cl[2].ok === false && cl[2].motivo === 'limite-red', JSON.stringify(cl[2]));
+  ok('el premio del bloqueado sigue apartado: reclama sin problema desde otra red', (await conRed(red(RED_B), () => rpc('reclamar_codigo', gs[2].token, 'Persona 2', CEL(72), true))).ok === true);
+  ok('el bloqueo no creó ningún código de más (hay exactamente 3)', Number(await uno('select count(*) from app.codigos')) === 3);
+  const repetido = await conRed(red(RED_A), () => rpc('reclamar_codigo', gs[0].token, 'Persona 0', CEL(70), true));
+  ok('repetir un reclamo ya hecho devuelve el mismo código y no gasta el límite', repetido.ok === true && repetido.repetido === true);
+
+  // No se puede ir preguntando "¿este número ya ganó?" con un mismo token
+  await reiniciarDatos();
+  await reiniciarConfig5();
+  for (let i = 0; i < 6; i++) await nuevoCodigo(80 + i);
+  const gw = await ganar(randomUUID());
+  const probados = [];
+  for (let i = 0; i < 5; i++) probados.push((await rpc('reclamar_codigo', gw.token, 'Curioso', CEL(80 + i), true)).motivo);
+  const sexto = await rpc('reclamar_codigo', gw.token, 'Curioso', CEL(99), true);
+  ok('con un token ganador solo se pueden probar 5 celulares que ya tenían código', probados.every((m) => m === 'ya-tienes-codigo'), JSON.stringify(probados));
+  ok('al 6.º intento el token ya no sirve (ni con un celular libre): no se puede preguntar número por número', sexto.ok === false && sexto.motivo === 'partida-invalida', JSON.stringify(sexto));
+
+  // Diagnóstico de red
+  const d0 = await rpc('diag_red');
+  ok('diag_red sin encabezados: la red no se reconoce', d0.ipReconocida === false && d0.huella === null, JSON.stringify(d0));
+  const d1 = await conRed({ 'cf-connecting-ip': RED_A, 'x-forwarded-for': '1.1.1.1' }, () => rpc('diag_red'));
+  ok('diag_red con encabezados: los muestra, reconoce la red y devuelve solo una huella', d1.cfConnectingIp === RED_A && d1.xForwardedFor === '1.1.1.1' && d1.ipReconocida === true && /^[0-9a-f]{24}$/.test(d1.huella), JSON.stringify(d1));
+  await reiniciarConfig5();
+}
+
+seccion('17. Etapa 6 — PIN: cada red tiene sus intentos (un bromista no bloquea la caja de todos)');
+await reiniciarDatos();
+await reiniciarConfig5();
+await reiniciarStaff();
+await sql(`truncate app.limites_red`);
+{
+  await admin('admin_cambiar_pin', PIN);
+  const malos = [];
+  await conRed(red(RED_A), async () => { for (let i = 0; i < 5; i++) malos.push(await caja('canje_consultar', '999000', 'X')); });
+  ok('la red A: quedan 4, 3, 2, 1 intentos y al 5.º queda bloqueada hasta que termine su ventana de 15 min', [4, 3, 2, 1].every((n, i) => malos[i].intentosRestantes === n) && malos[4].resultado === 'bloqueado' && malos[4].segundos > 0 && malos[4].segundos <= 900, JSON.stringify(malos.map((m) => m.intentosRestantes ?? m.resultado)));
+  ok('la red A bloqueada: ni el PIN correcto sirve', (await conRed(red(RED_A), () => caja('canje_consultar', PIN, 'X'))).resultado === 'bloqueado');
+  ok('la caja de verdad (red B) NO se afecta: con el PIN correcto funciona', (await conRed(red(RED_B), () => caja('canje_consultar', PIN, 'X'))).resultado === 'inexistente');
+  ok('no hubo bloqueo general (solo 5 fallos de una red)', (await uno('select bloqueado_hasta is null from app.staff')) === true);
+  ok('el administrador desbloquea y la red A vuelve a poder', (await admin('admin_desbloquear_pin')).ok === true && (await conRed(red(RED_A), () => caja('canje_consultar', PIN, 'X'))).resultado === 'inexistente');
+
+  await sql(`update app.configuracion set pin_intentos_max_global = 6 where id = 1`);
+  await reiniciarStaff();
+  await sql(`truncate app.limites_red`);
+  let ultimo;
+  for (let i = 0; i < 6; i++) ultimo = await conRed(red(`192.0.2.${i + 1}`), () => caja('canje_consultar', '999000', 'X'));
+  ok('un ataque repartido en 6 redes distintas sí activa el bloqueo general (5 min)', ultimo.resultado === 'bloqueado' && ultimo.segundos === 300, JSON.stringify(ultimo));
+  ok('…y durante el bloqueo general hasta una red nueva queda afuera', (await conRed(red('192.0.2.200'), () => caja('canje_consultar', PIN, 'X'))).resultado === 'bloqueado');
+  await reiniciarConfig5();
+  await reiniciarStaff();
+  await sql(`truncate app.limites_red`);
+
+  await conRed(red(RED_A), async () => { await caja('canje_consultar', '999000', 'X'); await caja('canje_consultar', '999000', 'X'); });
+  await conRed(red(RED_A), () => caja('canje_consultar', PIN, 'X'));
+  const tras = await conRed(red(RED_A), () => caja('canje_consultar', '999000', 'X'));
+  ok('un acierto borra los fallos de esa red (queda 4, no 2)', tras.intentosRestantes === 4, JSON.stringify(tras));
+  ok('los contadores del PIN tampoco guardan la IP en claro', !(await sql(`select clave from app.limites_red`)).some((x) => /\d+\.\d+\.\d+\.\d+/.test(x.clave)));
+  await reiniciarStaff();
+}
+
+seccion('18. Etapa 6 — Casos de tiempo: vencimiento exacto, lunes 00:00 y el reloj del celular');
+await reiniciarDatos();
+await reiniciarConfig5();
+await reiniciarStaff();
+await sql(`truncate app.limites_red`);
+{
+  const cod = await nuevoCodigo(91);
+  await sql(`update app.codigos set vence_en = now() + interval '3 seconds' where codigo = $1`, [cod]);
+  ok('3 segundos antes de vencer: sigue "valido"', (await caja('canje_consultar', PIN, cod)).resultado === 'valido');
+  await sql(`update app.codigos set vence_en = now() - interval '1 millisecond' where codigo = $1`, [cod]);
+  ok('1 milisegundo después de vencer: "vencido" y NO se puede canjear', (await caja('canje_consultar', PIN, cod)).resultado === 'vencido' && (await caja('canje_confirmar', PIN, cod, 'Un raspao personal')).resultado === 'vencido');
+  const c2 = await nuevoCodigo(92);
+  ok('un código recién expedido vence EXACTAMENTE 7 días después de su minuto de expedición', (await uno(`select vence_en = date_trunc('minute', emitido_en) + interval '7 days' from app.codigos where codigo = $1`, [c2])) === true);
+  await sql(`update app.codigos set vence_en = now() + interval '1 minute' where codigo = $1`, [c2]);
+  ok('al minuto «vale hasta» (queda 1 minuto) todavía se canjea', (await caja('canje_confirmar', PIN, c2, 'Un raspao personal')).resultado === 'canjeado-ahora');
+  const dev = await uno(`select device_id from app.codigos where codigo = $1`, [cod]);
+  ok('el juego (mi_codigo) también lo ve vencido y sin segundos restantes', (await rpc('mi_codigo', dev)).estado === 'vencido' && (await rpc('mi_codigo', dev)).segundosRestantes === 0);
+
+  const sem = (ts) => uno(`select app.semana_de($1::timestamptz)::text`, [ts]);
+  ok('domingo 23:59:59 (Bogotá) = semana vieja; lunes 00:00:00 = semana nueva', (await sem('2026-10-26 04:59:59+00')) === '2026-10-19' && (await sem('2026-10-26 05:00:00+00')) === '2026-10-26');
+  ok('Bogotá no cambia de hora: el lunes 00:00 es siempre 05:00 UTC (probado en julio y en marzo)',
+    (await sem('2026-07-06 04:59:59+00')) === '2026-06-29' && (await sem('2026-07-06 05:00:00+00')) === '2026-07-06' &&
+    (await sem('2026-03-09 04:59:59+00')) === '2026-03-02' && (await sem('2026-03-09 05:00:00+00')) === '2026-03-09');
+  const estado = await rpc('estado', null);
+  ok('la renovación semanal que ve el juego es un lunes a las 05:00 UTC (00:00 de Bogotá)', /T05:00:00\.000Z$/.test(estado.reiniciaEnISO) && new Date(estado.reiniciaEnISO).getUTCDay() === 1, estado.reiniciaEnISO);
+
+  const nombres = ['ping', 'estado', 'iniciar_partida', 'terminar_partida', 'reclamar_codigo', 'mi_codigo', 'diag_red', 'canje_consultar', 'canje_confirmar',
+    'admin_yo', 'admin_resumen', 'admin_codigos', 'admin_exportar', 'admin_consultar_codigo', 'admin_canjear', 'admin_estado_codigo', 'admin_config',
+    'admin_guardar_config', 'admin_cambiar_pin', 'admin_desbloquear_pin'];
+  const fns = await sql(`select p.proname, pg_get_function_arguments(p.oid) as args from pg_proc p where p.pronamespace = 'public'::regnamespace and p.proname = any($1::text[])`, [nombres]);
+  const conTiempo = fns.filter((f) => /(fecha|hora|time|tiempo|ahora|now|reloj|date)/i.test(f.args));
+  ok('NINGUNA de las 20 funciones públicas recibe una fecha u hora: el reloj del celular no cuenta para nada', fns.length === 20 && conTiempo.length === 0, JSON.stringify(conTiempo));
+}
+
+seccion('19. Etapa 6 — Auditoría de permisos (la misma que correrás en tu Supabase real)');
+{
+  const auditoria = await readFile(new URL('../supabase/sql/auditoria_permisos.sql', import.meta.url), 'utf8');
+  const filas = await sql(auditoria);
+  ok('la auditoría dice «Todo en orden» (0 problemas)', filas.length === 1 && /Todo en orden/.test(filas[0].problema), JSON.stringify(filas));
+  await db.exec('grant select on app.codigos to anon');
+  ok('si se le diera permiso a anon sobre app.codigos, la auditoría lo detecta', (await sql(auditoria)).some((x) => /permiso sobre una tabla/.test(x.problema)));
+  await db.exec('revoke select on app.codigos from anon');
+  await db.exec('grant execute on function app.config() to anon');
+  ok('…y si se abriera una función interna', (await sql(auditoria)).some((x) => /Función interna/.test(x.problema)));
+  await db.exec('revoke execute on function app.config() from anon');
+  await db.exec('create table public.cosa_suelta (id int)');
+  ok('…y una tabla suelta en public', (await sql(auditoria)).some((x) => /suelta en «public»/.test(x.problema)));
+  await db.exec('drop table public.cosa_suelta');
+  await db.exec(`create function public.sorpresa() returns int language sql as 'select 1'`);
+  const conSorpresa = await sql(auditoria);
+  ok('…y una función pública nueva (con el permiso por defecto de Supabase y sin security definer)', conSorpresa.some((x) => /NO prevista/.test(x.problema)) && conSorpresa.some((x) => /SIN security definer/.test(x.problema)));
+  await db.exec('drop function public.sorpresa()');
+  ok('queda limpia otra vez al revertir', (await sql(auditoria)).length === 1);
+  // El caso real que la auditoría encontró en el Supabase del usuario: rls_auto_enable() de «Enable automatic RLS»
+  const cerrada = await sql(`select has_function_privilege('anon','public.rls_auto_enable()','execute') a, has_function_privilege('authenticated','public.rls_auto_enable()','execute') b`);
+  ok('rls_auto_enable() (la función de «Enable automatic RLS» de Supabase) ya NO es ejecutable por anon ni authenticated', cerrada[0].a === false && cerrada[0].b === false, JSON.stringify(cerrada));
+  await db.exec(`set role authenticated; create table public.tabla_nueva_evento (id int); reset role;`);
+  ok('…y el evento sigue funcionando: una tabla nueva queda con RLS activado sin que nadie lo pida', (await uno(`select relrowsecurity from pg_class where relname = 'tabla_nueva_evento'`)) === true);
+  await db.exec('drop table public.tabla_nueva_evento');
+  await db.exec('grant execute on function public.rls_auto_enable() to anon');
+  ok('(y si se volviera a abrir, la auditoría lo detecta)', (await sql(auditoria)).some((x) => /NO prevista/.test(x.problema)));
+  await db.exec('revoke execute on function public.rls_auto_enable() from anon');
+}
+
+seccion('20. Etapa 6 — Fechas de la temporada y los límites en el editor');
+await reiniciarDatos();
+await reiniciarConfig5();
+{
+  const e0 = await rpc('estado', null);
+  ok('sin fechas: reglas.campana = { inicioISO: null, finISO: null }', e0.reglas.campana && e0.reglas.campana.inicioISO === null && e0.reglas.campana.finISO === null, JSON.stringify(e0.reglas));
+  await sql(`update app.configuracion set campana_inicio = '2099-01-01 00:00-05', campana_fin = '2099-03-31 23:59-05' where id = 1`);
+  const e1 = await rpc('estado', null);
+  ok('con fechas: llegan al juego en ISO (UTC), aunque la campaña aún no empiece', e1.reglas.campana.inicioISO === '2099-01-01T05:00:00.000Z' && e1.reglas.campana.finISO === '2099-04-01T04:59:00.000Z' && e1.motivo === 'campana-inactiva', JSON.stringify(e1.reglas.campana));
+  await reiniciarConfig5();
+  const g = await admin('admin_guardar_config', JSON.stringify({ limitePartidasIpHora: 200, limiteCodigosIpDia: 0, pinIntentosMaxGlobal: 40 }));
+  ok('el editor guarda los límites por red (0 = apagado)', g.ok === true && g.config.limitePartidasIpHora === 200 && g.config.limiteCodigosIpDia === 0 && g.config.pinIntentosMaxGlobal === 40, JSON.stringify(g));
+  ok('…y rechaza valores absurdos (todo o nada)', (await admin('admin_guardar_config', JSON.stringify({ pinIntentosMaxGlobal: 1, limiteCodigosIpDia: 5 }))).ok === false && (await uno('select limite_codigos_ip_dia from app.configuracion')) === 0);
+  await reiniciarConfig5();
+}
+
+seccion('21. Volver a correr las migraciones no rompe nada');
 {
   let fallo = null;
   try {
@@ -619,6 +832,36 @@ seccion('16. Volver a correr las migraciones no rompe nada');
   }
   ok('las tres migraciones se pueden repetir (idempotentes)', fallo === null, fallo ?? '');
   ok('y la configuración conserva su única fila', Number(await uno('select count(*) from app.configuracion')) === 1);
+}
+
+seccion('22. El archivo único supabase/todo-junto.sql (lo que se pega de una vez en Supabase)');
+{
+  let actual = '';
+  try {
+    actual = await readFile(new URL('../supabase/todo-junto.sql', import.meta.url), 'utf8');
+  } catch {
+    /* no existe todavía */
+  }
+  ok('supabase/todo-junto.sql está al día con las migraciones (si falla: npm run sql)', actual === (await armar()));
+  const limpia = await baseNueva();
+  let error = null;
+  let filas = [];
+  try {
+    const resultados = await limpia.exec(actual); // una base NUEVA, como un proyecto recién creado
+    filas = resultados[resultados.length - 1].rows;
+  } catch (e) {
+    error = e.message;
+  }
+  ok('pegado en una base NUEVA no da errores', error === null, error ?? '');
+  ok('…y la tabla final (la auditoría) dice «Todo en orden»', filas.length === 1 && /Todo en orden/.test(filas[0].problema), JSON.stringify(filas));
+  let otraVez = null;
+  try {
+    const r2 = await limpia.exec(actual);
+    otraVez = r2[r2.length - 1].rows;
+  } catch (e) {
+    otraVez = e.message;
+  }
+  ok('…y vuelto a pegar encima (como lo harás tú en tu Supabase) tampoco da errores y sigue «Todo en orden»', Array.isArray(otraVez) && otraVez.length === 1 && /Todo en orden/.test(otraVez[0].problema), JSON.stringify(otraVez));
 }
 
 console.log(`\n${fallos === 0 ? '✅ TODO BIEN' : '❌ HAY FALLOS'} — ${total - fallos} de ${total} comprobaciones correctas.\n`);

@@ -1,11 +1,11 @@
 # CLAUDE.md — Cholado Runner (Cholados La India, Cali, Colombia)
 
-Fuente de verdad del proyecto. **Léelo SIEMPRE antes de trabajar.** Última actualización: 2026-10-19 (Etapa 5 —caja con PIN y panel de administrador— hecha, probada contra el servidor real y aprobada por el usuario; siguiente: Etapa 6, a la espera del Prompt 6).
+Fuente de verdad del proyecto. **Léelo SIEMPRE antes de trabajar.** Última actualización: 2026-10-20 (Etapa 6 —pruebas y endurecimiento— hecha; faltan pasos del usuario: volver a pegar `supabase/todo-junto.sql`, `npm run probar-canje`, limpiar datos de prueba, probar en celulares reales y decidir el cupo diario; siguiente: Etapa 7, a la espera del Prompt 7).
 
 ## 0. Mapa de documentos (qué hay y dónde)
 | Archivo | Para qué |
 |---|---|
-| `CLAUDE.md` (este) | Reglas, decisiones vigentes, arquitectura, cómo probar, insumos de la Etapa 6 |
+| `CLAUDE.md` (este) | Reglas, decisiones vigentes, arquitectura, cómo probar, insumos de la Etapa 7 |
 | `PLAN.md` | Estado de las 7 etapas y sus tareas |
 | `pendientes.md` | Lo que falta decidir/hacer (con placeholders), y el análisis de la Ley 1581 |
 | `documentos/bitacora.md` | **Registro detallado y cronológico** de todo lo hablado, decidido, probado y descubierto, con el porqué (léelo si algo aquí te parece escueto) |
@@ -13,6 +13,8 @@ Fuente de verdad del proyecto. **Léelo SIEMPRE antes de trabajar.** Última act
 | `supabase/LEEME.md` | **El servidor**: cómo se montó, las 6 funciones, cómo cambiar reglas y dificultad desde el SQL Editor, pruebas, límites del plan gratis |
 | `supabase/migrations/*.sql` | El SQL real (tablas + funciones) que se pega en Supabase; `supabase/sql/` = consultas útiles y limpieza |
 | `historial/` (+ `LEEME.md`) | Evidencias del proceso: copias congeladas jugables de cada hito + capturas |
+| `documentos/reporte-etapa6.md` | **Reporte de pruebas y endurecimiento** (concurrencia, casos, secretos, RLS, compatibilidad, rendimiento, textos legales, pendientes) |
+| `documentos/pruebas-en-celulares.md` | Guía paso a paso para probar en celulares reales (Instagram/Facebook, Safari/Chrome, gama baja) con la página `/diagnostico/` |
 | `README.md` | Cómo correrlo y comandos |
 
 ## 1. Qué es
@@ -53,6 +55,7 @@ Minijuego web (se abre desde el celular, sin instalar nada) tipo **runner vertic
 2. Un código canjeado queda desactivado.
 3. Todas las fechas usan el **reloj del servidor** (nunca el del cliente).
 4. **Ningún secreto** (PIN, claves de admin, `service_role`) en el cliente ni en el repo. La clave pública `anon` de Supabase sí puede estar en el cliente (es pública por diseño) SI las reglas RLS están bien.
+- **Límites por red (Etapa 6, §13):** 150 partidas/hora y 8 códigos/día por internet (huella de la IP, nunca la IP); frenan a quien invente miles de «dispositivos», no a la gente real. Recomendado además: **cupo diario** (acota el daño por día).
 - Antifraude general: **nivel bajo** (lo peor que pasa es que alguien consiga otro cupón y haga otra compra). Aun así: la victoria se valida en el servidor (token de partida + tiempo mínimo jugado + frutas mínimas) para que nadie vacíe el banco con un script. Intentos por **ID anónimo** del navegador contado en servidor; se acepta que Instagram (almacenamiento aparte) y Safari/Chrome den intentos separados. El servidor real solo puede confiar a medias en `frutas` (viene del celular): aceptable.
 
 ## 5. Decisiones técnicas
@@ -104,8 +107,8 @@ Base para trabajar, **no un cierre definitivo** (los colores o detalles pueden c
 ```
 cholado-runner/
 ├─ CLAUDE.md · PLAN.md · pendientes.md · README.md · .gitignore
-├─ package.json · package-lock.json   (scripts: dev, vendor, hito, simular, probar-sql, probar-supabase, probar-seguridad)
-├─ tools/        dev-server.mjs · vendor-three.mjs · guardar-hito.mjs · simular.mjs · probar-sql.mjs · probar-supabase.mjs
+├─ package.json · package-lock.json   (scripts: dev, vendor, hito, simular, sql, probar-sql, probar-mutaciones, probar-supabase, probar-seguridad, probar-ataques, probar-canje, revisar-secretos)
+├─ tools/        dev-server.mjs · vendor-three.mjs · guardar-hito.mjs · simular.mjs · juntar-sql.mjs · probar-sql.mjs · probar-mutaciones.mjs · probar-supabase.mjs · probar-ataques.mjs · probar-canje.mjs · revisar-secretos.mjs
 ├─ documentos/   bitacora.md · calibrar-dificultad.md  (luego: aviso de privacidad, T&C, lista de lanzamiento)
 ├─ historial/    hitos congelados + capturas (NO se publica; nunca se borra)
 ├─ referencias-diseno/   (solo local, ignorada por Git)
@@ -117,8 +120,9 @@ cholado-runner/
 │  │       ui/   (ui.js; debug.js solo con ?debug=1)
 │  ├─ vendor/three/ · assets/ (fonts, marca)
 │  │       panel/ (compartido por la caja y el panel: dom, formato, rpc, auth, canje-ui, falso)
+│  ├─ diagnostico/   página para probar un celular (index.html, diagnostico.js)
 │  ├─ canje/   la caja (index.html, canje.js)   ·   admin/   panel del dueño (index.html, admin.js, vista-resumen/codigos/config/cuenta.js, exportar.js)
-├─ supabase/     LEEME.md · migrations/ (0001_tablas.sql, 0002_funciones.sql, 0003_staff_admin.sql) · sql/ (consultas_utiles, limpiar_pruebas)
+├─ supabase/     LEEME.md · todo-junto.sql (GENERADO con `npm run sql`: lo que se pega de una vez) · migrations/ (0001_tablas.sql, 0002_funciones.sql, 0003_staff_admin.sql) · sql/ (consultas_utiles, limpiar_pruebas, auditoria_permisos)
 └─ .github/workflows/   publicar web/ en GitHub Pages (Etapa 7)
 ```
 (Los previews de estilos A–G se borraron de `web/` el 2026-10-19: viven en `historial/01` y `02` y en el commit de la Etapa 2.)
@@ -157,10 +161,23 @@ Detalle y el porqué: `documentos/bitacora.md` §10. Cómo ponerlo en marcha y o
 - **Probado contra el servidor real por el usuario (2026-10-19):** migración 0003 pegada, usuario de Auth creado, registro público apagado, anotado en `app.admins`, PIN puesto desde el panel; en la caja: PIN malo → «PIN INCORRECTO», código válido → regalo → «¡CANJEADO!», segundo intento → «YA FUE CANJEADO»; el panel mostró el canje. `npm run probar-seguridad` 17/17 ✓. Quedó canjeado el código de prueba `LAINDIA-QB9A` (se borra con `limpiar_pruebas.sql` antes del lanzamiento).
 - **Hecho a propósito sin hacer:** auditoría de acciones del admin, 2FA, «olvidé mi contraseña» por correo, deshacer un canje, límite por IP.
 
-## 13. Insumos para la Etapa 6 (pruebas, seguridad y compatibilidad) — NO es trabajo hecho
-**El usuario pegará el Prompt 6; hasta entonces no se avanza.**
-- **Abuso:** limitar partidas y PIN por IP (el servidor puede leer `request.headers`; ojo con IPs móviles compartidas); revisar `request.headers` reales de Supabase (¿`cf-connecting-ip`?) antes de fiarse de `x-forwarded-for`; probar que un script con muchos id de dispositivo no vacíe el banco; revisar RLS y permisos de las 19 funciones públicas (6 del juego + 2 de la caja + 11 de admin).
-- **Bordes de fecha:** lunes 00:00, vencimiento a los 7 días, un código por celular, campaña con fechas.
-- **Compatibilidad:** navegador interno de Instagram/Facebook en iOS y Android; Android de gama baja; FPS reales en el iPhone con el juego completo; la caja y el panel en el celular/tableta del local.
-- **Seguridad extra opcional:** 2FA del administrador (Supabase MFA), bitácora de acciones del admin, `Content-Security-Policy` del juego, revisar que el repo público no tenga secretos (`supabase-config.js` solo lleva URL y clave pública).
-- **Antes de lanzar (Etapa 7):** `sql/limpiar_pruebas.sql`, `ping()` diario con GitHub Actions, decidir URL/dominio **antes de imprimir los QR**, textos legales, plazo de conservación de datos.
+## 13. Endurecimiento y pruebas (Etapa 6, hecha el 2026-10-20; faltan pasos del usuario, ver abajo)
+Reporte completo: **`documentos/reporte-etapa6.md`**. Guía para celulares reales: **`documentos/pruebas-en-celulares.md`**. El porqué y los hallazgos: `documentos/bitacora.md` §11.
+- **Hallazgo principal:** quien sepa programar puede llamar al servidor directo y, antes, vaciar los 50 premios de la semana en un minuto (varios «dispositivos» + celulares inventados). No cuesta dinero (hay que canjear en el local con $30.000), pero le quita el premio a la gente real. Lo que NO se puede evitar sin un cambio grande (se acepta): reclamar un premio **sin jugar** (esperando los 45 s y diciendo «recogí 25 frutas», porque las frutas las informa el celular).
+- **Límites por red (IP):** `limite_partidas_ip_hora` = 150 y `limite_codigos_ip_dia` = 8 (0 = apagado; editables en el panel → Configuración → Seguridad); `pin_intentos_max` = 5 por red cada 15 min y `pin_intentos_max_global` = 30 para el bloqueo general. La red se reconoce por **`cf-connecting-ip`** (Cloudflare está delante de Supabase: un `CF-Connecting-IP` falso recibe 403; `X-Forwarded-For` falso solo se antepone y se ignora), se guarda solo una **huella** (sha256 con `sal_red`; nunca la IP) en `app.limites_red` y se borra a los 3 días. **Sin IP conocida no se aplica ningún límite** (ante la duda se deja jugar). Funciones: `app.ip_cliente`, `huella_red`, `sumar_red`, `limitar`, `contar_red` (0002) y `public.diag_red()` (devuelve a quien llama los encabezados que ve el servidor; sirve para verificar).
+- **Respuestas nuevas:** `iniciar_partida` y `reclamar_codigo` devuelven `motivo: 'limite-red'` (el juego muestra un aviso, no se gasta ningún intento). `reclamar_codigo` acepta solo **5** intentos con celulares que ya tienen código por token (`partidas.reclamos_fallidos`): corta el «¿este número ya ganó?». `estado().reglas.campana = { inicioISO, finISO }` (fechas de la temporada para mostrarlas).
+- **Textos legales** (todo sale de lo que manda el servidor; `textos.js`: `listaRegalos`, `textoCampana`, `T.condiciones`): «Condiciones» (modal) desde inicio, formulario y ticket; «no acumulable» y compra mínima en ayuda, formulario y ticket; temporada en inicio y en la pantalla «Por ahora no hay campaña» («empieza el…»/«terminó el…»). Los regalos del juego ya salen de la lista del panel.
+- **Un solo SQL para pegar:** `npm run sql` genera **`supabase/todo-junto.sql`** (0001 + 0002 + 0003 + auditoría de permisos). Es idempotente. **Cada vez que se cambie algo en `supabase/migrations/`** hay que regenerarlo (`probar-sql` falla si está desactualizado) y pedirle al usuario que lo vuelva a pegar.
+- **Auditoría de permisos** (`supabase/sql/auditoria_permisos.sql`, solo lectura, también al final de `todo-junto.sql`): lista tablas sin RLS, permisos de anon/authenticated sobre `app`, tablas sueltas en `public`, funciones internas abiertas, funciones públicas no previstas o sin `security definer`. Debe devolver «✅ Todo en orden». **En el Supabase real encontró `public.rls_auto_enable()`** (la crea Supabase con «Enable automatic RLS»; ejecutable por anon pero inservible): 0002 le quita el permiso al público sin romper el evento (probado: una tabla nueva sigue quedando con RLS).
+- **Pruebas:** `probar-sql` **233 ✓** (PGlite con permisos por defecto de Supabase, `auth`, pgcrypto y la función `rls_auto_enable`); `probar-mutaciones` **9/9** detectadas; `revisar-secretos` limpio (archivos + historial); contra el servidor real: `probar-seguridad` 19 ✓ (incluye registro público APAGADO y solo correo/contraseña), `probar-ataques --completo` 30 ✓, `probar-supabase` 43 ✓ (100 ganadores simultáneos con 40 premios → exactamente 40 apartados; el límite por red cortó los reclamos exactamente en el tope). `probar-canje` (canje doble simultáneo con el PIN) lo corre el usuario.
+- **Casos de tiempo:** ninguna de las 20 funciones públicas recibe fecha u hora (el reloj del celular no cuenta; con el celular adelantado 3 días la cuenta regresiva sigue bien); vencimiento exacto a 1 ms; lunes 00:00 de Bogotá (05:00 UTC) en julio y marzo. El reloj del servidor no se puede simular: el primer lunes real es la prueba final.
+- **Front:** la caja y el panel se niegan a abrirse dentro de otra página (anti-clickjacking); `/diagnostico/` (revisa un celular: navegador interno, WebGL 2, almacenamiento, gestos, rendimiento, hora, conexión; «Copiar resultado»); `modulepreload` de los 21 módulos (cascada de 66 ms → 3 ms en local); `escena.js`: si `navigator.deviceMemory ≤ 2` arranca en calidad 2 (resolución 1,0) y sin antialias. Mínimo real: iOS 15 / Chrome-WebView 90 (WebGL 2 de Three.js). Peso de carga **≈ 272 KB comprimidos** (objetivo ≤ 3 MB). Se eliminó la fuente Luckiest Guy.
+- **Falta (del usuario):** volver a pegar `todo-junto.sql` (cierra `rls_auto_enable`), `npm run probar-canje`, `sql/limpiar_pruebas.sql`, pruebas en celulares reales (Instagram/Facebook iOS y Android, Safari/Chrome, gama baja) y **decidir si activa el cupo diario** (recomendado). No medido: rendimiento en gama baja real; navegadores internos de Instagram/Facebook.
+
+## 14. Insumos para la Etapa 7 (publicación, QR y lista de lanzamiento) — NO es trabajo hecho
+**El usuario pegará el Prompt 7; hasta entonces no se avanza.**
+- GitHub Pages desde `web/` con un workflow de GitHub Actions; la URL final y si se personaliza (dominio propio u organización de GitHub) se **decide ANTES de imprimir los QR** (`pendientes.md` #14). Las páginas internas (`/canje/`, `/admin/`, `/diagnostico/`) se publican junto al juego (no se enlazan; están `noindex`).
+- **Tarea diaria de GitHub Actions** que llame a `ping()` (el plan gratis de Supabase se pausa tras ~1 semana sin actividad).
+- Antes de abrir al público: `supabase/sql/limpiar_pruebas.sql`; decidir el **cupo diario**; llenar `[DIRECCIÓN DEL LOCAL]`, `[HORARIO DE CAJA]`, `[RESPONSABLE DE DATOS]`, `[CORREO DE CONTACTO]`; términos y condiciones y política de datos definitivos (Ley 1581; plazo de conservación); QR de alta resolución.
+- Repetir las pruebas de Instagram/Facebook con el enlace `https://` real (por el QR y por un anuncio); revisar el primer lunes; afinar los límites por red con el uso real.
+- Hito final en `historial/`.

@@ -47,6 +47,9 @@ insert into app.staff (id) values (1) on conflict (id) do nothing;
 -- Límites del PIN: configurables desde el panel, como todo lo demás
 alter table app.configuracion add column if not exists pin_intentos_max int not null default 5 check (pin_intentos_max between 3 and 20);
 alter table app.configuracion add column if not exists pin_bloqueo_min  int not null default 5 check (pin_bloqueo_min between 1 and 240);
+-- Etapa 6: cada RED (IP) tiene sus propios 5 intentos por ventana de 15 min (así un bromista no bloquea la caja de todos);
+-- el bloqueo GLOBAL (el que escala) solo salta con muchos fallos en total, o si no se logra reconocer la red.
+alter table app.configuracion add column if not exists pin_intentos_max_global int not null default 30 check (pin_intentos_max_global between 3 and 1000);
 
 alter table app.admins enable row level security;
 alter table app.staff  enable row level security;
@@ -67,6 +70,13 @@ $$;
 
 -- Verifica el PIN del staff. Devuelve NULL si es correcto, o un JSON con el motivo.
 -- Importante: NUNCA hace "raise" después de anotar un fallo (eso deshace el conteo); siempre devuelve el JSON.
+--
+-- Dos candados (Etapa 6):
+--   1. POR RED (IP): cada red tiene 5 intentos malos por ventana de 15 min. Al 5.º, ESA red queda bloqueada hasta que termine
+--      la ventana (aunque acierte el PIN). Así un bromista que escriba mal el PIN a propósito solo se bloquea a sí mismo.
+--   2. GLOBAL (el que escala 5, 10, 20, 40, 60 min): salta con `pin_intentos_max_global` fallos seguidos sumando todas las redes
+--      (frena un ataque repartido en muchas redes). Si el servidor NO logra reconocer la red, el global usa `pin_intentos_max`
+--      (el comportamiento de la Etapa 5).
 create or replace function app.verificar_pin(p_pin text) returns jsonb
 language plpgsql volatile as $$
 declare
@@ -74,6 +84,10 @@ declare
   s app.staff;
   v_now timestamptz := clock_timestamp();
   v_espera int;
+  v_red text := app.huella_red();                                                        -- null = no se conoce la red
+  v_ventana timestamptz := to_timestamp(floor(extract(epoch from clock_timestamp()) / 900) * 900);   -- ventanas de 15 min
+  v_fallos_red int;
+  v_max_global int;
 begin
   select * into s from app.staff where id = 1 for update;   -- los intentos de PIN se atienden de uno en uno
   if s.pin_hash is null then
@@ -82,6 +96,11 @@ begin
   if s.bloqueado_hasta is not null and s.bloqueado_hasta > v_now then
     return jsonb_build_object('ok', false, 'resultado', 'bloqueado', 'hastaISO', app.iso(s.bloqueado_hasta),
                               'segundos', ceil(extract(epoch from (s.bloqueado_hasta - v_now)))::int);
+  end if;
+  -- Esta red ya gastó sus intentos en la ventana actual: bloqueada hasta que termine (ni se mira el PIN)
+  if v_red is not null and app.contar_red('pin', v_ventana) >= c.pin_intentos_max then
+    return jsonb_build_object('ok', false, 'resultado', 'bloqueado', 'hastaISO', app.iso(v_ventana + interval '15 minutes'),
+                              'segundos', ceil(extract(epoch from (v_ventana + interval '15 minutes' - v_now)))::int);
   end if;
   -- Si hace más de 24 h del último fallo, se olvida el castigo acumulado
   if s.ultimo_fallo is not null and v_now - s.ultimo_fallo > interval '24 hours' then
@@ -93,12 +112,17 @@ begin
     if s.fallos > 0 or s.bloqueos > 0 or s.bloqueado_hasta is not null then
       update app.staff set fallos = 0, bloqueos = 0, bloqueado_hasta = null, ultimo_fallo = null where id = 1;
     end if;
+    if v_red is not null then
+      delete from app.limites_red where clave = 'pin:' || v_red;   -- acertó: se le perdonan los fallos de esta red
+    end if;
     return null;
   end if;
 
   -- PIN malo
   s.fallos := s.fallos + 1;
-  if s.fallos >= c.pin_intentos_max then
+  v_fallos_red := app.sumar_red('pin', v_ventana);              -- null si no se conoce la red
+  v_max_global := case when v_red is null then c.pin_intentos_max else c.pin_intentos_max_global end;
+  if s.fallos >= v_max_global then
     s.bloqueos := s.bloqueos + 1;
     v_espera := least(c.pin_bloqueo_min * (2 ^ least(s.bloqueos - 1, 10))::int, greatest(60, c.pin_bloqueo_min));
     update app.staff
@@ -108,7 +132,12 @@ begin
                               'segundos', v_espera * 60);
   end if;
   update app.staff set fallos = s.fallos, bloqueos = s.bloqueos, ultimo_fallo = v_now where id = 1;
-  return jsonb_build_object('ok', false, 'resultado', 'pin-incorrecto', 'intentosRestantes', c.pin_intentos_max - s.fallos);
+  if v_fallos_red is not null and v_fallos_red >= c.pin_intentos_max then
+    return jsonb_build_object('ok', false, 'resultado', 'bloqueado', 'hastaISO', app.iso(v_ventana + interval '15 minutes'),
+                              'segundos', ceil(extract(epoch from (v_ventana + interval '15 minutes' - v_now)))::int);
+  end if;
+  return jsonb_build_object('ok', false, 'resultado', 'pin-incorrecto',
+                            'intentosRestantes', case when v_fallos_red is not null then c.pin_intentos_max - v_fallos_red else c.pin_intentos_max - s.fallos end);
 end $$;
 
 -- Busca un código escrito de cualquier manera: LAINDIA-QB9A, laindia qb9a, LAINDIAQB9A o solo QB9A
@@ -239,6 +268,9 @@ create or replace function app.config_json() returns jsonb language sql stable a
     'largoCodigo', c.largo_codigo,
     'pinIntentosMax', c.pin_intentos_max,
     'pinBloqueoMin', c.pin_bloqueo_min,
+    'pinIntentosMaxGlobal', c.pin_intentos_max_global,
+    'limitePartidasIpHora', c.limite_partidas_ip_hora,
+    'limiteCodigosIpDia', c.limite_codigos_ip_dia,
     'juego', c.juego,
     'actualizadoISO', app.iso(c.actualizado_en))
   from app.config() c
@@ -360,6 +392,9 @@ begin
     largo_codigo                   = app.entero_en_rango(p, 'largoCodigo', 4, 10, 'Largo del código', largo_codigo),
     pin_intentos_max               = app.entero_en_rango(p, 'pinIntentosMax', 3, 20, 'Intentos de PIN antes del bloqueo', pin_intentos_max),
     pin_bloqueo_min                = app.entero_en_rango(p, 'pinBloqueoMin', 1, 240, 'Minutos del primer bloqueo del PIN', pin_bloqueo_min),
+    pin_intentos_max_global        = app.entero_en_rango(p, 'pinIntentosMaxGlobal', 3, 1000, 'PIN malos (sumando todas las redes) antes del bloqueo general', pin_intentos_max_global),
+    limite_partidas_ip_hora        = app.entero_en_rango(p, 'limitePartidasIpHora', 0, 100000, 'Partidas por hora desde una misma red', limite_partidas_ip_hora),
+    limite_codigos_ip_dia          = app.entero_en_rango(p, 'limiteCodigosIpDia', 0, 10000, 'Códigos por día desde una misma red', limite_codigos_ip_dia),
     regalos = v_regalos, campana_inicio = v_ini, campana_fin = v_fin, prefijo_codigo = v_prefijo, juego = v_juego
   where id = 1;
 
@@ -387,6 +422,7 @@ begin
      set pin_hash = extensions.crypt(p_pin, extensions.gen_salt('bf', 10)), pin_cambiado_en = now(),
          fallos = 0, bloqueos = 0, ultimo_fallo = null, bloqueado_hasta = null
    where id = 1;
+  delete from app.limites_red where clave like 'pin:%';
   return jsonb_build_object('ok', true);
 end $$;
 
@@ -597,6 +633,7 @@ begin
     return jsonb_build_object('ok', false, 'motivo', 'no-autorizado');
   end if;
   update app.staff set fallos = 0, bloqueos = 0, ultimo_fallo = null, bloqueado_hasta = null where id = 1;
+  delete from app.limites_red where clave like 'pin:%';   -- también los intentos de cada red
   return jsonb_build_object('ok', true);
 end $$;
 

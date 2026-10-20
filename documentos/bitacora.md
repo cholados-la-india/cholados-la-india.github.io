@@ -306,3 +306,46 @@ Backend en Supabase gratis; el usuario no conoce Supabase → guiar paso a paso.
 - **Datos de prueba que quedan:** `LAINDIA-QB9A` canjeado. Se limpian con `sql/limpiar_pruebas.sql` antes del lanzamiento (no borra el PIN ni los administradores).
 - **Comprobación final de Claude:** `probar-seguridad` 17/17 ✓ contra el servidor real; `probar-sql` 181/181 ✓ en local.
 - **Estado:** Etapa 5 cerrada y aprobada. Frase de commit entregada. **Siguiente: Etapa 6**; no se avanza hasta que el usuario pegue el Prompt 6.
+
+
+## 11. Etapa 6 — Pruebas y endurecimiento (2026-10-20)
+
+### 11.1 Encargo (Prompt 6) y cómo se leyó
+- **Prompt 6:** probar la concurrencia (muchos reclamos con el cupo casi agotado: nunca repetir un código ni superar el tope); casos (vencimiento a los 7 días exactos, canje doble, cambio de semana el lunes 00:00 de Bogotá, hora del celular manipulada, intentos agotados, banco agotado, llamar a las funciones sin el juego); revisar que no haya secretos ni PIN en el repo ni en el JavaScript del cliente y que RLS no deje leer celulares ni códigos ajenos; compatibilidad (navegador interno de Instagram/Facebook en iPhone y Android, Safari y Chrome móvil: «qué debo probar yo y cómo»); rendimiento en gama baja y peso total; textos legales visibles (consentimiento, vigencia, «no acumulable», compra mínima, fechas de la temporada). «Corrige lo que encuentres y dime lo que quede pendiente.» Resultado pedido: un reporte → **`documentos/reporte-etapa6.md`**.
+- Antes de empezar el usuario confirmó que hizo el commit de la Etapa 5 (`20f8b9a`); la duda que tenía era precisamente «lo del commit».
+
+### 11.2 Hallazgos (por orden de importancia) y qué se hizo
+1. **El banco se puede vaciar con un script** (varios id de dispositivo + celulares inventados; ya se había visto en la Etapa 4 con 100 ganadores simultáneos). Solución parcial: **límites por red (IP)** — 150 partidas/hora y 8 códigos/día por internet, configurables, con la IP guardada solo como huella; más la **recomendación de activar el cupo diario** (decisión de producto pendiente del usuario). Se acepta que con varias redes distintas todavía es posible vaciar un día.
+2. **Reclamar sin jugar** sigue siendo posible para quien sepa programar (esperar 45 s y declarar 25 frutas): las frutas las informa el celular y verificar la partida en el servidor exigiría repetir el juego en SQL. Se acepta (antifraude bajo, decidido en la Etapa 1) y se mitiga con límites, un código por celular y el canje físico.
+3. **Bloqueo de la caja por terceros** (Etapa 5): el límite de PIN era global. Ahora cada red tiene sus 5 intentos por ventana de 15 min; el bloqueo global escalonado solo salta con 30 fallos sumando todas las redes (o si no se reconoce la red).
+4. **Oráculo de celulares:** con un token ganador se podía preguntar número por número «¿este ya ganó?» (la respuesta `ya-tienes-codigo` lo delata). Ahora el token solo admite 5 de esos intentos.
+5. **`public.rls_auto_enable()`** apareció en la **auditoría de permisos** corrida en el Supabase real: la crea Supabase cuando al crear el proyecto se deja marcado «Enable automatic RLS» (un event trigger que activa RLS en toda tabla nueva) y queda ejecutable por `anon`/`authenticated`. Llamarla da error (`cannot display a value of type event_trigger`), así que no es explotable, pero no debía ser pública. Se le quita el permiso al público en 0002. **Se probó en PGlite que el evento sigue funcionando** (una tabla creada por un rol sin privilegios queda con RLS activado), porque los event triggers no revisan el permiso de ejecución de quien crea la tabla. El usuario compartió la captura del resultado y fue lo que lo detectó.
+6. **Textos legales incompletos:** faltaban «no acumulable» y las fechas de la temporada, y los regalos estaban escritos a mano en `textos.js` aunque el dueño los edita en el panel. Ahora todo sale del servidor y hay un modal «Condiciones».
+7. **Clickjacking** de la caja y el panel (GitHub Pages no deja poner `X-Frame-Options`): se niegan a abrirse dentro de otra página.
+8. Arranque del juego en cascada de 4 niveles de módulos → `modulepreload`; celulares de entrada → arrancan con menos resolución.
+9. Fuente Luckiest Guy sin uso → eliminada.
+
+### 11.3 Decisiones de diseño y su porqué
+- **Límites generosos y «fail-open»:** muchas personas comparten IP (wifi del local, datos móviles con CGNAT); un límite apretado castigaría a la gente real. Si el servidor no logra reconocer la red, **no se aplica ningún límite**. Cada límite se puede apagar con 0.
+- **Cómo se reconoce la red:** se midió en el Supabase real (función temporal `diag_red`): Cloudflare está delante; `cf-connecting-ip` siempre trae la IP real; si el cliente manda un `CF-Connecting-IP` falso, Cloudflare responde **403**; `X-Forwarded-For` falso solo se **antepone** («1.2.3.4, 9.9.9.9,<ip real>») y `X-Real-IP` se sobrescribe. Por eso se usa `cf-connecting-ip` primero y los otros solo de respaldo. `diag_red` se quedó como herramienta de verificación (devuelve a cada quien solo sus propios encabezados).
+- **Huella con sal** (`sal_red`, sha256) y contadores en `app.limites_red` que se limpian solos (2 % de las llamadas borran lo de hace > 3 días): no hace falta una tarea programada ni se guarda la IP (Ley 1581: la IP puede ser dato personal).
+- **Un solo archivo SQL** (`npm run sql` → `supabase/todo-junto.sql`) porque al usuario le tocaba pegar archivo por archivo y cada cambio de servidor exige repetirlo; todo es idempotente y `probar-sql` comprueba que el archivo esté al día, que pegado en una base nueva no dé errores y que vuelto a pegar encima tampoco.
+- **No se editó la regla de `terminar_partida`** (frutas): ver hallazgo 2.
+- **Datos de prueba de la etapa** (≈ 130 partidas y ≈ 9 códigos falsos) hay que borrarlos con `limpiar_pruebas.sql`; mientras no se borren el banco de la semana está gastado.
+
+### 11.4 Lo que se midió
+- **Concurrencia real** (`probar-supabase`, 43 ✓): 8 inicios simultáneos → 3; 100 ganadores con 40 premios → exactamente 40 apartados y 60 «sin-premios»; 5 reclamos con el mismo celular → 1 código; 40 reclamos simultáneos desde una red con tope 8/día → 5 pasaron (3 + 5 = 8: el contador quedó exacto), 35 «limite-red», 0 duplicados; el banco quedó en 0.
+- **Ataques directos** (`probar-ataques --completo`, 30 ✓), **seguridad** (`probar-seguridad`, 19 ✓: incluye `/auth/v1/settings` → registro apagado y solo email).
+- **Hora del celular:** con `Date.now` desplazado +3 días / −5 h / +5 años la cuenta regresiva del ticket marca igual y el error de `reloj.ahora()` es ≤ 6 ms.
+- **Peso:** 272 KB comprimidos en 27 peticiones (Three.js 134,6; logo 53,5; JS 50,7; fuentes 26,5; CSS 3,7; HTML 0,6); con `modulepreload` las 21 peticiones de JS arrancan a la vez.
+- **CPU por cuadro** en el computador de desarrollo (lógica + envío de dibujo + `gl.finish`): promedio 1,8 ms, mediana 1,6, p95 3,9, máximo 15 (de 16,7 ms a 60 FPS). En gama baja se espera ×5–8: **estimación, no medición**.
+- **Diagnóstico** (`/diagnostico/`) en el Chrome emulado del navegador de Claude: todo ✔, 60 FPS con la escena de prueba (12.000 triángulos, 16 llamadas, 3 capas).
+
+### 11.5 Lecciones nuevas del entorno
+- **Heredocs de bash con comillas, `\n`, `$` y JavaScript dentro rompen texto sin avisar** (se escribió un `\n` literal en un comentario, se perdió un `$$` de SQL). Para scripts de edición largos: escribir el script con la herramienta Write en el scratchpad y correrlo; para cambios pequeños, la herramienta Edit.
+- La CSP `script-src 'self'` impide `new Function()`/`eval`: las pruebas de sintaxis en `/diagnostico/` se sustituyeron (el propio módulo ya usa `?.` y `??`). Con `default-src 'none'` tampoco se puede embeber la página en un iframe para probar el anti-clickjacking: probar desde una página sin CSP (el juego).
+- PGlite: `db.exec()` devuelve un arreglo con el resultado de cada sentencia (la última trae las filas del SELECT final); `has_function_privilege(rol, oid, 'EXECUTE')` y `has_table_privilege(rol, oid, 'SELECT,INSERT,…')` sirven para auditar permisos; `alter default privileges … grant execute on functions to anon, authenticated` imita a Supabase.
+- El `screenshot` del navegador de Claude falla a menudo la primera vez; las capturas a escala < 1 salen recortadas (ver §10.6).
+
+### 11.6 Qué falta (ver `documentos/reporte-etapa6.md` §9)
+Volver a pegar `todo-junto.sql`; `npm run probar-canje`; `limpiar_pruebas.sql`; pruebas en celulares (Instagram/Facebook, Safari/Chrome, gama baja); decidir el cupo diario; después de lanzar, afinar los límites y repetir con la URL real. Hito: `historial/07-endurecimiento/`.

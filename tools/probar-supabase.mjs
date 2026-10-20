@@ -134,6 +134,12 @@ seccion('G. Etapa 5: las funciones del administrador están cerradas para la cla
     const res = await fetch(`${SUPABASE.url}/rest/v1/${t}?select=*&limit=1`, { headers: { ...cab, 'Accept-Profile': 'app' } });
     ok(`GET app.${t} (PIN y administradores) no se puede leer (HTTP ${res.status})`, res.status >= 400, (await res.text()).slice(0, 120));
   }
+  // Ajustes públicos de Supabase Auth (los que cualquiera puede leer): el registro de usuarios debe estar APAGADO
+  const aj = await fetch(`${SUPABASE.url}/auth/v1/settings`, { headers: { apikey: SUPABASE.clave } });
+  const ajustes = aj.ok ? await aj.json() : null;
+  ok('el registro público de usuarios está APAGADO (nadie puede crearse una cuenta)', ajustes?.disable_signup === true, ajustes ? `disable_signup = ${ajustes.disable_signup}` : `HTTP ${aj.status}`);
+  const proveedores = Object.entries(ajustes?.external ?? {}).filter(([, v]) => v === true).map(([k]) => k);
+  ok('el único medio de entrada activo es el correo con contraseña (sin Google ni otros)', proveedores.length === 1 && proveedores[0] === 'email', `activos: ${proveedores.join(', ') || '(ninguno)'}`);
 }
 if (process.argv.includes('--rapido')) {
   console.log(`
@@ -168,9 +174,11 @@ await enParalelo(lote, CONCURRENCIA, async (x) => {
   x.token = r.token;
   x.iniciada = r.ok === true;
 });
-ok(`${lote.filter((x) => x.iniciada).length} de ${lote.length} partidas iniciadas`, lote.every((x) => x.iniciada), lote.filter((x) => !x.iniciada).length + ' no iniciaron (¿sin premios o campaña inactiva?)');
+ok(`${lote.filter((x) => x.iniciada).length} de ${lote.length} partidas iniciadas`, lote.every((x) => x.iniciada), lote.filter((x) => !x.iniciada).length + ' no iniciaron (¿sin premios, campaña inactiva o límite por red?)');
 if (!lote.every((x) => x.iniciada)) {
   console.log('\nNo se pudieron iniciar todas las partidas; revisa el estado (¿premios agotados?). Ejecuta supabase/sql/limpiar_pruebas.sql y repite.');
+  console.log('Si el motivo fue «limite-red»: este internet ya hizo muchas partidas esta hora (el límite por defecto es 150 por hora). Espera a la próxima hora, o pon');
+  console.log('«Partidas por hora desde una red» en 0 (panel → Configuración → Seguridad) mientras pruebas, y vuelve a poner 150 después.');
   process.exit(1);
 }
 const tarde = lote[0];
@@ -231,15 +239,26 @@ seccion(`E. Tope semanal: ${N_TOPE} ganadores a la vez`);
   const conReserva = grupo.filter((_, i) => fin[i].puedeReclamar === true);
   const rs = await enParalelo(conReserva, CONCURRENCIA, (x, i) => rpc('reclamar_codigo', { p_token: x.token, p_nombre: NOMBRE, p_celular: celular(100 + i), p_consentimiento: true }));
   const codigos = rs.filter((r) => r.ok === true).map((r) => r.codigo);
-  ok(`los ${conReserva.length} reclamos simultáneos reciben código (recibieron ${codigos.length})`, codigos.length === conReserva.length, JSON.stringify(rs.filter((r) => !r.ok).slice(0, 3)));
+  // Desde la Etapa 6 hay un tope de códigos por día desde una misma red (por defecto 8): una prueba que reclama 45 códigos
+  // desde un solo computador choca con él. Es lo esperado: lo que importa es que NADA se pierda ni se duplique.
+  const porRed = rs.filter((r) => r.motivo === 'limite-red').length;
+  if (porRed > 0) {
+    console.log(`      ⚠ El límite por red cortó ${porRed} reclamos (dejó pasar ${codigos.length}). Para probar los ${conReserva.length} reclamos SIN ese límite: panel → Configuración → Seguridad →`);
+    console.log('        «Códigos por día desde una red» = 0 mientras pruebas, y vuelve a poner 8 después.');
+  }
+  ok(`los ${conReserva.length} reclamos simultáneos: ${codigos.length} reciben código${porRed ? ` y ${porRed} el aviso de límite por red` : ''} (ninguno se pierde)`, codigos.length + porRed === conReserva.length, JSON.stringify(rs.filter((r) => !r.ok && r.motivo !== 'limite-red').slice(0, 3)));
+  if (porRed > 0) ok('el límite por red es ATÓMICO bajo concurrencia: dejó pasar al menos 1 y nunca más que el tope por defecto (8 por día)', codigos.length >= 1 && codigos.length + 1 <= 8, `pasaron ${codigos.length} (+1 de la sección D)`);
   ok('TODOS los códigos son distintos (cero duplicados)', new Set(codigos).size === codigos.length, `${new Set(codigos).size} distintos de ${codigos.length}`);
   ok('todos con el formato LAINDIA-XXXX sin caracteres ambiguos', codigos.every((c) => /^LAINDIA-[A-HJ-NP-Z2-9]{4}$/.test(c)));
   const tarde2 = await rpc('estado', { p_device: randomUUID() });
   ok(`el banco queda en 0 y no se supera el tope (restantes: ${tarde2.premiosRestantes})`, tarde2.premiosRestantes === 0 && tarde2.jugable === false && tarde2.motivo === 'sin-premios', JSON.stringify(tarde2).slice(0, 200));
   const ultimaPartida = await rpc('iniciar_partida', { p_device: randomUUID() }, 0);
   ok('y ya nadie puede empezar a jugar (sin-premios)', ultimaPartida.ok === false && ultimaPartida.motivo === 'sin-premios', JSON.stringify(ultimaPartida).slice(0, 160));
-  const repetido = await rpc('reclamar_codigo', { p_token: conReserva[0].token, p_nombre: NOMBRE, p_celular: celular(100), p_consentimiento: true });
-  ok('repetir un reclamo (doble toque) devuelve el MISMO código, sin crear otro', repetido.ok === true && repetido.codigo === codigos[0]);
+  const iBueno = rs.findIndex((r) => r.ok === true);
+  if (iBueno >= 0) {
+    const repetido = await rpc('reclamar_codigo', { p_token: conReserva[iBueno].token, p_nombre: NOMBRE, p_celular: celular(100 + iBueno), p_consentimiento: true });
+    ok('repetir un reclamo (doble toque) devuelve el MISMO código, sin crear otro', repetido.ok === true && repetido.codigo === rs[iBueno].codigo);
+  }
 }
 
 console.log(`\n${fallos === 0 ? '✅ TODO BIEN' : '❌ HAY FALLOS'} — ${total - fallos} de ${total} comprobaciones correctas.`);

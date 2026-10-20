@@ -10,6 +10,29 @@
   <link rel="preload" href="assets/fonts/fredoka-600.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="preload" href="assets/fonts/lilita-one.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="stylesheet" href="css/juego.css">
+  <!-- Precarga de los módulos: sin esto el navegador descubre los archivos de a uno (main → escena → three…) y en 4G se pierde
+       cerca de un segundo en viajes de ida y vuelta. Con esto se piden todos a la vez. (Si agregas o renombras un módulo en js/,
+       actualiza esta lista; si falta alguno, el juego funciona igual, solo carga más lento.) -->
+  <link rel="modulepreload" href="vendor/three/three.min.js">
+  <link rel="modulepreload" href="js/game/escena.js">
+  <link rel="modulepreload" href="js/game/modelos.js">
+  <link rel="modulepreload" href="js/game/modelos-nivel.js">
+  <link rel="modulepreload" href="js/game/materiales.js">
+  <link rel="modulepreload" href="js/game/matcap.js">
+  <link rel="modulepreload" href="js/game/paleta.js">
+  <link rel="modulepreload" href="js/game/nivel.js">
+  <link rel="modulepreload" href="js/game/logica.js">
+  <link rel="modulepreload" href="js/game/controles.js">
+  <link rel="modulepreload" href="js/ui/ui.js">
+  <link rel="modulepreload" href="js/api.js">
+  <link rel="modulepreload" href="js/api-supabase.js">
+  <link rel="modulepreload" href="js/api-falsa.js">
+  <link rel="modulepreload" href="js/supabase-config.js">
+  <link rel="modulepreload" href="js/dispositivo.js">
+  <link rel="modulepreload" href="js/reloj.js">
+  <link rel="modulepreload" href="js/config.js">
+  <link rel="modulepreload" href="js/textos.js">
+  <link rel="modulepreload" href="js/util.js">
 </head>
 <body>
   <main id="escena" class="escena">

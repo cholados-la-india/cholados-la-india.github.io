@@ -44,6 +44,13 @@ create table if not exists app.configuracion (
 );
 insert into app.configuracion (id) values (1) on conflict (id) do nothing;
 
+-- Etapa 6 — límites por red (IP). Frenan a un script que, desde un mismo internet, invente miles de "dispositivos".
+-- Se aplican por la "huella" de la IP (nunca se guarda la IP en claro) y 0 = apagado. Generosos a propósito: muchas
+-- personas comparten la misma IP (wifi del local, datos móviles), así que NO deben molestar a la gente de verdad.
+alter table app.configuracion add column if not exists limite_partidas_ip_hora int not null default 150 check (limite_partidas_ip_hora between 0 and 100000);
+alter table app.configuracion add column if not exists limite_codigos_ip_dia   int not null default 8   check (limite_codigos_ip_dia between 0 and 10000);
+alter table app.configuracion add column if not exists sal_red                 text not null default gen_random_uuid()::text;  -- "sal" secreta para la huella de la IP
+
 -- ───────────────────────────────── partidas ─────────────────────────────────
 -- Una fila por partida iniciada. Su id ES el "token" que el juego usa para terminar y reclamar.
 -- Los intentos de la semana = partidas de ese dispositivo en esa semana.
@@ -61,6 +68,8 @@ create table if not exists app.partidas (
 );
 create index if not exists partidas_device_semana on app.partidas (device_id, semana);
 create index if not exists partidas_reservas on app.partidas (reserva_hasta) where resultado = 'gano_validado' and not reclamada;
+-- Etapa 6 — cuántas veces se intentó reclamar con celulares que ya tenían código (frena el "¿este número ya ganó?" a la fuerza bruta)
+alter table app.partidas add column if not exists reclamos_fallidos int not null default 0;
 
 -- ───────────────────────────────── codigos ─────────────────────────────────
 -- Solo existen los códigos YA EXPEDIDOS (se crean al reclamar). Los vencidos NO se reciclan: se quedan aquí.
@@ -89,6 +98,17 @@ create index if not exists codigos_dia on app.codigos (dia);
 
 comment on column app.codigos.estado is 'Guardado: activo | canjeado | desactivado. El estado "vencido" NO se guarda: se calcula (activo y ahora >= vence_en) en la vista app.v_codigos, así nunca queda desactualizado.';
 
+-- ───────────────────────────────── limites_red (Etapa 6) ─────────────────────────────────
+-- Contadores por red: "clave" = acción + huella de la IP; "ventana" = la hora o el día al que pertenece el conteo.
+-- Se limpian solos (cada tanto se borran los de hace más de 3 días).
+create table if not exists app.limites_red (
+  clave    text        not null,
+  ventana  timestamptz not null,
+  cuenta   int         not null default 0,
+  primary key (clave, ventana)
+);
+create index if not exists limites_red_ventana on app.limites_red (ventana);
+
 -- Vista de ayuda para ver los códigos con su estado real (la usará el panel admin).
 create or replace view app.v_codigos as
 select c.*,
@@ -110,6 +130,7 @@ create trigger configuracion_tocar before update on app.configuracion for each r
 alter table app.configuracion enable row level security;
 alter table app.partidas      enable row level security;
 alter table app.codigos       enable row level security;
+alter table app.limites_red   enable row level security;
 -- (Sin políticas = cerrado para anon y authenticated. El dueño "postgres" y las funciones SECURITY DEFINER sí pueden.)
 
 revoke all on schema app from public, anon, authenticated;

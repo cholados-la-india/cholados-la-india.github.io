@@ -17,7 +17,10 @@ const COLORES_CONFETI = [0xd8287f, 0xb6e80a, 0x66c3e0, 0xffe86b, 0xff8a1f, 0xfff
 const MAX = { cajaBaja: 26, pilaAlta: 18, barraBaja: 6, fresa: 40, mango: 40 };
 
 export function crearEscena(canvas, contenedor, cfg, tema = {}) {
-  const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true, powerPreference: 'high-performance' });
+  // Celulares de entrada (Chrome/Android informa la memoria aproximada; el iPhone no la informa, así que nunca cae aquí):
+  // sin suavizado de bordes y arrancando con menos resolución, para que la primera partida ya vaya fluida (Etapa 6).
+  const gamaBaja = (navigator.deviceMemory ?? 8) <= 2;
+  const renderer = new THREE.WebGLRenderer({ canvas, antialias: !gamaBaja, alpha: true, powerPreference: 'high-performance' });
   renderer.setClearColor(0x000000, 0);
   contenedor.style.setProperty('--cielo-arriba', css(pal.cieloArriba));
   contenedor.style.setProperty('--cielo-horizonte', css(pal.cieloHorizonte));
@@ -221,6 +224,7 @@ export function crearEscena(canvas, contenedor, cfg, tema = {}) {
     for (const o of contornos) o.visible = nv.contorno;
     ajustar();
   }
+  if (gamaBaja) aplicarCalidad(2); // arranca en 1,0 de resolución (con contorno); el sistema adaptativo puede seguir bajando
 
   /* ───────────── El cuadro ───────────── */
   /**

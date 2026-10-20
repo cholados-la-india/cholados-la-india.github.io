@@ -10,6 +10,8 @@ Todo el "cerebro" del juego (intentos, premios, códigos, vigencia, un código p
 |---|---|
 | `migrations/0001_tablas.sql` | Crea las tablas (`configuracion`, `partidas`, `codigos`), la vista `v_codigos` y los permisos |
 | `migrations/0002_funciones.sql` | Crea la lógica: las 6 funciones del juego y las ayudas internas |
+| `todo-junto.sql` | **GENERADO** (`npm run sql`): todo el SQL (0001 + 0002 + 0003 + auditoría) en un solo archivo para pegar de una vez |
+| `sql/auditoria_permisos.sql` | Revisa en tu servidor real que nada quedó abierto de más (solo lectura; debe decir «✅ Todo en orden») |
 | `migrations/0003_staff_admin.sql` | **Etapa 5:** el PIN de la caja, el canje, la lista de administradores y las 13 funciones de la caja y del panel |
 | `sql/consultas_utiles.sql` | Consultas para **mirar** y **cambiar** reglas desde el SQL Editor |
 | `sql/limpiar_pruebas.sql` | Borra partidas y códigos (solo antes del lanzamiento) |
@@ -62,6 +64,7 @@ Detalle de cada respuesta: comentarios de `web/js/api.js` y `0002_funciones.sql`
 ## Pruebas
 
 - `npm run probar-sql` — prueba **todo el SQL en tu computador** (con PGlite, un Postgres dentro de Node), sin Supabase: reglas, fechas, cupos, reservas, cooldown por celular y permisos. Debe terminar en `✅ TODO BIEN` (181 comprobaciones desde la Etapa 5: incluyen PIN, bloqueo, canje, permisos de administrador y el editor de configuración).
+- `npm run probar-ataques` (y `-- --completo`) — te portas como atacante contra el servidor real (30 pruebas); `npm run probar-canje` — 25 cajeros simultáneos contra un mismo código (te pide el PIN en tu terminal); `npm run revisar-secretos` — busca secretos en el repo y su historial; `npm run probar-mutaciones` — rompe el SQL a propósito y comprueba que las pruebas lo notan.
 - `npm run probar-seguridad` — **3 segundos, no deja datos**: comprueba contra el servidor real que las funciones del administrador no responden a la clave pública ni a un token inventado, y que `app.admins`/`app.staff` no se leen. Si dice que falta la migración 0003, pégala (ver «Etapa 5»).
 - `npm run probar-supabase` — prueba el servidor **real** como un celular y lo somete a concurrencia (100 ganadores a la vez, 5 reclamos con el mismo celular, 8 inicios simultáneos del mismo dispositivo). Deja datos de prueba: corre después `sql/limpiar_pruebas.sql`.
 
@@ -136,3 +139,41 @@ Tablas nuevas (privadas, como las otras): `app.admins` (quién es administrador)
 - Las funciones de administrador no responden a la clave pública (`anon`): hace falta una **sesión de Supabase Auth** *y además* estar en `app.admins`. Supabase da permiso a `anon` en las funciones nuevas por defecto; `0003` se lo quita explícitamente a las 11 (y `probar-sql` lo comprueba imitando ese permiso por defecto).
 - Los nombres y celulares los escriben los jugadores: el panel solo los muestra como **texto** (nunca como HTML) y el CSV neutraliza celdas que empiecen por `=`, `+`, `-` o `@` (para que Excel no ejecute fórmulas).
 - Compromiso conocido: como la dirección `/canje/` es pública, cualquiera podría gastar los 5 intentos de PIN y bloquear la caja unos minutos. No puede entrar, pero sí molestar; tú desbloqueas desde el panel. Limitar por IP queda para la Etapa 6.
+
+
+---
+
+## Etapa 6 — Endurecimiento: límites por red, auditoría de permisos y un solo archivo SQL
+
+Resumen del trabajo y de los resultados: [`documentos/reporte-etapa6.md`](../documentos/reporte-etapa6.md).
+
+### Cómo se actualiza el servidor desde ahora (¡un solo paso!)
+Cada vez que se cambie algo en `migrations/`, se genera un archivo único y se pega **una sola vez**:
+
+1. `npm run sql` (genera `supabase/todo-junto.sql`: 0001 + 0002 + 0003 + la auditoría).
+2. Supabase → SQL Editor → «+» → **Create a new snippet** → pega **todo** `todo-junto.sql` → **Run** (si sale un aviso amarillo, «Run this query»).
+3. Abajo debe aparecer **«✅ Todo en orden»**. Si en cambio lista problemas, cada fila dice qué está abierto de más (¡avísale a Claude!).
+
+Es seguro repetirlo: no borra datos ni el PIN ni la lista de administradores.
+
+### Qué cambió en el servidor
+| Qué | Detalle |
+|---|---|
+| **Límites por red (IP)** | Cada internet puede hacer hasta **150 partidas por hora** y reclamar hasta **8 códigos por día**. Frenan a un programa que invente miles de «dispositivos» sin molestar a la gente (son holgados: muchos comparten wifi o datos móviles). Se cambian en el panel → Configuración → «Seguridad: PIN de la caja y límites por red» (0 = apagado). El juego muestra un aviso y **no gasta ningún intento** cuando se llega al límite. |
+| **La IP no se guarda** | Se guarda solo una huella (hash con una sal secreta) y los contadores se borran a los 3 días. Si el servidor no logra reconocer la red, no se aplica ningún límite. |
+| **PIN por red** | Cada red tiene sus 5 intentos (bloqueo de 15 min solo para ella). El bloqueo general (que escala 5, 10, 20, 40, 60 min) solo salta con 30 PIN malos sumando todas las redes. Desbloquear en el panel limpia ambos. |
+| **Tope de celulares probados** | Con un mismo token ganador solo se pueden probar 5 celulares que ya tenían código (frena el «¿este número ya ganó?»). |
+| **Fechas de la temporada** | `estado().reglas.campana` las manda al juego (las pones en el panel → Configuración → Campaña). |
+| **`diag_red()`** | Función pública que le devuelve a quien llama los encabezados de red que ve el servidor (solo los suyos): sirve para verificar que los límites reconocen bien la red (`npm run probar-ataques`). |
+| **`rls_auto_enable()`** | La función que crea Supabase con «Enable automatic RLS» quedaba ejecutable por el público; se le quita el permiso (el evento sigue funcionando). |
+
+### El cupo diario (te recomiendo activarlo)
+Los límites por red frenan, pero quien tenga varias redes distintas todavía podría vaciar los 50 premios de una semana. El **cupo diario** acota el daño: si lo pones en 8, un programa solo puede agotar **los 8 de ese día** y los siguientes días vuelve a haber premios. Se activa en el panel → Configuración → «Cupo diario» (0 = apagado). Con poco tráfico, ajusta mirando el Resumen del panel las primeras semanas.
+
+### Pruebas nuevas
+- `npm run probar-sql` — ahora **233** comprobaciones (límites por red, PIN por red, tiempo, auditoría, el archivo único).
+- `npm run probar-mutaciones` — rompe el SQL a propósito (9 formas) y comprueba que las pruebas lo notan.
+- `npm run probar-ataques` (y `-- --completo`) — te portas como un atacante contra el servidor real (30 pruebas).
+- `npm run probar-canje` — 25 cajeros simultáneos intentan canjear el mismo código (**te pide el PIN en tu terminal**; nunca lo escribas en el chat).
+- `npm run revisar-secretos` — busca secretos en el repo y en todo su historial.
+- `supabase/sql/auditoria_permisos.sql` — la auditoría de permisos de tu servidor real (también va al final de `todo-junto.sql`).

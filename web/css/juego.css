@@ -164,3 +164,13 @@ button { font: inherit; color: inherit; cursor: pointer; border: 0; background: 
 @media (prefers-reduced-motion: reduce) {
   .cuenta.late, .golpe.on, .toast { animation-duration: 0.01s; }
 }
+
+/* Etapa 6 — textos legales visibles: temporada, condiciones y letra pequeña */
+.campana { text-align: center; font-size: 14px; color: #fbeaff; margin-top: -4px; }
+.campana b { color: #ffe86b; font-weight: 600; }
+.nota.chico { font-size: 12.5px; text-align: left; }
+.enlaces { flex-wrap: wrap; row-gap: 2px; }
+.condiciones { list-style: none; display: flex; flex-direction: column; gap: 10px; text-align: left; }
+.condiciones li { position: relative; padding-left: 18px; font-size: 14.5px; line-height: 1.35; color: #fbeaff; }
+.condiciones li::before { content: ""; position: absolute; left: 2px; top: 7px; width: 8px; height: 8px; border-radius: 50%; background: var(--lima); }
+.condiciones li b { color: #fff; font-weight: 600; }

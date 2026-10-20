@@ -10,6 +10,24 @@ export const LOCAL = {
   correoContacto: '[CORREO DE CONTACTO]',
 };
 
+const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+
+/** ["Un raspao personal", "Un cholado de 10 oz"] → "<b>un raspao personal</b> o <b>un cholado de 10 oz</b>" (los regalos los define el dueño en el panel). */
+export function listaRegalos(regalos) {
+  const nombres = (regalos?.length ? regalos : ['un regalo']).map((r) => `<b>${esc(r.charAt(0).toLowerCase() + r.slice(1))}</b>`);
+  return nombres.length === 1 ? nombres[0] : `${nombres.slice(0, -1).join(', ')} o ${nombres[nombres.length - 1]}`;
+}
+
+/** La temporada, en una frase corta, según las fechas que mande el servidor ('' si no hay fechas). `dia` = (ms) => "26 de octubre". */
+export function textoCampana(campana, dia) {
+  const ini = campana?.inicioISO ? Date.parse(campana.inicioISO) : null;
+  const fin = campana?.finISO ? Date.parse(campana.finISO) : null;
+  if (ini && fin) return `Campaña: del <b>${dia(ini)}</b> al <b>${dia(fin)}</b>`;
+  if (fin) return `Campaña: hasta el <b>${dia(fin)}</b>`;
+  if (ini) return `Campaña: desde el <b>${dia(ini)}</b>`;
+  return '';
+}
+
 export const T = {
   nombreJuego: 'Corre por tu cholado', // PROVISIONAL (candidatos: Atrapa tu cholado · Corre por tu cholado · Cholado Run)
   lema: '¡Atrapa tu cholado!',
@@ -21,6 +39,7 @@ export const T = {
     jugar: '¡A correr!',
     comoSeJuega: '¿Cómo se juega?',
     miCodigo: 'Ver mi código',
+    condiciones: 'Condiciones',
     premios: (n) => (n === 1 ? 'Queda <b>1</b> premio esta semana' : `Quedan <b>${n}</b> premios esta semana`),
     intentos: (n, max) => (n === 1 ? `Te queda <b>1</b> intento de ${max}` : `Te quedan <b>${n}</b> intentos de ${max}`),
     cargando: 'Cargando...',
@@ -36,8 +55,30 @@ export const T = {
       'Esquiva las cajas y salta las barras. Las <b>pilas altas</b> no se saltan: ¡esquívalas!',
       `Recoge al menos <b>${frutasMinimas} frutas</b> por el camino y llega a tu cholado antes de que se acabe el tiempo. Tienes <b>${vidas} vidas</b>.`,
     ],
-    premio: (compraMinima) => `Si llegas a la meta ganas un código para reclamar un regalo en el local: un <b>raspao personal</b> o un <b>cholado de 10 oz</b>, con una compra mínima de <b>${pesos(compraMinima)}</b> en productos (el regalo no cuenta).`,
+    premio: (compraMinima, regalos) => `Si llegas a la meta ganas un código para reclamar un regalo en el local: ${listaRegalos(regalos)}, con una compra mínima de <b>${pesos(compraMinima)}</b> en productos (el regalo no cuenta). Un regalo por código: <b>no es acumulable</b>.`,
     cerrar: 'Entendido',
+  },
+
+  // Las condiciones de la promoción (provisionales hasta la Etapa 7). Todo sale de lo que manda el servidor: si el dueño cambia
+  // una regla en el panel, este texto cambia solo.
+  condiciones: {
+    titulo: 'Condiciones de la promoción',
+    lista: (r, dia, intentos, premios, frutas) => [
+      `Para ganar hay que <b>llegar a la meta</b> recogiendo al menos <b>${frutas} frutas</b>. Tienes <b>${intentos} intentos</b> por semana.`,
+      `Cada código da <b>un solo regalo</b>: ${listaRegalos(r.regalos)}. <b>No es acumulable</b>: con una compra de ${pesos(r.compraMinima * 2)} también es un solo regalo.`,
+      `Se necesita una compra mínima de <b>${pesos(r.compraMinima)}</b> en productos pagados; el regalo no cuenta.`,
+      `El código vale <b>${r.vigenciaDias} días</b> desde que lo recibes (en tu código aparece hasta cuándo), se canjea <b>una sola vez</b> y <b>solo en el local</b>.`,
+      `Se entrega <b>un código por celular cada ${r.diasEntreCodigosPorCelular} días</b>.`,
+      premios ? `Hay <b>${premios} premios por semana</b>; se renuevan los lunes a las 12:00 a. m. (hora de Bogotá). Cuando se acaban, toca esperar al lunes.` : null,
+      textoCampana(r.campana, dia) || 'Por ahora la campaña no tiene fechas anunciadas: puede terminar o cambiar, y lo avisaremos en nuestras redes (@cholados.laindia).',
+    ].filter(Boolean),
+    provisional: '<i>Condiciones provisionales: el texto definitivo se publicará antes del lanzamiento.</i>',
+    cerrar: 'Entendido',
+  },
+
+  limiteRed: {
+    partidas: 'Hay muchas partidas desde tu red ahora mismo. Espera un rato e intenta de nuevo.',
+    codigos: 'Desde tu red ya se reclamaron muchos premios hoy. Intenta más tarde o desde otra red.',
   },
 
   juego: {
@@ -56,6 +97,8 @@ export const T = {
     celular: 'Tu celular (10 dígitos)',
     consentimiento: 'Autorizo a Cholados La India a guardar mi nombre y celular para entregarme y controlar mi premio (Ley 1581 de 2012).',
     verPolitica: 'Ver política de datos',
+    resumen: (r) => `Tu código vale <b>${r.vigenciaDias} días</b> · un regalo por código, <b>no acumulable</b> · compra mínima de <b>${pesos(r.compraMinima)}</b>.`,
+    verCondiciones: 'Ver condiciones',
     boton: 'Reclamar mi premio',
     enviando: 'Reclamando...',
     errores: {
@@ -69,7 +112,7 @@ export const T = {
     },
     politica: {
       titulo: 'Política de datos',
-      texto: (r, c) => `Guardamos tu nombre y tu celular solo para entregarte y controlar tu premio de esta campaña. Responsable: <b>${r}</b>. Para consultar, corregir o borrar tus datos escribe a <b>${c}</b>. <i>(Texto provisional: pendiente de revisión.)</i>`,
+      texto: (r, c) => `Guardamos tu nombre y tu celular solo para entregarte y controlar tu premio de esta campaña (incluye evitar que un mismo número reclame varias veces). Se almacenan en un servicio en la nube (Supabase, fuera de Colombia). Responsable: <b>${r}</b>. Para consultar, corregir o borrar tus datos escribe a <b>${c}</b>. <i>(Texto provisional: pendiente de revisión.)</i>`,
     },
   },
 
@@ -81,11 +124,13 @@ export const T = {
     canjeado: (fecha) => `Este código ya fue <b>canjeado</b> el ${fecha}.`,
     desactivado: 'Este código fue <b>desactivado</b>.',
     otroCupon: (cuando) => `Podrás reclamar otro cupón a partir del <b>${cuando}</b>.`,
-    pasos: (compraMinima) => [
+    pasos: (compraMinima, regalos) => [
       `Ve al local y muestra este código en caja.`,
       `Compra mínimo <b>${pesos(compraMinima)}</b> en productos (el regalo no cuenta).`,
-      `Elige tu regalo: <b>un raspao personal</b> o <b>un cholado de 10 oz</b>.`,
+      `Elige tu regalo: ${listaRegalos(regalos)}.`,
+      `Un regalo por código: <b>no es acumulable</b> (con ${pesos(compraMinima * 2)} tampoco te dan dos).`,
     ],
+    condiciones: 'Ver condiciones',
     copiar: 'Copiar código',
     copiado: '¡Copiado!',
     consejo: 'Tómale una captura de pantalla para no perderlo.',
@@ -130,6 +175,8 @@ export const T = {
   campanaInactiva: {
     titulo: 'Por ahora no hay campaña',
     mensaje: 'Pronto abrimos una nueva. ¡Síguenos en Instagram para enterarte!',
+    empieza: (dia) => `La próxima campaña empieza el <b>${dia}</b>.`,
+    termino: (dia) => `La última campaña terminó el <b>${dia}</b>.`,
   },
 };
 

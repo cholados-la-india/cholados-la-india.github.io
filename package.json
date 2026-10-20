@@ -11,7 +11,12 @@
     "simular": "node tools/simular.mjs",
     "probar-sql": "node tools/probar-sql.mjs",
     "probar-supabase": "node tools/probar-supabase.mjs",
-    "probar-seguridad": "node tools/probar-supabase.mjs --rapido"
+    "probar-seguridad": "node tools/probar-supabase.mjs --rapido",
+    "probar-mutaciones": "node tools/probar-mutaciones.mjs",
+    "revisar-secretos": "node tools/revisar-secretos.mjs",
+    "sql": "node tools/juntar-sql.mjs",
+    "probar-ataques": "node tools/probar-ataques.mjs",
+    "probar-canje": "node tools/probar-canje.mjs"
   },
   "devDependencies": {
     "@electric-sql/pglite": "0.5.10",

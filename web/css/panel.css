@@ -227,3 +227,17 @@ input.mayus { text-transform: uppercase; letter-spacing: 0.06em; }
   .fila-codigo { grid-template-columns: 210px auto 1fr auto; }
   .fila-codigo .botones { grid-column: auto; flex-wrap: nowrap; justify-content: flex-end; }
 }
+
+/* ───────── diagnóstico del celular (web/diagnostico/) ───────── */
+.sonda-seguro { position: fixed; top: 0; left: 0; width: 0; height: 0; padding-top: env(safe-area-inset-top, 0px); padding-bottom: env(safe-area-inset-bottom, 0px); visibility: hidden; }
+.grupo-diag { display: grid; gap: 6px; margin-top: 8px; }
+.grupo-diag h3 { font-size: 18px; border-bottom: 2px solid var(--linea); padding-bottom: 4px; }
+.fila-diag { display: grid; grid-template-columns: 26px 1fr; gap: 6px; align-items: start; font-size: 15px; overflow-wrap: anywhere; }
+.marca-diag { font-family: var(--titulos); font-size: 20px; line-height: 1.1; text-align: center; }
+.marca-diag.si { color: var(--verde); }
+.marca-diag.no { color: var(--rojo); }
+.marca-diag.quiza { color: var(--naranja); }
+.marca-diag.info { color: var(--suave); }
+.area-gestos { display: grid; place-items: center; min-height: 160px; border: 3px dashed var(--magenta); border-radius: 18px; background: #fff0f7; color: var(--magenta-oscuro); touch-action: none; user-select: none; -webkit-user-select: none; text-align: center; padding: 12px; }
+.lienzo-diag { width: 100%; max-width: 280px; border-radius: 12px; display: block; margin: 8px auto; }
+.oculto-diag { position: fixed; left: -9999px; top: 0; opacity: 0; }
