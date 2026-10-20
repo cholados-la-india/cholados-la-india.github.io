@@ -8,6 +8,7 @@ import { fechaCortaBogota, fechaDiaBogota, fechaHoraBogota, formatoRestante } fr
 /* ───────────── Iconos (SVG en línea, sin imágenes) ───────────── */
 const SVG_VASO = '<svg viewBox="0 0 24 32" aria-hidden="true"><path class="s-pit" d="M15 9 L20.5 1.5"/><path class="s-vaso" d="M3.5 13h17l-2.6 17.2a1.6 1.6 0 0 1-1.6 1.3H7.7a1.6 1.6 0 0 1-1.6-1.3z"/><path class="s-baja" d="M5.2 21h13.6l-.9 6.8a1 1 0 0 1-1 .9H7.1a1 1 0 0 1-1-.9z"/><circle class="s-bola" cx="12" cy="10.5" r="7.2"/></svg>';
 const SVG_FRESA = '<svg viewBox="0 0 24 24" aria-hidden="true"><path class="f-cuerpo" d="M12 22.5C5.5 18 4 10.5 12 8c8 2.5 6.5 10 0 14.5z"/><path class="f-hoja" d="M7.5 8 12 3.2 16.5 8 12 9.8z"/><circle class="f-pepa" cx="9.6" cy="13.5" r=".9"/><circle class="f-pepa" cx="14.2" cy="13" r=".9"/><circle class="f-pepa" cx="12" cy="17" r=".9"/></svg>';
+const SVG_SONIDO = '<svg viewBox="0 0 24 24" aria-hidden="true"><path class="on" d="M4 9v6h4l5 4V5L8 9H4z"/><path class="on" d="M16 8.5a5 5 0 0 1 0 7M18.5 6a8.5 8.5 0 0 1 0 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path class="x" d="M4 9v6h4l5 4V5L8 9H4z"/><path class="x" d="M16 9l5 6M21 9l-5 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>';
 const SVG_PAUSA = '<svg viewBox="0 0 18 18" aria-hidden="true"><rect x="3" y="2" width="4" height="14" rx="1.2"/><rect x="11" y="2" width="4" height="14" rx="1.2"/></svg>';
 
 const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -41,6 +42,7 @@ export function crearUI(raiz, cfg) {
   const golpe = $('#golpe');
   const manejadores = {};
   let pantallaActual = null;
+  let sonidoActivo = true; // lo fija main.js con marcarSonido()
 
   /* ───────────── HUD ───────────── */
   hud.innerHTML = `
@@ -70,6 +72,7 @@ export function crearUI(raiz, cfg) {
     const reloj = `${Math.floor(seg / 60)}:${String(seg % 60).padStart(2, '0')}`;
     if (reloj !== ultimo.reloj) {
       elReloj.textContent = reloj;
+      elReloj.classList.toggle('urgente', seg <= 10 && seg > 0); // los últimos 10 segundos laten en amarillo
       ultimo.reloj = reloj;
     }
     const barra = Math.round(progreso * 1000) / 10;
@@ -81,6 +84,11 @@ export function crearUI(raiz, cfg) {
     if (p.frutas !== ultimo.frutas || minimo !== ultimo.minimo) {
       elFrutas.textContent = minimo > 0 ? `${p.frutas} / ${minimo}` : p.frutas; // "8 / 25": recogidas / mínimas para ganar
       elFrutasCaja.classList.toggle('ok', minimo > 0 && p.frutas >= minimo); // se pone verde al llegar al mínimo
+      if (ultimo.frutas >= 0 && p.frutas > ultimo.frutas) {
+        elFrutasCaja.classList.remove('pop'); // saltico cada vez que se recoge una fruta
+        void elFrutasCaja.offsetWidth;
+        elFrutasCaja.classList.add('pop');
+      }
       ultimo.frutas = p.frutas;
       ultimo.minimo = minimo;
     }
@@ -114,6 +122,7 @@ export function crearUI(raiz, cfg) {
     inicio({ estado, personaje, mostrarSelector, tieneCodigo }) {
       return `
       <section class="pantalla inicio">
+        <button type="button" class="sonido-btn${sonidoActivo ? '' : ' off'}" data-accion="sonido" aria-label="${T.juego.sonido}" aria-pressed="${sonidoActivo}">${SVG_SONIDO}</button>
         <header class="inicio-cabeza">
           <img class="logo" src="assets/marca/logo.png" alt="${esc(T.negocio)}" width="380" height="157">
           <h1 class="titulo-juego">${esc(T.nombreJuego)}</h1>
@@ -158,6 +167,7 @@ export function crearUI(raiz, cfg) {
       <section class="pantalla centro fondo"><div class="panel">
         <h2>${T.juego.pausa}</h2>
         <button type="button" class="boton grande" data-accion="continuar">${T.juego.continuar}</button>
+        <button type="button" class="boton secundario" data-accion="sonido" data-sonido-texto>${sonidoActivo ? T.juego.sonidoSi : T.juego.sonidoNo}</button>
         <button type="button" class="boton secundario" data-accion="salir">${T.juego.salir}</button>
       </div></section>`,
 
@@ -399,6 +409,15 @@ export function crearUI(raiz, cfg) {
       }, 1800);
     }
   }
+  /** Pone los botones de sonido en «sí» o «no» (el del inicio y el de la pausa). */
+  function marcarSonido(on) {
+    sonidoActivo = Boolean(on);
+    for (const b of contenedor.querySelectorAll('.sonido-btn')) {
+      b.classList.toggle('off', !sonidoActivo);
+      b.setAttribute('aria-pressed', String(sonidoActivo));
+    }
+    for (const b of contenedor.querySelectorAll('[data-sonido-texto]')) b.textContent = sonidoActivo ? T.juego.sonidoSi : T.juego.sonidoNo;
+  }
   function toast(texto) {
     const t = document.createElement('div');
     t.className = 'toast';
@@ -423,6 +442,7 @@ export function crearUI(raiz, cfg) {
     errorFormulario,
     enviando,
     copiarCodigo,
+    marcarSonido,
     toast,
     alAccion(fn) {
       manejadores.accion = fn;

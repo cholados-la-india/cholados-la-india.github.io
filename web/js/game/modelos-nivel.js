@@ -51,18 +51,24 @@ export function crearArcoMeta() {
   const p = [];
   const mitad = 2.55; // los postes quedan fuera de los bordillos (±2,0)
   for (const lado of [-1, 1]) {
-    for (let i = 0; i < 8; i++) {
+    for (let i = 0; i < 10; i++) {
       p.push(pieza(cil(0.2, 0.22, 0.5, 10), i % 2 ? 0xb6e80a : 0xd8287f, [lado * mitad, 0.25 + i * 0.5, 0]));
     }
-    p.push(pieza(esf(0.3, 10, 8), 0xffd21f, [lado * mitad, 4.15, 0]));
+    p.push(pieza(esf(0.3, 10, 8), 0xffd21f, [lado * mitad, 5.15, 0]));
   }
-  // viga superior a franjas
+  // viga a franjas y, encima, el tablero del cartel (ciruela con marco amarillo): el cartel grande se lee desde lejos
   const franjas = 11;
   const ancho = mitad * 2 + 0.6;
   for (let i = 0; i < franjas; i++) {
     const w = ancho / franjas;
-    p.push(pieza(caja(w, 0.55, 0.45), i % 2 ? 0xb6e80a : 0xd8287f, [-ancho / 2 + w * (i + 0.5), 3.75, 0]));
+    p.push(pieza(caja(w, 0.55, 0.45), i % 2 ? 0xb6e80a : 0xd8287f, [-ancho / 2 + w * (i + 0.5), 3.55, 0]));
   }
+  p.push(pieza(caja(4.95, 1.5, 0.12), 0xffd21f, [0, 4.6, -0.04]));
+  p.push(pieza(caja(4.7, 1.3, 0.2), 0x3a0f33, [0, 4.6, 0]));
+  // banderines colgando de la viga
+  [0xd8287f, 0xffd21f, 0x66c3e0, 0xb6e80a, 0xff8a1f].forEach((c, k) => {
+    for (let i = 0; i < 3; i++) p.push(pieza(new THREE.ConeGeometry(0.17, 0.4, 3), c, [-2.2 + (k * 3 + i) * 0.3143, 3.05, 0.2], [Math.PI, 0, 0], [1, 1, 0.25]));
+  });
   // Línea de meta sobre el piso: tablero de ajedrez
   const n = 12;
   const c = (mitad * 2) / n;
@@ -77,29 +83,29 @@ export function crearArcoMeta() {
 /** Cartel "¡META!" como plano con textura de canvas (se dibuja con la fuente del juego). */
 export function crearCartelMeta(texto) {
   const lienzo = document.createElement('canvas');
-  lienzo.width = 512;
-  lienzo.height = 128;
+  lienzo.width = 1024;
+  lienzo.height = 256;
   const ctx = lienzo.getContext('2d');
   const dibujar = () => {
-    ctx.clearRect(0, 0, 512, 128);
-    ctx.font = '88px "Lilita One", system-ui, sans-serif';
+    ctx.clearRect(0, 0, 1024, 256);
+    ctx.font = '190px "Lilita One", system-ui, sans-serif';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
     ctx.lineJoin = 'round';
-    ctx.lineWidth = 14;
-    ctx.strokeStyle = '#3a0f33';
-    ctx.strokeText(texto, 256, 70);
+    ctx.lineWidth = 22;
+    ctx.strokeStyle = '#d8287f';
+    ctx.strokeText(texto, 512, 138);
     ctx.fillStyle = '#ffe86b';
-    ctx.fillText(texto, 256, 70);
+    ctx.fillText(texto, 512, 138);
     tex.needsUpdate = true;
   };
   const tex = new THREE.CanvasTexture(lienzo);
   tex.colorSpace = THREE.SRGBColorSpace;
   dibujar();
   // Si la fuente aún no cargó, se vuelve a dibujar cuando esté lista
-  document.fonts?.load('88px "Lilita One"').then(dibujar).catch(() => {});
-  const m = new THREE.Mesh(new THREE.PlaneGeometry(3.4, 0.85), new THREE.MeshBasicMaterial({ map: tex, transparent: true, fog: false }));
-  m.position.set(0, 3.75, 0.25);
+  document.fonts?.load('190px "Lilita One"').then(dibujar).catch(() => {});
+  const m = new THREE.Mesh(new THREE.PlaneGeometry(4.5, 1.125), new THREE.MeshBasicMaterial({ map: tex, transparent: true, fog: false }));
+  m.position.set(0, 4.6, 0.12);
   return m;
 }
 

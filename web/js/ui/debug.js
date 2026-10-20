@@ -115,6 +115,11 @@ export function iniciarDebug({ cfg, escena, api, hooks, reiniciar, obtenerPartid
     <div class="caja" style="white-space:normal">Un bot con tres niveles de habilidad juega con la config actual. Sirve para comparar cambios; la verdad la dan tus partidas reales.</div>
     <button class="b" id="dbg-sim">Simular 1.000 partidas × 3 perfiles</button>
     <div class="caja" id="dbg-sim-res">—</div>
+    <h3>Ver de cerca (modelos)</h3>
+    <div class="caja" style="white-space:normal">Acerca la cámara para revisar los personajes (se ve mejor en el inicio, donde miran hacia ti). Esconde las pantallas hasta que pulses «Cámara normal».</div>
+    <button class="b" data-cam="cholado:frente">Choladito: frente</button><button class="b" data-cam="cholado:espalda">Choladito: espalda</button>
+    <button class="b" data-cam="india:frente">La India: frente</button><button class="b" data-cam="india:espalda">La India: espalda</button>
+    <button class="b" data-cam="normal">Cámara normal</button>
     <h3>Config</h3>
     <button class="b" id="dbg-copiar">Copiar config (solo lo que cambiaste)</button><button class="b" id="dbg-restablecer">Restablecer valores de config.js</button>
     <textarea id="dbg-texto" readonly placeholder="Aquí aparece lo que cambiaste"></textarea>`;
@@ -152,6 +157,27 @@ export function iniciarDebug({ cfg, escena, api, hooks, reiniciar, obtenerPartid
   $('#dbg-intentos').addEventListener('change', (e) => { api.debug?.fijar({ intentosPorSemana: Number(e.target.value) }); reiniciar(); });
   $('#dbg-semana').addEventListener('click', () => { api.debug?.reiniciarSemana(); reiniciar(); });
   $('#dbg-borrar-api').addEventListener('click', () => { api.debug?.borrarTodo(); localStorage.removeItem('cholado-mi-codigo'); location.reload(); });
+
+  /* Ver los modelos de cerca (Fase B) */
+  const CAMARAS = {
+    cholado: { y: 1.5, mira: 1.25, d: 3.0 },
+    india: { y: 1.7, mira: 1.3, d: 3.8 },
+  };
+  for (const b of panel.querySelectorAll('[data-cam]')) {
+    b.addEventListener('click', () => {
+      const [quien, lado] = b.dataset.cam.split(':');
+      const capa = document.getElementById('pantalla');
+      if (quien === 'normal') {
+        escena.fijarCamara(null);
+        capa.style.visibility = '';
+        return;
+      }
+      const c = CAMARAS[quien];
+      escena.usarPersonaje(quien);
+      escena.fijarCamara({ pos: [0, c.y, lado === 'frente' ? c.d : -c.d], mira: [0, c.mira, 0] });
+      capa.style.visibility = 'hidden';
+    });
+  }
 
   /* Estadísticas */
   function pintarStats() {

@@ -7,6 +7,7 @@ import { CONFIG } from './config.js';
 import { crearControles } from './game/controles.js';
 import { crearEscena } from './game/escena.js';
 import { crearPartida, moverCarril, paso, progreso, saltar, tiempoRestante } from './game/logica.js';
+import { audio } from './audio.js';
 import { reloj } from './reloj.js';
 import { T } from './textos.js';
 import { crearUI } from './ui/ui.js';
@@ -22,6 +23,21 @@ const raiz = document.getElementById('escena');
 api.configurar?.(cfg);
 
 const ui = crearUI(raiz, cfg);
+ui.marcarSonido(audio.encendido);
+// Los navegadores solo dejan sonar después de un toque o una tecla: se desbloquea con el primero
+for (const evento of ['pointerdown', 'keydown']) document.addEventListener(evento, () => audio.activar(), { capture: true });
+
+/** Qué suena con cada cosa que pasa en la partida (los eventos los genera la lógica). */
+function sonar(e) {
+  if (e.tipo === 'cuenta') audio.cuenta();
+  else if (e.tipo === 'ya') audio.ya();
+  else if (e.tipo === 'salto') audio.salto();
+  else if (e.tipo === 'carril') audio.carril();
+  else if (e.tipo === 'aterrizo') audio.aterrizo();
+  else if (e.tipo === 'fruta') audio.fruta();
+  else if (e.tipo === 'choque') audio.choque();
+  else if (e.tipo === 'meta') audio.meta();
+}
 let escena;
 try {
   escena = crearEscena(document.getElementById('lienzo'), raiz, cfg, { textoMeta: T.juego.meta });
@@ -110,6 +126,7 @@ async function irInicio(recargar = true) {
   terminada = false;
   ui.mostrarHUD(false);
   ui.mostrarCuenta(null);
+  audio.musicaOff();
   if (recargar || !estadoServidor) {
     ui.mostrar('cargando');
     try {
@@ -155,6 +172,9 @@ async function iniciarJuego() {
     ui.ocultar();
     ui.mostrarHUD(true);
     ui.mostrarCuenta(T.juego.cuenta[0]);
+    audio.activar();
+    audio.musicaOn(); // la música suena mientras se juega, desde la cuenta atrás
+    audio.cuenta();
   } catch {
     ui.toast(T.inicio.errorConexion);
   } finally {
@@ -167,8 +187,13 @@ function alternarPausa(forzar) {
   const quiere = forzar ?? !pausado;
   if (quiere === pausado) return;
   pausado = quiere;
-  if (pausado) ui.mostrar('pausa');
-  else ui.ocultar();
+  if (pausado) {
+    ui.mostrar('pausa');
+    audio.pausar();
+  } else {
+    ui.ocultar();
+    audio.reanudar();
+  }
 }
 // Celular acostado: se tapa con un aviso (CSS, .gira) y se pausa, para no perder la partida al girarlo sin querer
 const apaisado = window.matchMedia('(orientation: landscape) and (max-height: 500px) and (pointer: coarse)');
@@ -177,12 +202,16 @@ const alGirar = (e) => e.matches && alternarPausa(true);
 if (apaisado.addEventListener) apaisado.addEventListener('change', alGirar);
 else apaisado.addListener?.(alGirar); // iOS < 14
 document.addEventListener('visibilitychange', () => {
+  if (document.hidden) audio.pausar(); // el sonido se calla en cuanto se sale de la página
+  else if (!pausado) audio.reanudar();
   if (document.hidden && cfg.desarrollo.autoPausa) alternarPausa(true); // al cambiar de app o apagar la pantalla, se pausa
 });
 
 /* ───────────── Fin de la partida ───────────── */
 function alTerminarPartida(p) {
   terminada = true;
+  audio.musicaOff();
+  if (p.estado === 'perdio' && p.motivoFin !== 'frutas') audio.perdio();
   const resumen = {
     gano: p.estado === 'gano',
     motivo: p.motivoFin, // 'vidas' | 'frutas' | null
@@ -308,6 +337,7 @@ async function reclamar() {
 
 /* ───────────── Acciones de los botones ───────────── */
 ui.alAccion((accion, el) => {
+  if (accion !== 'sonido' && accion !== 'pausa') audio.click();
   if (accion.startsWith('personaje:')) {
     const p = accion.split(':')[1];
     escena.usarPersonaje(p);
@@ -344,6 +374,9 @@ ui.alAccion((accion, el) => {
       break;
     case 'continuar':
       alternarPausa(false);
+      break;
+    case 'sonido':
+      ui.marcarSonido(audio.alternar());
       break;
     case 'salir':
       if (ui.pantalla === 'ya-tienes-cupon') olvidarVictoria(); // ese celular no puede reclamar otro: ya no hay nada pendiente
@@ -401,11 +434,16 @@ function tick(dtReal) {
       else if (e.tipo === 'ya') {
         ui.mostrarCuenta(T.juego.cuenta[3]);
         setTimeout(() => partida && partida.estado === 'jugando' && ui.mostrarCuenta(null), 700);
+      } else if (e.tipo === 'meta') {
+        ui.mostrarCuenta(T.juego.meta); // «¡META!» grande, con la misma animación de la cuenta atrás
+        setTimeout(() => ui.mostrarCuenta(null), 1100);
+        if (navigator.userActivation?.hasBeenActive) navigator.vibrate?.([60, 40, 60, 40, 140]);
       } else if (e.tipo === 'choque') {
         ui.destelloGolpe();
         if (navigator.userActivation?.hasBeenActive) navigator.vibrate?.(70); // vibra solo si hay un toque previo (Android; iOS no vibra)
       }
     }
+    for (const e of partida.eventos) sonar(e);
     if (partida.estado !== antes && (partida.estado === 'gano' || partida.estado === 'perdio')) alTerminarPartida(partida);
     if (!hudOculto()) ui.actualizarHUD(partida, tiempoRestante(partida), progreso(partida));
   }
@@ -422,6 +460,6 @@ requestAnimationFrame((t) => {
 });
 
 if (DEBUG) {
-  window.__cholado = { cfg, escena, api, tick, pausar: alternarPausa, jugar: iniciarJuego, inicio: irInicio, get partida() { return partida; } };
+  window.__cholado = { cfg, escena, api, audio, tick, pausar: alternarPausa, jugar: iniciarJuego, inicio: irInicio, get partida() { return partida; } };
   import('./ui/debug.js').then((m) => m.iniciarDebug({ cfg, escena, api, hooks, reiniciar: () => irInicio(true), obtenerPartida: () => partida }));
 }

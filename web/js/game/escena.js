@@ -15,6 +15,8 @@ const Z_LEJOS = -78;
 const CAMARA_INICIO = { pos: [0, 2.1, 4.6], mira: [0, 0.55, 0] };
 const COLORES_CONFETI = [0xd8287f, 0xb6e80a, 0x66c3e0, 0xffe86b, 0xff8a1f, 0xffffff];
 const MAX = { cajaBaja: 26, pilaAlta: 18, barraBaja: 6, fresa: 40, mango: 40 };
+// Festejo al llegar a la meta: [segundos desde que ganó, x, y] de cada nueva ola de confeti (además del primer chorro)
+const ONDAS_META = [[0.25, -2.2, 2.0], [0.5, 2.2, 2.0], [0.8, 0, 2.8], [1.1, -1.3, 1.8], [1.35, 1.3, 1.8]];
 
 export function crearEscena(canvas, contenedor, cfg, tema = {}) {
   // Celulares de entrada (Chrome/Android informa la memoria aproximada; el iPhone no la informa, así que nunca cae aquí):
@@ -80,6 +82,16 @@ export function crearEscena(canvas, contenedor, cfg, tema = {}) {
   const iPalmas = crearMalla(M.palmera, { instancias: palmas.length, jugable: false });
   const iSombrillas = crearMalla(M.sombrilla, { instancias: sombrillas.length, jugable: false });
   const iPinas = crearMalla(M.pina, { instancias: pinas.length, jugable: false });
+  // Más ambiente (Fase B): gente animando, puestos, cuerdas de banderines y nubes de atardecer
+  const gente = [[-3.5, 16], [3.5, 22], [-3.6, 36], [3.5, 49], [-3.4, 57], [3.6, 77]]; // [x, fase]
+  const puestos = [[-5.3, 14], [5.3, 42], [-5.5, 66]];
+  const cuerdas = [30, 70];
+  const nubes = [[-34, 24, -100, 4.2], [-18, 17, -98, 3.0], [27, 21, -100, 3.6], [42, 15, -96, 2.6], [8, 31, -102, 3.0]]; // [x, y, z, escala]
+  const iGente = crearMalla(M.gente, { instancias: gente.length, jugable: false });
+  const iPuestos = crearMalla(M.puesto, { instancias: puestos.length, jugable: false });
+  const iCuerdas = crearMalla(M.banderines, { instancias: cuerdas.length, jugable: false });
+  const iNubes = new THREE.InstancedMesh(M.nube, new THREE.MeshBasicMaterial({ vertexColors: true, fog: false }), nubes.length);
+  iNubes.frustumCulled = false;
   const iRayas = crearMalla(fusionar([pieza(M.caja(0.09, 0.02, 1.1), pal.linea)]), { instancias: nRayas * 2, conContorno: false });
   const iCajas = crearMalla(M.cajaFruta, { instancias: MAX.cajaBaja });
   const iPilas = crearMalla(crearPilaAlta(), { instancias: MAX.pilaAlta });
@@ -87,7 +99,7 @@ export function crearEscena(canvas, contenedor, cfg, tema = {}) {
   const iFresas = crearMalla(M.fresa, { instancias: MAX.fresa });
   const iMangos = crearMalla(M.mango, { instancias: MAX.mango });
   const todasInstancias = [iPalmas, iSombrillas, iPinas, iRayas, iCajas, iPilas, iBarras, iFresas, iMangos];
-  escena.add(...todasInstancias);
+  escena.add(...todasInstancias, iGente, iPuestos, iCuerdas, iNubes);
 
   const maxSombras = 1 + MAX.cajaBaja + MAX.pilaAlta;
   const sombras = new THREE.InstancedMesh(
@@ -105,7 +117,7 @@ export function crearEscena(canvas, contenedor, cfg, tema = {}) {
   const premio = crearMalla(M.cholado.cuerpo, { geoContorno: M.cholado.contornoCuerpo });
   premio.add(new THREE.Mesh(M.cholado.cascaron, new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.22, depthWrite: false })));
   premio.scale.setScalar(1.55);
-  premio.position.set(0, 4.05, 0);
+  premio.position.set(0, 4.65, 0);
   premio.rotation.y = Math.PI; // la carita mira hacia quien llega
   meta.add(premio);
   meta.visible = false;
@@ -115,7 +127,7 @@ export function crearEscena(canvas, contenedor, cfg, tema = {}) {
   const plastico = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.22, depthWrite: false });
   function ensamblar(modelo) {
     const g = new THREE.Group();
-    const partes = { g, cuerpo: crearMalla(modelo.cuerpo, { geoContorno: modelo.contornoCuerpo }) };
+    const partes = { g, escala: modelo.escala, cuerpo: crearMalla(modelo.cuerpo, { geoContorno: modelo.contornoCuerpo }) };
     if (modelo.cascaron) partes.cuerpo.add(new THREE.Mesh(modelo.cascaron, plastico));
     g.add(partes.cuerpo);
     for (const [nombre, geo] of [['brazoI', modelo.brazo], ['brazoD', modelo.brazo], ['piernaI', modelo.pierna], ['piernaD', modelo.pierna]]) {
@@ -133,8 +145,26 @@ export function crearEscena(canvas, contenedor, cfg, tema = {}) {
   let actual = cfg.desarrollo.personajeInicial in personajes ? cfg.desarrollo.personajeInicial : 'india';
   personajes[actual].g.visible = true;
 
+  /* ───────────── Restos del choque: la caja golpeada sale volando (hasta 4 a la vez) ───────────── */
+  const MAX_RESTOS = 4;
+  const iRestos = crearMalla(M.cajaFruta, { instancias: MAX_RESTOS });
+  escena.add(iRestos);
+  fijarCuenta(iRestos, 0);
+  const restos = Array.from({ length: MAX_RESTOS }, () => ({ vida: 0, vidaMax: 1, x: 0, y: 0, z: 0, vx: 0, vy: 0, vz: 0, rx: 0, rz: 0, wx: 0, wz: 0, s: 1 }));
+  function lanzarResto(o, xJugador) {
+    const q = restos.find((r) => r.vida <= 0) ?? restos[0];
+    const x = o.carril < 0 ? xJugador : (o.carril - 1) * cfg.carriles.ancho;
+    const lado = x > xJugador + 0.05 ? 1 : x < xJugador - 0.05 ? -1 : Math.random() < 0.5 ? -1 : 1;
+    Object.assign(q, {
+      vida: 0.95, vidaMax: 0.95, x, y: 0.35, z: 0,
+      vx: lado * (3.2 + Math.random()), vy: 5.5 + Math.random() * 1.5, vz: -3,
+      rx: 0, rz: 0, wx: 5 + Math.random() * 4, wz: lado * (6 + Math.random() * 4),
+      s: o.tipo === 'pilaAlta' ? 1.15 : o.tipo === 'barraBaja' ? 0.85 : 1,
+    });
+  }
+
   /* ───────────── Partículas (confeti, polvo, trozos de caja y de fruta) ───────────── */
-  const NP = 140;
+  const NP = 220;
   const pMesh = new THREE.InstancedMesh(new THREE.BoxGeometry(1, 1, 1), new THREE.MeshBasicMaterial({ color: 0xffffff, fog: false }), NP);
   pMesh.frustumCulled = false;
   const blanco = new THREE.Color(0xffffff);
@@ -156,7 +186,7 @@ export function crearEscena(canvas, contenedor, cfg, tema = {}) {
       q.y = y;
       q.z = z;
       q.vx = Math.cos(a) * vel * r;
-      q.vz = Math.sin(a) * vel * r * 0.6;
+      q.vz = Math.sin(a) * vel * r * 0.25 - 0.4; // casi no vienen hacia la cámara (si no, tapan la pantalla)
       q.vy = arriba + Math.random() * vel * 0.7;
       q.s = tam * (0.6 + Math.random() * 0.8);
       q.g = gravedad;
@@ -187,12 +217,15 @@ export function crearEscena(canvas, contenedor, cfg, tema = {}) {
   let modoCam = 0; // 0 = pantalla de inicio · 1 = jugando
   let temblor = 0;
   let metaCelebrada = false;
+  let tropiezo = 0; // segundos que le quedan al tambaleo después de un choque
+  let ondaMeta = 0; // cuántas olas de confeti del festejo ya salieron
   let calidad = 0;
   let ema = 1 / 60; // tiempo medio por cuadro (promedio móvil)
   let cuadrosDesdeCambio = 0;
   let emaAntes = 0;
   let revisando = false; // acabamos de bajar la calidad y falta ver si sirvió
   let calidadBloqueada = false;
+  let camaraManual = null; // { pos: [x, y, z], mira: [x, y, z] } o null
   let dprBase = Math.min(window.devicePixelRatio || 1, cfg.rendimiento.pixelRatioMax);
   renderer.setPixelRatio(dprBase);
 
@@ -243,6 +276,10 @@ export function crearEscena(canvas, contenedor, cfg, tema = {}) {
     palmas.forEach(([x, f], i) => poner(iPalmas, i, x, 0, zLejos(f, D), 1, i * 1.7));
     sombrillas.forEach(([x, f], i) => poner(iSombrillas, i, x, 0, zLejos(f, D), 1, i));
     pinas.forEach(([x, f], i) => poner(iPinas, i, x, 0, zLejos(f, D), 1, i));
+    gente.forEach(([x, f], i) => poner(iGente, i, x, Math.abs(Math.sin(idleT * 5 + i * 1.3)) * 0.18, zLejos(f, D), 1, x < 0 ? -Math.PI / 2 : Math.PI / 2)); // saltan de emoción mirando a la pista
+    puestos.forEach(([x, f], i) => poner(iPuestos, i, x, 0, zLejos(f, D), 1, x < 0 ? -Math.PI / 2 : Math.PI / 2));
+    cuerdas.forEach((f, i) => poner(iCuerdas, i, 0, 0, zLejos(f, D)));
+    nubes.forEach(([x, y, z, s], i) => poner(iNubes, i, x + Math.sin(idleT * 0.08 + i * 2) * 2.5, y, z, s));
     for (let i = 0; i < nRayas; i++) {
       const z = zLejos(i * (LARGO / nRayas), D);
       poner(iRayas, i, -W / 2, 0.012, z);
@@ -285,7 +322,7 @@ export function crearEscena(canvas, contenedor, cfg, tema = {}) {
         meta.position.z = zMeta;
         meta.scale.setScalar(suave((5 - zMeta) / 3)); // al pasar sobre el jugador se encoge para no tapar la cámara
         premio.rotation.y = Math.PI + Math.sin(idleT * 2.2) * 0.35;
-        premio.position.y = 4.05 + Math.sin(idleT * 3) * 0.06;
+        premio.position.y = 4.65 + Math.sin(idleT * 3) * 0.06;
       }
     } else {
       meta.visible = false;
@@ -303,6 +340,9 @@ export function crearEscena(canvas, contenedor, cfg, tema = {}) {
         if (e.tipo === 'choque') {
           const o = e.obstaculo;
           emitir(16, o.carril < 0 ? p.x : (o.carril - 1) * W, 0.6, 0, [0xc98a3f, 0x9a6428, 0xff8a1f, 0xffc21a], { vel: 4.5, tam: 0.16, vida: 0.7 });
+          emitir(8, p.x, 1.7, 0, [0xffe86b, 0xffffff, 0xff8fa8], { vel: 2.2, tam: 0.1, vida: 0.7, gravedad: 3, arriba: 2.2 }); // estrellitas sobre la cabeza
+          lanzarResto(o, p.x);
+          tropiezo = 0.6;
           temblor = 0.45;
         } else if (e.tipo === 'fruta') {
           emitir(7, (e.fruta.carril - 1) * W, e.fruta.y, 0, e.fruta.tipo === 'mango' ? [0xffb21a, 0xff6b3a] : [0xe5233e, 0xff8fa8], { vel: 2.6, tam: 0.09, vida: 0.45, gravedad: 4 });
@@ -310,11 +350,20 @@ export function crearEscena(canvas, contenedor, cfg, tema = {}) {
           emitir(4, p.x, 0.05, 0.1, [0xffffff, 0xf7b6c6], { vel: 1.8, tam: 0.08, vida: 0.35, gravedad: 2, arriba: 0.6 });
         } else if (e.tipo === 'meta' && !metaCelebrada) {
           metaCelebrada = true;
-          emitir(70, 0, 3.6, -0.5, COLORES_CONFETI, { vel: 6, tam: 0.16, vida: 1.6, gravedad: 5, arriba: 3 });
+          emitir(70, 0, 2.8, -0.5, COLORES_CONFETI, { vel: 5, tam: 0.13, vida: 1.6, gravedad: 6, arriba: 2.4 });
         }
       }
     }
     if (!p) metaCelebrada = false;
+    // Festejo: varias olas de confeti a los lados del arco, una tras otra
+    if (p && p.estado === 'gano') {
+      while (ondaMeta < ONDAS_META.length && p.tFin >= ONDAS_META[ondaMeta][0]) {
+        const [, x, y] = ONDAS_META[ondaMeta++];
+        emitir(45, x, y, -0.5, COLORES_CONFETI, { vel: 4, tam: 0.13, vida: 1.5, gravedad: 6, arriba: 2.4 });
+      }
+    } else {
+      ondaMeta = 0;
+    }
     for (let i = 0; i < NP; i++) {
       const q = particulas[i];
       if (q.vida > 0) {
@@ -323,6 +372,7 @@ export function crearEscena(canvas, contenedor, cfg, tema = {}) {
         q.x += q.vx * dt;
         q.y = Math.max(0.02, q.y + q.vy * dt);
         q.z += (q.vz + vel) * dt;
+        if (q.z > 3.2) q.vida -= dt * 6; // el que pasa muy cerca de la cámara se desvanece rápido
       }
       const s = q.vida > 0 ? q.s * Math.min(1, q.vida / q.vidaMax * 2) : 0;
       d.position.set(q.x, q.y, q.z);
@@ -331,6 +381,28 @@ export function crearEscena(canvas, contenedor, cfg, tema = {}) {
       d.updateMatrix();
       pMesh.setMatrixAt(i, d.matrix);
     }
+    pMesh.instanceMatrix.needsUpdate = true; // sin esto las partículas (polvo, chispas, confeti) nunca llegaban a la pantalla
+
+    // --- Restos del choque (la caja que salió volando)
+    let nResto = 0;
+    for (const q of restos) {
+      if (!p) q.vida = 0;
+      if (q.vida <= 0) continue;
+      q.vida -= dt;
+      q.vy -= 14 * dt;
+      q.x += q.vx * dt;
+      q.y = Math.max(0.05, q.y + q.vy * dt);
+      q.z += (q.vz + vel) * dt;
+      q.rx += q.wx * dt;
+      q.rz += q.wz * dt;
+      d.position.set(q.x, q.y, q.z);
+      d.rotation.set(q.rx, 0, q.rz);
+      d.scale.setScalar(q.s * Math.min(1, Math.max(0, q.vida) / 0.3)); // se encoge al final
+      d.updateMatrix();
+      iRestos.setMatrixAt(nResto++, d.matrix);
+    }
+    fijarCuenta(iRestos, nResto);
+    iRestos.instanceMatrix.needsUpdate = true;
 
     // --- Personaje
     const pj = personajes[actual];
@@ -366,12 +438,16 @@ export function crearEscena(canvas, contenedor, cfg, tema = {}) {
     } else if (estado === 'perdio' && p.motivoFin !== 'frutas') {
       cae = Math.min(1.35, p.tFin * 3.5); // se cae al quedarse sin vidas; si llegó sin frutas, solo se detiene bajo el arco
     }
-    pj.g.position.set(px, py + bote, 0);
-    pj.g.rotation.set(-cae, gira, corriendo ? inclinacion : 0);
+    tropiezo = Math.max(0, tropiezo - dt);
+    const kT = tropiezo / 0.6; // 1 justo al golpearse → 0
+    const bambol = Math.sin((1 - kT) * Math.PI * 4) * kT; // se tambalea de lado a lado y se calma
+    pj.g.position.set(px, py + bote, kT * 0.35); // el golpe lo empuja un poco hacia atrás
+    pj.g.rotation.set(-cae + kT * 0.28, gira, (corriendo ? inclinacion : 0) + bambol * 0.4);
+    pj.g.scale.set(pj.escala * (1 + 0.1 * kT), pj.escala * (1 - 0.16 * kT), pj.escala * (1 + 0.1 * kT)); // se aplasta y se recupera
     pj.g.visible = !(p && estado === 'jugando' && p.t < p.invulHasta && Math.floor(p.t * 14) % 2 === 0); // parpadea tras un choque
 
     poner(sombras, 0, px, 0.02, 0, 1.2 - Math.abs(s) * 0.1 - py * 0.35);
-    for (const m of [iCajas, iPilas, iBarras, iFresas, iMangos, iPalmas, iSombrillas, iPinas, iRayas, sombras]) m.instanceMatrix.needsUpdate = true;
+    for (const m of [iCajas, iPilas, iBarras, iFresas, iMangos, iPalmas, iSombrillas, iPinas, iRayas, sombras, iGente, iPuestos, iCuerdas, iNubes]) m.instanceMatrix.needsUpdate = true;
 
     // --- Cámara
     const objetivoModo = jugando ? 1 : 0;
@@ -382,12 +458,18 @@ export function crearEscena(canvas, contenedor, cfg, tema = {}) {
     temblor = Math.max(0, temblor - dt * 1.4);
     const sx = temblor > 0 ? Math.sin(idleT * 70) * temblor * 0.09 : 0;
     const sy = temblor > 0 ? Math.cos(idleT * 61) * temblor * 0.07 : 0;
-    camara.position.set(
-      tx(CAMARA_INICIO.pos[0], seguir * 0.55) + sx,
-      tx(CAMARA_INICIO.pos[1], 3.2 + py * 0.22) + sy,
-      tx(CAMARA_INICIO.pos[2], 5.6),
-    );
-    camara.lookAt(tx(CAMARA_INICIO.mira[0], seguir * 0.35), tx(CAMARA_INICIO.mira[1], 1.25), tx(CAMARA_INICIO.mira[2], -3));
+    if (camaraManual) {
+      // Solo para mirar los modelos de cerca con ?debug=1 (escena.fijarCamara); en el juego normal nunca se usa.
+      camara.position.set(...camaraManual.pos);
+      camara.lookAt(...camaraManual.mira);
+    } else {
+      camara.position.set(
+        tx(CAMARA_INICIO.pos[0], seguir * 0.55) + sx,
+        tx(CAMARA_INICIO.pos[1], 3.2 + py * 0.22) + sy,
+        tx(CAMARA_INICIO.pos[2], 5.6),
+      );
+      camara.lookAt(tx(CAMARA_INICIO.mira[0], seguir * 0.35), tx(CAMARA_INICIO.mira[1], 1.25), tx(CAMARA_INICIO.mira[2], -3));
+    }
 
     renderer.render(escena, camara);
 
@@ -440,6 +522,9 @@ export function crearEscena(canvas, contenedor, cfg, tema = {}) {
       return calidad;
     },
     fijarCalidad: aplicarCalidad,
+    fijarCamara(c) {
+      camaraManual = c;
+    },
     info() {
       const i = renderer.info.render;
       const v = renderer.getDrawingBufferSize(new THREE.Vector2());

@@ -13,7 +13,7 @@ Contexto completo en `CLAUDE.md`; historia detallada en `documentos/bitacora.md`
 | 5 | Página del staff (PIN) y panel admin | ✅ Hecha, probada contra el servidor real y aprobada por el usuario (2026-10-19) |
 | 6 | Pruebas, seguridad y compatibilidad | ✅ **Cerrada** (2026-10-20): 244 pruebas SQL; servidor real 43 + 30 + 19 ✓; canje doble y limpieza hechos por el usuario; celulares reales en pendientes |
 | A | **Fase bonus A**: revisión de bugs en localhost | ✅ **Hecha por ahora** (Claude arregló 9 bugs; el usuario dijo «no más bugs por ahora»; la prueba en el XR queda opcional, `pendientes.md` #36) |
-| B | **Fase bonus B**: mejoras estéticas | ⏳ **Siguiente (mañana)** |
+| B | **Fase bonus B**: mejoras estéticas | ⏳ **Primera pasada hecha** (B.1–B.7); falta la segunda vuelta de ajustes que pida el usuario |
 | 7 | Publicación, QR y lista de lanzamiento | ⬜ **La última**: se hace cuando A y B estén listas (insumos en `CLAUDE.md` §14) y el usuario pegue el Prompt 7 |
 
 ## Etapa 1 — Contexto y preguntas ✅
@@ -83,8 +83,18 @@ Claude le entrega el juego, la caja y el panel para que el usuario los ejecute e
 - [~] A.3 Prueba del usuario en el XR (controles, fluidez, teclado, rotar, Instagram): **en pausa por decisión del usuario** («no más bugs por ahora»); queda en `pendientes.md` #36. Si manda una lista, Claude la ordena y arregla.
 - [x] A.4 El usuario decidió pasar a la Fase B mañana (2026-10-20, noche).
 
-## Fase bonus B — Mejoras estéticas ⏳ (SIGUIENTE: se empieza mañana)
+## Fase bonus B — Mejoras estéticas ⏳ (primera pasada hecha; falta la segunda vuelta del usuario)
 Lo que el usuario dijo que quería mejorar al final (ver `pendientes.md` #16): cholado con frutas «adentro» del vaso, bola de helado, más detalle en La India y el escenario, más elementos de escenario, posibles cambios de color, sonido y música (#10), cartel ¡META! legible, animación de choque.
+
+**Lo que el usuario eligió al empezar (marcó TODO) y cómo se trabaja: una por una** (Claude hace la mejora, deja la dirección para verla en el PC y en el XR, el usuario aprueba o ajusta y se sigue). Regla de la Fase B: **todo cambio de estilo o animación se aplica a los dos personajes**; respetar la receta del estilo «G» (CLAUDE.md §6b); no subir el brillo (`setScalar(1.15)`); cuidar el rendimiento (celulares de gama baja) y volver a correr `npm run vendor` si se usa una clase nueva de Three.js.
+- [x] B.1 **El cholado grande** (el de la meta y el choladito): frutas realmente «adentro» del vaso, bola de helado bien hecha. **Hecho, esperando el visto bueno del usuario** (ver `bitacora.md` §13.3). **Aprobado por el usuario.**
+- [x] B.2 **La India y Choladito**: más detalle (cara, ropa, pelo, penacho). **Aprobado** (ver `bitacora.md` §13.4).
+- [x] B.3 **Choque y celebración**: tambaleo, caja que sale volando, estrellitas, olas de confeti y «¡META!» grande (+ se arregló que las partículas nunca se veían). `bitacora.md` §13.5.
+- [x] B.4 **Cartel ¡META! y escenario**: cartel grande sobre tablero, banderines, gente, puestos y nubes. `bitacora.md` §13.6.
+- [x] B.5 **Sonido y música**: todo generado por código (sin archivos ni licencias); botón de sonido. `bitacora.md` §13.7. **Falta que el usuario lo ESCUCHE** (no se pudo oír desde aquí).
+- [x] B.6 **Ícono y vista previa del link**: favicon, ícono de inicio, manifiesto e imagen 1200×630. `bitacora.md` §13.8.
+- [x] B.7 **Pulir pantallas**: entradas suaves, botón que late, brillo del código, saltico de frutas, últimos 10 s. `bitacora.md` §13.9.
+- [~] B.8 Hito `historial/08-fase-b-primera-pasada/` hecho. **Falta la segunda vuelta del usuario** (él pide los ajustes específicos al final) → visto bueno → Etapa 7.
 
 ## Etapa 7 — Publicación ⬜
 - [ ] GitHub Pages desde `web/` con workflow; URL permanente `https://cholados-la-india.github.io/` (organización `cholados-la-india`; repo renombrado a `cholados-la-india.github.io`); QR de alta resolución (mostrador y vasos); términos y condiciones; aviso de datos (Ley 1581); plan de contingencia; lista de lanzamiento; hito final en `historial/`.

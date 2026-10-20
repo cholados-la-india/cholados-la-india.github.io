@@ -69,7 +69,7 @@ Primero en el **PC** y luego repite lo marcado con 📱 en el **XR**.
 - [ ] «¿Cómo se juega?» dice lo correcto (frutas mínimas, vidas, regalos, «no es acumulable»).
 - [ ] «Condiciones»: vigencia, un código por celular, compra mínima, premios por semana, temporada. ¿Algo que no coincida con lo que quieres decir?
 - [ ] Ortografía, tildes y tono («tú», caleño suave): anota todo lo que suene raro.
-- [ ] Los placeholders `[DIRECCIÓN DEL LOCAL]` y `[HORARIO DE CAJA]` aparecen en el ticket (se llenan mañana).
+- [ ] En el ticket aparecen la dirección («Cholados La India, Canchas Panamericanas») y el horario de canje («de 2:00 p. m. a 9:00 p. m.»).
 
 ### B. Controles
 - [ ] **PC:** teclado (flechas / A D / W / espacio / Esc / P). ¿Cada pulsación hace UNA cosa? ¿Mantener la tecla no cambia varios carriles?
@@ -211,7 +211,7 @@ Siempre con el panel abierto en una pestaña para ver qué cambia. **Limpia al t
 
 - **K1 ✅ ARREGLADO (2026-10-20).** Se perdía el premio si cerrabas o recargabas la página justo después de ganar y antes de reclamar. Ahora la victoria se anota en el celular al llegar a la meta y, al volver, sale «¡Tu premio te espera!». El servidor decide si todavía se puede (reserva de 15 min; se puede reclamar hasta unas 6 h después si aún quedan premios). La simulación (`?api=falsa`) y el servidor real guardan su aviso por separado.
 - **K2 🟡** Con `?debug=1` el contador de FPS y el botón «Debug» tapan un poco el título de algunas pantallas. Solo pasa en modo debug; los clientes no lo ven.
-- **K3 🟡** Los placeholders `[DIRECCIÓN DEL LOCAL]`, `[HORARIO DE CAJA]`, `[RESPONSABLE DE DATOS]` y `[CORREO DE CONTACTO]` se ven tal cual hasta que los llenemos.
+- **K3 ✅** Los datos del local (dirección, horario de canje, responsable y correo de contacto) ya se llenaron al empezar la Fase B.
 - **K4 ℹ️** En `http://IP:5173/` (wifi) el navegador se comporta un poco distinto que en el `https` real (por ejemplo, el portapapeles). Está cubierto con alternativas; solo avísame si algo falla.
 
 ---

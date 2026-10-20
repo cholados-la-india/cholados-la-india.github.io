@@ -367,6 +367,7 @@ Claude **nunca** hace commit ni push: lo haces tú. Las carpetas `node_modules/`
 | El celular no abre `http://192.168…` | Misma wifi, y permitir *Node.js* en el firewall de Windows (sección 3). |
 | `npm run probar-sql` falla en «todo-junto.sql está al día» | Corre `npm run sql`. |
 | Un cliente dice «gané y se me perdió el premio» (recargó o se cerró la página) | Ya no se pierde: al volver a abrir el juego le sale «¡Tu premio te espera!» (por 6 h, mientras queden premios). Si le sale «no pudimos validar tu partida», pasó demasiado tiempo: que vuelva a jugar. |
+| «No suena nada» en el celular | ¿Tiene el interruptor de silencio (iPhone, el botoncito del lado)? ¿El botón de sonido del inicio/pausa está en «no»? El sonido solo empieza después del primer toque. |
 | En `?debug=1&api=falsa` los intentos no bajan | Es a propósito: en el cuadrito de arriba dice «INTENTOS ILIMITADOS»; desmárcalo en el botón «Debug». |
 
 ---

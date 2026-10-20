@@ -1,13 +1,13 @@
 // textos.js — Todos los textos que ve la gente, en español colombiano. Editar aquí, no en el código.
 // (Tono: cercano y alegre, con toques caleños; "tú" para que se entienda en todo el país.)
 //
-// Placeholders pendientes (ver pendientes.md): [DIRECCIÓN DEL LOCAL], [HORARIO DE CAJA], [RESPONSABLE DE DATOS], [CORREO DE CONTACTO].
+// Datos del local (llenados por el dueño, Fase B). El correo es PÚBLICO a propósito: sale en la política de datos del juego.
 
 export const LOCAL = {
-  direccion: '[DIRECCIÓN DEL LOCAL]',
-  horario: '[HORARIO DE CAJA]',
-  responsableDatos: '[RESPONSABLE DE DATOS]',
-  correoContacto: '[CORREO DE CONTACTO]',
+  direccion: 'Cholados La India, Canchas Panamericanas',
+  horario: 'Para canjear tu código: de 2:00 p. m. a 9:00 p. m.', // (el local abre más horas; esta es la franja para canjear)
+  responsableDatos: 'Cholados La India',
+  correoContacto: 'choladoslaindia6@gmail.com',
 };
 
 const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -94,6 +94,9 @@ export const T = {
     continuar: 'Seguir jugando',
     salir: 'Salir al inicio',
     meta: '¡META!',
+    sonido: 'Sonido',
+    sonidoSi: 'Sonido: sí',
+    sonidoNo: 'Sonido: no',
   },
 
   ganaste: {

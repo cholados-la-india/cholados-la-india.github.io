@@ -101,5 +101,23 @@
       "04-campana-fuera-de-fechas.jpg",
       "05-diagnostico-del-celular.jpg"
     ]
+  },
+  {
+    "id": "08-fase-b-primera-pasada",
+    "titulo": "Preview 9: Fase B, primera pasada de estetica",
+    "descripcion": "Cholado con fruta dentro del vaso, La India y Choladito con mas detalle, choque y festejo con confeti, cartel META grande con tablero, escenario con gente puestos banderines y nubes, sonido y musica generados por codigo (boton de sonido), icono e imagen para compartir, pantallas con animaciones suaves. Usar ?api=falsa para el juego de practica.",
+    "fecha": "2026-10-20",
+    "entrada": "index.html",
+    "capturas": [
+      "01-cholado-con-fruta-dentro.jpg",
+      "02-la-india-de-frente.jpg",
+      "03-la-india-de-espaldas.jpg",
+      "04-choladito-con-detalle.jpg",
+      "05-choque.jpg",
+      "06-festejo-con-confeti.jpg",
+      "07-cartel-meta-y-escenario.jpg",
+      "08-imagen-para-compartir.jpg",
+      "09-inicio-con-boton-de-sonido.jpg"
+    ]
   }
 ]
