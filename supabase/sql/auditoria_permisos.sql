@@ -7,18 +7,18 @@
 --   · que las tablas del esquema privado «app» tengan RLS activado y ningún permiso para anon/authenticated;
 --   · que no haya tablas ni vistas sueltas en «public» (Supabase expone ese esquema por internet);
 --   · que anon/authenticated no puedan ni entrar al esquema «app» ni ejecutar sus funciones internas;
---   · que anon solo pueda ejecutar las 9 funciones del juego y de la caja, y «authenticated» esas 9 + las 11 del administrador;
+--   · que anon solo pueda ejecutar las 10 funciones del juego y de la caja, y «authenticated» esas 10 + las 12 del administrador;
 --   · que todas las funciones públicas sean SECURITY DEFINER (corren con permisos del dueño, no del que llama);
 --   · que no falte ninguna función prevista.
 with permitidas_anon (nombre) as (
   values ('ping'), ('estado'), ('iniciar_partida'), ('terminar_partida'), ('reclamar_codigo'), ('mi_codigo'),
-         ('canje_consultar'), ('canje_confirmar'), ('diag_red')
+         ('canje_consultar'), ('canje_confirmar'), ('diag_red'), ('registrar_canal')
 ),
 permitidas_auth (nombre) as (
   select nombre from permitidas_anon
   union all
   values ('admin_yo'), ('admin_resumen'), ('admin_codigos'), ('admin_exportar'), ('admin_consultar_codigo'), ('admin_canjear'),
-         ('admin_estado_codigo'), ('admin_config'), ('admin_guardar_config'), ('admin_cambiar_pin'), ('admin_desbloquear_pin')
+         ('admin_estado_codigo'), ('admin_config'), ('admin_guardar_config'), ('admin_cambiar_pin'), ('admin_desbloquear_pin'), ('admin_canales')
 ),
 funciones_publicas as (
   select p.oid, p.proname, p.prosecdef, p.oid::regprocedure::text as firma
@@ -60,7 +60,7 @@ problemas as (
   union all
   select 'Función pública SIN security definer', firma from funciones_publicas where not prosecdef
   union all
-  select 'Falta una función prevista (¿se pegaron las 3 migraciones?)', nombre
+  select 'Falta una función prevista (¿se pegaron las 4 migraciones?)', nombre
     from permitidas_auth pa
    where not exists (select 1 from funciones_publicas f where f.proname = pa.nombre)
   union all

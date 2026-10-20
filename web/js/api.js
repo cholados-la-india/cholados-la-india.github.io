@@ -35,6 +35,9 @@
 //                                        el servidor NO devuelve el código que ya tiene ese número)
 //       Repetir la llamada con la misma partida devuelve el MISMO código (doble toque / mala señal).
 //
+//   registrarCanal({ token, fuente, medio, campana })  →  { ok:true, registrado:boolean }
+//       Etiquetas UTM del enlace por el que llegó la persona (mostrador, vasos, instagram…). Mejor esfuerzo, una vez por partida.
+//
 //   miCodigo()  →  { ok:true, hay:false }
 //               |  { ok:true, hay:true, codigo, estado:'activo'|'vencido'|'canjeado'|'desactivado',
 //                    emitidoISO, venceISO, canjeadoISO, segundosRestantes, puedeVolverISO, ahoraISO }

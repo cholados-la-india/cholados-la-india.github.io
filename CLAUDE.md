@@ -1,6 +1,6 @@
 # CLAUDE.md — Cholado Runner (Cholados La India, Cali, Colombia)
 
-Fuente de verdad del proyecto. **Léelo SIEMPRE antes de trabajar.** Última actualización: 2026-10-20 (noche): Etapa 6 **cerrada**; Fase bonus A **hecha** (9 bugs arreglados, §13b); **Fase bonus B (estética) CERRADA** (primera pasada B.1–B.7, dos tandas de ajustes y el **cholado final «Mermelada»**, B.9; hito `historial/09-fase-b-cierre/`); **lo único que sigue es la Etapa 7** (publicación; el usuario pegará su prompt). Después de publicar seguirán los cambios pequeños (música más «de salsa», aplausos reales, etc.; `pendientes.md` #10). URL **decidida**: organización gratuita de GitHub **`cholados-la-india`**, sin ruta → `https://cholados-la-india.github.io/` (falta que el usuario cree la organización y transfiera el repo; pasos en `pendientes.md` #14).
+Fuente de verdad del proyecto. **Léelo SIEMPRE antes de trabajar.** Última actualización: 2026-10-20 (noche): Etapas 1–6 cerradas; Fases A y B cerradas; **Etapa 7 (publicación) HECHA en el repositorio, a la espera del visto bueno del usuario** (GitHub Pages y el aviso diario a Supabase como workflows, seguimiento por canal con UTM, QR, textos legales, guías y lista de lanzamiento; §14). **Lo que falta lo hace el usuario en GitHub y Supabase siguiendo `documentos/lista-de-lanzamiento.md`** (encender Pages, pegar `todo-junto.sql`, probar, limpiar, imprimir). Después de publicar seguirán cambios pequeños (música más «de salsa», aplausos reales; `pendientes.md` #10). URL: **`https://cholados-la-india.github.io/`** (la organización `cholados-la-india` y el repo `cholados-la-india.github.io` ya existen; el remoto de git ya apunta ahí).
 
 ## 0. Mapa de documentos (qué hay y dónde)
 | Archivo | Para qué |
@@ -17,6 +17,11 @@ Fuente de verdad del proyecto. **Léelo SIEMPRE antes de trabajar.** Última act
 | `documentos/pruebas-en-celulares.md` | Guía paso a paso para probar en celulares reales (Instagram/Facebook, Safari/Chrome, gama baja) con la página `/diagnostico/` |
 | `documentos/fase-a-paquete.md` | **Paquete de la Fase A**: ejecutables, qué probar para cazar bugs (PC y iPhone XR), «lo que ya sé» (K1…), plantilla de reporte y cómo dejar limpio |
 | `guia-rapida.md` | **Guía del dueño** (raíz): todos los comandos, el SQL para pegar en Supabase, el panel, la caja y qué hacer si algo falla. **Mantenerla al día** (ver §2) |
+| `documentos/publicacion.md` | **Etapa 7:** paso a paso en la interfaz de GitHub (Pages), cómo verificar el aviso diario a Supabase, los enlaces UTM y los QR |
+| `documentos/operacion-corta.md` | **Una hoja** con las 5 tareas: cambiar configuración, cambiar el PIN, ver canjes, cerrar la temporada, borrar datos personales (su SQL se prueba en `probar-sql` §24) |
+| `documentos/lista-de-lanzamiento.md` | **La lista de chequeo ordenada** (de «antes de publicar» a «la primera semana») |
+| `documentos/textos-legales.md` | **GENERADO** (`npm run textos-legales`): todo lo que el juego dice sobre premio, datos y local, para que lo revise una persona |
+| `qr/` | **GENERADO** (`npm run qr`): QR del mostrador y de los vasos (SVG + PNG), `imprimir.html` para probarlos y `LEEME.md` con los 4 enlaces |
 | `documentos/guia-del-administrador.md` | **«¿Qué hago si pasa esto?»** (pedida por el usuario al cerrar la Fase B): recetas por situación —lista para abrir al público, borrar un código de prueba, perder un código, pausar el juego, caja bloqueada, trampa, etc.—. Su SQL se prueba en `npm run probar-sql` (sección 24). **Agregarle toda situación nueva que el usuario resuelva o pregunte** |
 | `README.md` | Cómo correrlo y comandos |
 
@@ -113,8 +118,8 @@ Base para trabajar, **no un cierre definitivo** (los colores o detalles pueden c
 ```
 cholado-runner/
 ├─ CLAUDE.md · PLAN.md · pendientes.md · README.md · .gitignore
-├─ package.json · package-lock.json   (scripts: dev, vendor, hito, simular, sql, probar-sql, probar-mutaciones, probar-supabase, probar-seguridad, probar-ataques, probar-canje, revisar-secretos)
-├─ tools/        dev-server.mjs · vendor-three.mjs · guardar-hito.mjs · simular.mjs · juntar-sql.mjs · probar-sql.mjs · probar-mutaciones.mjs · probar-supabase.mjs · probar-ataques.mjs · probar-canje.mjs · revisar-secretos.mjs
+├─ package.json · package-lock.json   (scripts: dev, vendor, hito, simular, sql, probar-sql, probar-mutaciones, probar-supabase, probar-seguridad, probar-ataques, probar-canje, probar-canal, revisar-secretos, qr, textos-legales)
+├─ tools/        dev-server.mjs · vendor-three.mjs · guardar-hito.mjs · simular.mjs · juntar-sql.mjs · probar-sql.mjs · probar-mutaciones.mjs · probar-supabase.mjs · probar-ataques.mjs · probar-canje.mjs · probar-canal.mjs · revisar-secretos.mjs · generar-qr.mjs · textos-legales.mjs
 ├─ documentos/   bitacora.md · calibrar-dificultad.md  (luego: aviso de privacidad, T&C, lista de lanzamiento)
 ├─ historial/    hitos congelados + capturas (NO se publica; nunca se borra)
 ├─ referencias-diseno/   (solo local, ignorada por Git)
@@ -129,7 +134,8 @@ cholado-runner/
 │  ├─ diagnostico/   página para probar un celular (index.html, diagnostico.js)
 │  ├─ canje/   la caja (index.html, canje.js)   ·   admin/   panel del dueño (index.html, admin.js, vista-resumen/codigos/config/cuenta.js, exportar.js)
 ├─ supabase/     LEEME.md · todo-junto.sql (GENERADO con `npm run sql`: lo que se pega de una vez) · migrations/ (0001_tablas.sql, 0002_funciones.sql, 0003_staff_admin.sql) · sql/ (consultas_utiles, limpiar_pruebas, auditoria_permisos)
-└─ .github/workflows/   publicar web/ en GitHub Pages (Etapa 7)
+└─ .github/workflows/   publicar.yml (GitHub Pages desde web/, revisa secretos antes) · mantener-supabase-despierto.yml (llama a ping() y estado() cada día)
+   (también fuera de web/, no se publican: qr/ · documentos/ · supabase/ · historial/ · tools/)
 ```
 (Los previews de estilos A–G se borraron de `web/` el 2026-10-19: viven en `historial/01` y `02` y en el commit de la Etapa 2.)
 
@@ -190,10 +196,15 @@ Detalle y cómo comprobarlos: `documentos/fase-a-paquete.md` §7a; el porqué: `
 - Varios textos: el campo del celular ya no corta lo pegado (+57…), un nombre de un solo emoji pide nombre, el error `datos` del servidor dice «Revisa tu nombre y tu celular», y se quitó el doble punto tras «a. m.».
 - **Sigue pendiente de la Fase A:** que el usuario pruebe en el XR lo que solo se siente en la mano y mande su lista numerada.
 
-## 14. Insumos para la Etapa 7 (publicación, QR y lista de lanzamiento) — NO es trabajo hecho
-**El usuario pegará el Prompt 7; hasta entonces no se avanza.**
-- GitHub Pages desde `web/` con un workflow de GitHub Actions; la URL final ya está **decidida**: organización `cholados-la-india` → `https://cholados-la-india.github.io/` (el repo se renombra a `cholados-la-india.github.io`; el usuario crea la organización y transfiere el repo **antes** de publicar; pasos en `pendientes.md` #14). Las páginas internas (`/canje/`, `/admin/`, `/diagnostico/`) se publican junto al juego (no se enlazan; están `noindex`).
-- **Tarea diaria de GitHub Actions** que llame a `ping()` (el plan gratis de Supabase se pausa tras ~1 semana sin actividad).
-- Antes de abrir al público: `supabase/sql/limpiar_pruebas.sql`; decidir el **cupo diario**; (los datos del local ya están llenos en `textos.js` → `LOCAL`: dirección «Cholados La India, Canchas Panamericanas», canje de 2:00 p. m. a 9:00 p. m., responsable «Cholados La India», contacto `choladoslaindia6@gmail.com`; **confirmar si el horario de canje es todos los días**); términos y condiciones y política de datos definitivos (Ley 1581; plazo de conservación: sugerido 6 meses después de cerrar la campaña, hay que escribirlo en la política); QR de alta resolución.
-- Repetir las pruebas de Instagram/Facebook con el enlace `https://` real (por el QR y por un anuncio); revisar el primer lunes; afinar los límites por red con el uso real.
-- Hito final en `historial/`.
+## 14. Etapa 7 — Publicación (HECHA en el repo el 2026-10-20; falta que el usuario la ponga en marcha y dé el visto bueno)
+Guía paso a paso: **`documentos/publicacion.md`**; lista ordenada: **`documentos/lista-de-lanzamiento.md`**; operación diaria: `documentos/operacion-corta.md`; el porqué: `documentos/bitacora.md` §14.
+- **Cambios que pidió el usuario al empezar la etapa:** el canje es **todos los días de 2:00 p. m. a 9:00 p. m.** (`LOCAL.dias` / `LOCAL.horas`); la dirección y el horario salen en un **cuadro destacado** del ticket («Canjéalo aquí», dirección en MAYÚSCULAS y letra grande, borde lima: `.local` en `juego.css`); **los datos personales se conservan hasta 6 meses después de que termine la campaña** y quien quiera que se borren escribe al correo de contacto (política en `textos.js`; SQL para borrar: `operacion-corta.md` §5). Se quitaron las notas «provisional» de condiciones y política (el texto completo para revisar: `documentos/textos-legales.md`).
+- **GitHub Pages:** `.github/workflows/publicar.yml` publica **solo `web/`** al hacer push a `main` con cambios en `web/`; antes corre `tools/revisar-secretos.mjs` (si encuentra algo grave, NO publica). El usuario solo debe poner **Settings → Pages → Source = GitHub Actions** una vez. `web/404.html` = página de «no existe». Las páginas internas (`/canje/`, `/admin/`, `/diagnostico/`) se publican junto al juego (no se enlazan; `noindex`).
+- **Aviso diario a Supabase:** `.github/workflows/mantener-supabase-despierto.yml` (cron 10:23 UTC) llama `ping()` y `estado()` con la clave pública que lee de `web/js/supabase-config.js`; si falla, sale en rojo y GitHub avisa por correo. Probado a mano contra el servidor real. **Límites honestos:** GitHub apaga las tareas programadas de repos públicos tras 60 días sin actividad; Supabase no promete oficialmente qué cuenta como actividad.
+- **Seguimiento por canal (UTM):** `web/js/canal.js` lee `utm_source/medium/campaign` al abrir el juego, los recuerda 30 días en `localStorage` (`cholado-canal`) y los quita de la barra; `main.js` llama `api.registrarCanal` (sin esperar) al empezar una partida. Servidor: **`supabase/migrations/0004_canales.sql`** → columnas `utm_fuente/utm_medio/utm_campana` en `app.partidas`, `app.limpiar_utm` (a-z 0-9 . _ -, máx. 30/40; lo demás se descarta), **`public.registrar_canal(p_token, p_fuente, p_medio, p_campana)`** (clave pública; solo una vez por partida y en los primeros 15 min) y **`public.admin_canales(p_periodo)`** (solo administrador; 'semana' | '30d' | 'todo'). El panel lo muestra en **Resumen → «¿De dónde vienen los jugadores?»**. Ahora hay **22 funciones públicas** (10 de juego/caja abiertas a `anon` + 12 `admin_*`); la auditoría de permisos, `probar-sql` (280 ✓), `probar-supabase` y `probar-mutaciones` (12) ya cuentan con ellas. Hay que **volver a pegar `supabase/todo-junto.sql`** (`npm run sql`) en Supabase.
+- **QR y enlaces:** `npm run qr` (`tools/generar-qr.mjs`, usa el paquete `qrcode` 1.5.4 como dependencia de desarrollo) escribe `qr/`: `qr-mostrador` y `qr-vasos` (SVG + PNG 2400 px, corrección de errores Q, negro sobre blanco, borde de 4 módulos), `imprimir.html` y `LEEME.md` con los 4 enlaces (mostrador, vasos, instagram, facebook; `utm_campaign=lanzamiento`, cambiable con `--campana=`). **Verificado:** los PNG se decodifican (con `jsqr`) a los enlaces exactos. `npm run probar-canal` (18 ✓) prueba cómo el juego lee los enlaces.
+- **Textos legales:** `npm run textos-legales` genera `documentos/textos-legales.md` (condiciones, autorización, política, ticket) para que la dueña y su mamá lo revisen. No es asesoría legal; lo dice.
+- **Cierre de temporada y borrado de datos:** `documentos/operacion-corta.md` §4 y §5 (SQL probado en `probar-sql` §24: cerrar ya, desactivar activos, anonimizar nombre y celular hasta una fecha).
+- **Lo que NO se pudo hacer desde aquí (lo hace el usuario):** activar Pages, correr el workflow una vez, pegar `todo-junto.sql`, probar con el juego publicado (Instagram/Facebook iOS y Android, por QR y por enlace), limpiar los datos de prueba, imprimir. Todo está en la lista de lanzamiento.
+- **Pruebas de esta etapa:** `probar-sql` **280 ✓** (incl. secciones 24 y 25); `probar-canal` 18 ✓; `revisar-secretos` limpio. Contra el servidor real, `probar-seguridad` fallará («faltan funciones») **hasta que el usuario pegue el SQL nuevo** (agrega `admin_canales`).
+- Hito final: `historial/10-etapa-7-publicacion/` (se guarda al cerrar la etapa).

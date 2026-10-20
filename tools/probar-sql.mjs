@@ -55,7 +55,7 @@ const ok = (nombre, cond, detalle = '') => {
 };
 const seccion = (t) => console.log(`\n${t}`);
 
-const migraciones = ['0001_tablas.sql', '0002_funciones.sql', '0003_staff_admin.sql'];
+const migraciones = ['0001_tablas.sql', '0002_funciones.sql', '0003_staff_admin.sql', '0004_canales.sql'];
 for (const f of migraciones) await db.exec(await readFile(new URL(`../supabase/migrations/${f}`, import.meta.url), 'utf8'));
 
 const FIRMAS = {
@@ -330,6 +330,7 @@ const FIRMAS5 = {
   admin_yo: '', admin_resumen: '', admin_codigos: '$1::text, $2::text, $3::int, $4::int', admin_exportar: '$1::text, $2::text',
   admin_consultar_codigo: '$1::text', admin_canjear: '$1::text, $2::text', admin_estado_codigo: '$1::text, $2::text',
   admin_config: '', admin_guardar_config: '$1::jsonb', admin_cambiar_pin: '$1::text', admin_desbloquear_pin: '',
+  admin_canales: '$1::text', registrar_canal: '$1::uuid, $2::text, $3::text, $4::text',
 };
 const ADMIN_ID = randomUUID();
 const OTRO_ID = randomUUID();
@@ -483,25 +484,25 @@ seccion('13. Permisos: la clave pública NO entra a lo del administrador');
   const adminFns = [
     ['admin_yo', []], ['admin_resumen', []], ['admin_codigos', ['todos', null, 0, 10]], ['admin_exportar', ['todos', null]],
     ['admin_consultar_codigo', ['X']], ['admin_canjear', ['X', null]], ['admin_estado_codigo', ['X', 'desactivado']],
-    ['admin_config', []], ['admin_guardar_config', ['{}']], ['admin_cambiar_pin', ['135790']], ['admin_desbloquear_pin', []],
+    ['admin_config', []], ['admin_guardar_config', ['{}']], ['admin_cambiar_pin', ['135790']], ['admin_desbloquear_pin', []], ['admin_canales', ['todo']],
   ];
   let denegadas = 0;
   for (const [fn, args] of adminFns) {
     try { await como('anon', null, fn, FIRMAS5[fn], ...args); } catch (e) { if (/permission denied/.test(e.message)) denegadas++; }
   }
-  ok('la clave pública (anon) NO puede llamar ninguna de las 11 funciones admin_*', denegadas === 11, `${denegadas} de 11`);
+  ok('la clave pública (anon) NO puede llamar ninguna de las 12 funciones admin_*', denegadas === 12, `${denegadas} de 12`);
   let respuestas = 0;
   for (const [fn, args] of adminFns.filter(([f]) => f !== 'admin_yo')) {
     const r = await como('authenticated', OTRO_ID, fn, FIRMAS5[fn], ...args);
     if (r.ok === false && r.motivo === 'no-autorizado') respuestas++;
   }
-  ok('un usuario con sesión que NO es administrador recibe "no-autorizado" en las otras 10', respuestas === 10, `${respuestas} de 10`);
+  ok('un usuario con sesión que NO es administrador recibe "no-autorizado" en las otras 11', respuestas === 11, `${respuestas} de 11`);
   ok('…y admin_yo le dice esAdmin = false', (await otro('admin_yo')).esAdmin === false);
   ok('una sesión sin usuario (sin sub) tampoco es administrador', (await como('authenticated', null, 'admin_yo', '')).esAdmin === false);
   ok('el PIN no cambió con los intentos de quien no es administrador', (await caja('canje_consultar', PIN, 'X')).resultado === 'inexistente');
   const priv = await sql(`select p.proname, has_function_privilege('anon', p.oid, 'execute') anon, has_function_privilege('authenticated', p.oid, 'execute') auth
                             from pg_proc p where p.pronamespace = 'public'::regnamespace and p.proname like 'admin\\_%'`);
-  ok('las 11 funciones admin_*: anon NO tiene permiso y authenticated SÍ', priv.length === 11 && priv.every((x) => x.anon === false && x.auth === true), JSON.stringify(priv.filter((x) => x.anon || !x.auth)));
+  ok('las 12 funciones admin_*: anon NO tiene permiso y authenticated SÍ', priv.length === 12 && priv.every((x) => x.anon === false && x.auth === true), JSON.stringify(priv.filter((x) => x.anon || !x.auth)));
   const cj = await sql(`select has_function_privilege('anon','public.canje_consultar(text,text)','execute') a, has_function_privilege('anon','public.canje_confirmar(text,text,text)','execute') b`);
   ok('la caja (clave pública) sí puede llamar canje_consultar y canje_confirmar', cj[0].a === true && cj[0].b === true);
   const denegar = async (rol, q) => {
@@ -521,7 +522,7 @@ seccion('13. Permisos: la clave pública NO entra a lo del administrador');
   const rls = await sql(`select relname, relrowsecurity from pg_class where relnamespace = 'app'::regnamespace and relname in ('admins','staff')`);
   ok('RLS activado en app.admins y app.staff', rls.length === 2 && rls.every((x) => x.relrowsecurity));
   const fn = await sql(`select p.proname, p.prosecdef from pg_proc p where p.pronamespace = 'public'::regnamespace and (p.proname like 'admin\\_%' or p.proname like 'canje\\_%')`);
-  ok('las 13 funciones nuevas son SECURITY DEFINER', fn.length === 13 && fn.every((x) => x.prosecdef), JSON.stringify(fn));
+  ok('las 14 funciones de la caja y del administrador son SECURITY DEFINER', fn.length === 14 && fn.every((x) => x.prosecdef), JSON.stringify(fn));
 }
 
 seccion('14. Panel admin: métricas, lista, búsqueda y exportación');
@@ -770,10 +771,10 @@ await sql(`truncate app.limites_red`);
 
   const nombres = ['ping', 'estado', 'iniciar_partida', 'terminar_partida', 'reclamar_codigo', 'mi_codigo', 'diag_red', 'canje_consultar', 'canje_confirmar',
     'admin_yo', 'admin_resumen', 'admin_codigos', 'admin_exportar', 'admin_consultar_codigo', 'admin_canjear', 'admin_estado_codigo', 'admin_config',
-    'admin_guardar_config', 'admin_cambiar_pin', 'admin_desbloquear_pin'];
+    'admin_guardar_config', 'admin_cambiar_pin', 'admin_desbloquear_pin', 'admin_canales', 'registrar_canal'];
   const fns = await sql(`select p.proname, pg_get_function_arguments(p.oid) as args from pg_proc p where p.pronamespace = 'public'::regnamespace and p.proname = any($1::text[])`, [nombres]);
   const conTiempo = fns.filter((f) => /(fecha|hora|time|tiempo|ahora|now|reloj|date)/i.test(f.args));
-  ok('NINGUNA de las 20 funciones públicas recibe una fecha u hora: el reloj del celular no cuenta para nada', fns.length === 20 && conTiempo.length === 0, JSON.stringify(conTiempo));
+  ok('NINGUNA de las 22 funciones públicas recibe una fecha u hora: el reloj del celular no cuenta para nada', fns.length === 22 && conTiempo.length === 0, JSON.stringify(conTiempo));
 }
 
 seccion('19. Etapa 6 — Auditoría de permisos (la misma que correrás en tu Supabase real)');
@@ -915,11 +916,11 @@ seccion('23. La guía rápida (guia-rapida.md): todo su SQL funciona');
   ok('todos los bloques SQL de la guía se ejecutan sin error (los nombres de tablas y columnas siguen al día)', errores.length === 0, errores.join(' | '));
 }
 
-seccion('24. La guía del administrador (documentos/guia-del-administrador.md): su SQL funciona y hace lo que dice');
+seccion('24. La guía del administrador y la operación corta (documentos/guia-del-administrador.md y operacion-corta.md): su SQL funciona y hace lo que dice');
 {
-  const guia = await readFile(new URL('../documentos/guia-del-administrador.md', import.meta.url), 'utf8');
+  const guia = (await readFile(new URL('../documentos/guia-del-administrador.md', import.meta.url), 'utf8')) + '\n' + (await readFile(new URL('../documentos/operacion-corta.md', import.meta.url), 'utf8'));
   const bloques = [...guia.matchAll(/```sql\r?\n([\s\S]*?)```/g)].map((m) => m[1]);
-  ok(`la guía del administrador trae ${bloques.length} bloques de SQL (hay al menos 10)`, bloques.length >= 10);
+  ok(`las dos guías traen ${bloques.length} bloques de SQL (hay al menos 15)`, bloques.length >= 15);
   const errores = [];
   for (const [i, b] of bloques.entries()) {
     try {
@@ -928,7 +929,7 @@ seccion('24. La guía del administrador (documentos/guia-del-administrador.md): 
       errores.push(`bloque ${i + 1} («${b.trim().slice(0, 40)}…»): ${e.message}`);
     }
   }
-  ok('todos los bloques SQL de la guía del administrador se ejecutan sin error', errores.length === 0, errores.join(' | '));
+  ok('todos los bloques SQL de las dos guías se ejecutan sin error', errores.length === 0, errores.join(' | '));
   await db.exec('update app.configuracion set campana_inicio = null, campana_fin = null where id = 1');
 
   // Las recetas de borrado hacen lo que dicen (con datos de verdad)
@@ -970,6 +971,105 @@ seccion('24. La guía del administrador (documentos/guia-del-administrador.md): 
   await db.exec(devolver);
   ok('receta 3.2 (devolver intentos): borra los intentos sueltos pero NO los códigos ni sus partidas', (await cuenta('select count(*) n from app.codigos')) === 1 && (await cuenta('select count(*) n from app.partidas')) === 1);
   await db.exec('truncate app.codigos, app.partidas, app.limites_red restart identity cascade');
+
+  // Cerrar la temporada y borrar los datos personales (operacion-corta.md §4 y §5)
+  const borrarDatos = bloques.find((b) => b.includes("set nombre = '(borrado)'") && b.includes("emitido_en <= '2027-06-30"));
+  const contarDatos = bloques.find((b) => b.includes('con_datos_personales'));
+  const desactivarTodo = bloques.find((b) => b.includes("set estado = 'desactivado' where estado = 'activo'") && !b.includes('codigo ='));
+  const cerrar = bloques.find((b) => b.includes('campana_fin = now()'));
+  ok('encontré las recetas de cierre de temporada y borrado de datos', Boolean(borrarDatos && contarDatos && desactivarTodo && cerrar));
+  const D3 = '00000000-0000-0000-0000-0000000000d3';
+  await db.exec([par(P(6), D3), cod('LAINDIA-DDDD', '3001112233', P(6), D3), par(P(7), D3), cod('LAINDIA-EEEE', '3001112244', P(7), D3), par(P(8), D3), cod('LAINDIA-FFFF', '3001112255', P(8), D3)].join(';\n'));
+  await db.exec("update app.codigos set emitido_en = '2027-08-01 12:00-05' where codigo = 'LAINDIA-EEEE'");   // de después del cierre: NO se toca
+  await db.exec("update app.codigos set estado = 'canjeado', canjeado_en = now(), canjeado_por = 'staff', regalo_elegido = 'Un raspao personal' where codigo = 'LAINDIA-FFFF'");
+  ok('(antes) hay 2 códigos con datos personales hasta el cierre', Number((await db.query(contarDatos)).rows[0].con_datos_personales) === 2);
+  await db.exec(borrarDatos);
+  ok('receta «borrar los datos personales»: los códigos hasta la fecha quedan sin nombre ni celular', (await cuenta("select count(*) n from app.codigos where nombre = '(borrado)' and celular = '3000000000'")) === 2);
+  ok('…el de después del cierre NO se toca', (await cuenta("select count(*) n from app.codigos where codigo = 'LAINDIA-EEEE' and nombre = 'Prueba'")) === 1);
+  ok('…los códigos y su estado (canjeado) se conservan para las estadísticas', (await cuenta("select count(*) n from app.codigos where codigo = 'LAINDIA-FFFF' and estado = 'canjeado'")) === 1);
+  ok('…y la comprobación dice 0 después', Number((await db.query(contarDatos)).rows[0].con_datos_personales) === 0);
+  await db.exec(desactivarTodo);
+  ok('receta «desactivar todos los activos»: los activos pasan a desactivado y el canjeado se queda canjeado', (await cuenta("select count(*) n from app.codigos where estado = 'activo'")) === 0 && (await cuenta("select count(*) n from app.codigos where estado = 'canjeado'")) === 1);
+  await db.exec(cerrar);
+  await new Promise((r) => setTimeout(r, 40)); // (el reloj de PGlite tiene milisegundos: que pase al menos uno desde que se cerró)
+  ok('receta «cerrar el juego ya»: el juego deja de ser jugable por campaña', (await uno("select public.estado(null)::jsonb ->> 'motivo'")) === 'campana-inactiva', JSON.stringify(await sql('select public.estado(null) as e, now() as ahora, (select campana_fin from app.configuracion) as fin')));
+  await db.exec('update app.configuracion set campana_inicio = null, campana_fin = null where id = 1');
+  await db.exec('truncate app.codigos, app.partidas, app.limites_red restart identity cascade');
+}
+
+seccion('25. Etapa 7 — Canales (UTM): ¿de dónde vienen los jugadores?');
+{
+  await reiniciarDatos();
+  await reiniciarConfig5();
+  const pub = (...a) => como('anon', null, 'registrar_canal', FIRMAS5.registrar_canal, ...a);
+  const etiquetas = async (token) => (await sql('select utm_fuente f, utm_medio m, utm_campana c from app.partidas where id = $1', [token]))[0];
+  const perder = async () => {
+    const ini = await rpc('iniciar_partida', randomUUID());
+    await rpc('terminar_partida', ini.token, false, 0.4, 5);
+    return ini.token;
+  };
+
+  // registrar_canal: lo que acepta y lo que no
+  const a = await rpc('iniciar_partida', randomUUID());
+  const r1 = await pub(a.token, 'Mostrador', ' QR ', 'lanzamiento');
+  const e1 = await etiquetas(a.token);
+  ok('anota las etiquetas de la partida recién empezada (y las deja en minúsculas y sin espacios)', r1.registrado === true && e1.f === 'mostrador' && e1.m === 'qr' && e1.c === 'lanzamiento', JSON.stringify([r1, e1]));
+  const r2 = await pub(a.token, 'instagram', 'social', 'otra');
+  ok('solo se puede UNA vez por partida: la segunda no pisa la primera', r2.registrado === false && (await etiquetas(a.token)).f === 'mostrador');
+  const malas = [];
+  for (const x of ['<script>alert(1)</script>', 'con espacios', 'a'.repeat(31), '', null, "x'; drop table app.partidas; --"]) {
+    const p = await rpc('iniciar_partida', randomUUID());
+    const r = await pub(p.token, x, null, null);
+    malas.push(r.registrado === false && (await etiquetas(p.token)).f === null);
+  }
+  ok('texto raro, HTML, vacío o demasiado largo → no se guarda nada (y no da error)', malas.every(Boolean), JSON.stringify(malas));
+  const pm = await rpc('iniciar_partida', randomUUID());
+  await pub(pm.token, 'facebook', 'x'.repeat(31), 'k'.repeat(41));
+  const em = await etiquetas(pm.token);
+  ok('un medio o una campaña inválidos se ignoran, pero la fuente buena sí se guarda', em.f === 'facebook' && em.m === null && em.c === null, JSON.stringify(em));
+  const pv = await rpc('iniciar_partida', randomUUID());
+  await sql("update app.partidas set inicio = now() - interval '20 minutes' where id = $1", [pv.token]);
+  ok('pasados 15 minutos de empezar la partida ya no se puede etiquetar', (await pub(pv.token, 'instagram', null, null)).registrado === false && (await etiquetas(pv.token)).f === null);
+  ok('un token inventado o nulo no rompe nada', (await pub(randomUUID(), 'instagram', null, null)).registrado === false && (await pub(null, 'instagram', null, null)).ok === true);
+
+  // admin_canales: los números por canal
+  await reiniciarDatos();
+  await reiniciarConfig5();
+  const A = await ganar(randomUUID());                                   // mostrador: llega a la meta, reclama y canjea
+  await pub(A.token, 'mostrador', 'qr', 'lanzamiento');
+  const cA = (await rpc('reclamar_codigo', A.token, 'Marcela Escobar', CEL(301), true)).codigo;
+  ok('(preparación) el código de la partida etiquetada se creó', typeof cA === 'string');
+  await sql('insert into app.admins (user_id) values ($1) on conflict do nothing', [ADMIN_ID]);
+  const cj = await admin('admin_canjear', cA, 'Un raspao personal');
+  ok('(preparación) el administrador lo canjea', cj.resultado === 'canjeado-ahora', JSON.stringify(cj));
+  const B = await perder();
+  await pub(B, 'mostrador', 'qr', 'lanzamiento');                        // mostrador: pierde
+  const C = await ganar(randomUUID());
+  await pub(C.token, 'instagram', 'social', 'lanzamiento');             // instagram: llega a la meta, no reclama
+  await perder();                                                       // sin etiqueta (entró directo)
+  const V = await perder();
+  await pub(V, 'mostrador', 'qr', 'lanzamiento');
+  await sql("update app.partidas set inicio = now() - interval '40 days' where id = $1", [V]);   // una partida vieja de mostrador
+
+  const todo = await admin('admin_canales', 'todo');
+  const fila = (r, f) => r.filas.find((x) => x.fuente === f);
+  ok('admin_canales «todo»: mostrador tiene 3 partidas, 3 jugadores, 1 llegó a la meta, 1 código y 1 canje',
+    todo.ok === true && JSON.stringify(['partidas', 'jugadores', 'llegaron', 'codigos', 'canjes'].map((k) => fila(todo, 'mostrador')?.[k])) === '[3,3,1,1,1]', JSON.stringify(fila(todo, 'mostrador')));
+  ok('…instagram tiene 1 partida que llegó a la meta y ningún código', fila(todo, 'instagram')?.partidas === 1 && fila(todo, 'instagram')?.llegaron === 1 && fila(todo, 'instagram')?.codigos === 0, JSON.stringify(fila(todo, 'instagram')));
+  ok('…y las partidas sin etiqueta salen con la fuente en blanco (entró directo)', todo.filas.some((x) => x.fuente === null && x.partidas === 1), JSON.stringify(todo.filas));
+  ok('…la fila de mostrador trae su medio y su campaña', fila(todo, 'mostrador')?.medio === 'qr' && fila(todo, 'mostrador')?.campana === 'lanzamiento');
+  ok('…y la primera fila es la de más partidas', todo.filas[0].fuente === 'mostrador');
+  const d30 = await admin('admin_canales', '30d');
+  ok('«30d» deja afuera la partida de hace 40 días', fila(d30, 'mostrador')?.partidas === 2 && fila(d30, 'mostrador')?.jugadores === 2, JSON.stringify(fila(d30, 'mostrador')));
+  const sem = await admin('admin_canales', 'semana');
+  ok('«semana» cuenta las partidas de esta semana y no la vieja', fila(sem, 'mostrador')?.partidas === 2, JSON.stringify(fila(sem, 'mostrador')));
+  ok('un periodo desconocido se trata como «todo»', (await admin('admin_canales', 'cualquier-cosa')).periodo === 'todo' && fila(await admin('admin_canales', 'cualquier-cosa'), 'mostrador')?.partidas === 3);
+  ok('quien no es administrador recibe no-autorizado en admin_canales', (await otro('admin_canales', 'todo')).motivo === 'no-autorizado');
+  let denegado = false;
+  try { await como('anon', null, 'admin_canales', FIRMAS5.admin_canales, 'todo'); } catch (e) { denegado = /permission denied/.test(e.message); }
+  ok('la clave pública NO puede llamar admin_canales', denegado);
+  ok('registrar_canal sí está abierta para la clave pública (la usa el juego)', (await sql("select has_function_privilege('anon', 'public.registrar_canal(uuid,text,text,text)', 'execute') a"))[0].a === true);
+  await reiniciarDatos();
 }
 
 console.log(`\n${fallos === 0 ? '✅ TODO BIEN' : '❌ HAY FALLOS'} — ${total - fallos} de ${total} comprobaciones correctas.\n`);

@@ -91,6 +91,15 @@ export async function iniciarPartida() {
   return { ok: true, token, intentosRestantes: calcular(s).intentosRestantes, ahoraISO: iso(ahora()) };
 }
 
+/** Como el servidor: anota el canal en la partida en curso, una sola vez (se puede ver en s.partida.canal dentro del localStorage de la simulación). */
+export async function registrarCanal({ token, fuente, medio, campana } = {}) {
+  const s = cargar();
+  if (!fuente || !s.partida || s.partida.token !== token || s.partida.canal) return { ok: true, registrado: false };
+  s.partida.canal = { fuente, medio: medio ?? null, campana: campana ?? null };
+  guardar(s);
+  return { ok: true, registrado: true };
+}
+
 export async function terminarPartida({ token, gano, frutas }) {
   await latencia();
   const s = cargar();

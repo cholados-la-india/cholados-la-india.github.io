@@ -16,11 +16,15 @@
     "revisar-secretos": "node tools/revisar-secretos.mjs",
     "sql": "node tools/juntar-sql.mjs",
     "probar-ataques": "node tools/probar-ataques.mjs",
-    "probar-canje": "node tools/probar-canje.mjs"
+    "probar-canje": "node tools/probar-canje.mjs",
+    "probar-canal": "node tools/probar-canal.mjs",
+    "qr": "node tools/generar-qr.mjs",
+    "textos-legales": "node tools/textos-legales.mjs"
   },
   "devDependencies": {
     "@electric-sql/pglite": "0.5.10",
     "esbuild": "0.28.2",
+    "qrcode": "1.5.4",
     "three": "0.186.1"
   }
 }

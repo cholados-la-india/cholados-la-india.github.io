@@ -8,6 +8,7 @@ import { crearControles } from './game/controles.js';
 import { crearEscena } from './game/escena.js';
 import { crearPartida, moverCarril, paso, progreso, saltar, tiempoRestante } from './game/logica.js';
 import { audio } from './audio.js';
+import { canalActual, iniciarCanal } from './canal.js';
 import { reloj } from './reloj.js';
 import { T } from './textos.js';
 import { crearUI } from './ui/ui.js';
@@ -21,6 +22,7 @@ const APLICAR_SERVIDOR = !DEBUG || PARAMS.get('servidor') === '1';
 const cfg = JSON.parse(JSON.stringify(CONFIG)); // config "viva": ?debug=1 la modifica sin tocar config.js
 const raiz = document.getElementById('escena');
 api.configurar?.(cfg);
+iniciarCanal(); // ¿llegó por el QR del mostrador, de los vasos, de Instagram…? (etiquetas UTM del enlace; ver canal.js)
 
 const ui = crearUI(raiz, cfg);
 ui.marcarSonido(audio.encendido);
@@ -177,6 +179,8 @@ async function iniciarJuego() {
       return;
     }
     token = r.token;
+    const canal = canalActual();
+    if (canal) api.registrarCanal?.({ token, ...canal }).catch(() => {}); // sin esperar: si falla, la partida sigue igual
     estadoServidor = { ...estadoServidor, intentosRestantes: r.intentosRestantes };
     partida = crearPartida(cfg, { semilla: (Math.random() * 2 ** 31) >>> 0, invencible: cfg.desarrollo.invencible });
     terminada = false;

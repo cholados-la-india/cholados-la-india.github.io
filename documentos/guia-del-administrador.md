@@ -2,11 +2,11 @@
 
 Esta guía es para ti, como dueña o dueño del juego. Está hecha **por situaciones**: buscas lo que te pasó, sigues los pasos y listo. Si algo no está aquí, cuéntale a Claude qué pasó (hay una plantilla al final) y se agrega.
 
-Última actualización: 2026-10-20 (cierre de la Fase B).
+Última actualización: 2026-10-20, noche (Etapa 7). Hermanas de esta guía: [operacion-corta.md](operacion-corta.md) (lo de todos los días), [publicacion.md](publicacion.md) (GitHub y Supabase) y [lista-de-lanzamiento.md](lista-de-lanzamiento.md) (para abrir).
 
 > **Nota para Claude (no borrar):** cada vez que aparezca una situación nueva de operación (algo que el dueño tuvo que resolver o preguntó), **agrégala aquí** y actualiza la fecha. Todo el SQL de los bloques ` ```sql ` se ejecuta en `npm run probar-sql` (sección 24): si cambias una tabla o una función, esa prueba avisa si algún bloque quedó roto. Los ejemplos que no deben ejecutarse van en ` ```text `. Texto simple, tuteo, cero jerga sin explicar. Esta guía **no repite** lo que ya está en `guia-rapida.md` (comandos, todo el SQL de uso diario, reglas de fábrica): la completa y la apunta con «(guía rápida 5.x)».
 
-**Índice:** [Las 3 herramientas](#las-3-herramientas) · [1. Antes de abrir al público](#1-antes-de-abrir-al-público) · [2. Códigos](#2-códigos) · [3. Premios, intentos y pausar el juego](#3-premios-intentos-y-pausar-el-juego) · [4. La caja y el PIN](#4-la-caja-y-el-pin) · [5. No puedo entrar / algo no carga](#5-no-puedo-entrar--algo-no-carga) · [6. Cambiar textos del juego](#6-cambiar-textos-del-juego-dirección-horario-nombre) · [7. Datos personales](#7-datos-personales-y-privacidad) · [8. Alguien está haciendo trampa](#8-alguien-está-haciendo-trampa) · [9. Cómo pedirle ayuda a Claude](#9-cómo-pedirle-ayuda-a-claude)
+**Índice:** [Las 3 herramientas](#las-3-herramientas) · [1. Antes de abrir al público](#1-antes-de-abrir-al-público) · [2. Códigos](#2-códigos) · [3. Premios, intentos y pausar el juego](#3-premios-intentos-y-pausar-el-juego) · [4. La caja y el PIN](#4-la-caja-y-el-pin) · [5. No puedo entrar / algo no carga](#5-no-puedo-entrar--algo-no-carga) · [6. Cambiar textos del juego](#6-cambiar-textos-del-juego-dirección-horario-nombre) · [7. Datos personales](#7-datos-personales-y-privacidad) · [8. Alguien está haciendo trampa](#8-alguien-está-haciendo-trampa) · [9. De dónde vienen los jugadores](#9-de-dónde-vienen-los-jugadores-mostrador-vasos-instagram-facebook) · [10. Cómo pedirle ayuda a Claude](#10-cómo-pedirle-ayuda-a-claude)
 
 ---
 
@@ -38,6 +38,8 @@ from app.codigos;
 - **Si YA hay clientes reales:** **no uses la limpieza total**: borraría los códigos que la gente tiene en el celular. Borra **solo** el código de prueba (receta 2.1) y deja lo demás.
 
 ### 1.2 Lista para «abrir la puerta» (en este orden)
+
+*(La versión completa y ordenada, con publicar en GitHub, probar por QR y la primera semana, está en [lista-de-lanzamiento.md](lista-de-lanzamiento.md); esta es la parte del servidor.)*
 
 Hazla cuando termines **todas** tus pruebas: la limpieza va de **último**, porque cada prueba deja datos.
 
@@ -262,7 +264,23 @@ from app.v_codigos where emitido_en > now() - interval '2 hours' order by emitid
 
 ---
 
-## 9. Cómo pedirle ayuda a Claude
+## 9. ¿De dónde vienen los jugadores? (mostrador, vasos, Instagram, Facebook)
+
+Panel → **Resumen** → tarjeta **«¿De dónde vienen los jugadores?»**: elige *Esta semana*, *Últimos 30 días* o *Todo*. Verás por canal cuántos **jugadores** (celulares distintos), **partidas**, quiénes **llegaron** a la meta, cuántos sacaron **código** y cuántos lo **canjearon**. «Entró directo» = abrió el juego sin etiqueta (por ejemplo, escribiendo la dirección o desde un enlace sin etiquetas).
+
+| Pasa esto | Qué hacer |
+|---|---|
+| La tarjeta dice «Falta actualizar el servidor» | No se pegó el SQL nuevo: `npm run sql` y pegar `supabase/todo-junto.sql` (guía rápida 5.9) |
+| Mostrador/vasos casi no aparecen | Probablemente el QR se escanea con la cámara y abre el navegador normal: **debería** contarse igual. Comprueba el QR con `qr/imprimir.html` y mira que el enlace tenga `utm_source=mostrador` |
+| Instagram/Facebook salen como «entró directo» | El enlace de la biografía o del anuncio no tiene las etiquetas: usa los de `qr/LEEME.md` tal cual |
+| Quiero un canal nuevo (volante, influencer…) | Se agrega en `tools/generar-qr.mjs` (lista `CANALES`) y `npm run qr`; el panel lo cuenta solo |
+| Quiero empezar de cero con otra campaña | `npm run qr -- --campana=nombre-nuevo` y se usan los enlaces nuevos; el panel muestra cada campaña en su propia fila |
+
+Se cuenta cuando alguien **empieza una partida**, no cuando solo abre la página. Las etiquetas no identifican a nadie.
+
+---
+
+## 10. Cómo pedirle ayuda a Claude
 
 Cuéntale **qué viste y qué esperabas**. Cuanto más concreto, más rápido se resuelve. Una plantilla:
 

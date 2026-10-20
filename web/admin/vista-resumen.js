@@ -1,6 +1,7 @@
 // vista-resumen.js — Pestaña "Resumen": cuántos premios quedan, cuánto se jugó, cuántos ganaron, reclamaron y canjearon.
 import { el, reemplazar } from '../js/panel/dom.js';
 import { fechaCorta } from '../js/panel/formato.js';
+import { ErrorServidor } from '../js/panel/rpc.js';
 
 const MOTIVOS = {
   'sin-premios': 'Se acabaron los premios de la semana.',
@@ -47,6 +48,63 @@ export function vistaResumen(ctx) {
         }))));
   }
 
+  /** «¿De dónde vienen los jugadores?»: una fila por canal (mostrador, vasos, instagram…), según las etiquetas de cada enlace. */
+  function tarjetaCanales() {
+    const PERIODOS = [['semana', 'Esta semana'], ['30d', 'Últimos 30 días'], ['todo', 'Todo']];
+    const cuerpo = el('div', {});
+    const chips = el('div', { class: 'chips' });
+    let periodo = 'semana';
+    let pedido = 0;
+
+    const filaCanal = (f) => {
+      const detalle = [f.medio, f.campana].filter(Boolean).join(' · ');
+      return el('tr', {},
+        el('td', {}, f.fuente ? el('b', {}, f.fuente) : el('i', {}, 'Entró directo (sin etiqueta)'), detalle && el('small', { class: 'nota' }, ' ' + detalle)),
+        el('td', { class: 'num' }, f.jugadores), el('td', { class: 'num' }, f.partidas), el('td', { class: 'num' }, f.llegaron),
+        el('td', { class: 'num' }, f.codigos), el('td', { class: 'num' }, f.canjes));
+    };
+
+    function pintarCanales(r) {
+      if (!r.filas.length) return reemplazar(cuerpo, el('p', { class: 'nota' }, 'Todavía no hay partidas en este periodo.'));
+      const suma = (k) => r.filas.reduce((a, f) => a + f[k], 0);
+      reemplazar(cuerpo,
+        el('div', { class: 'tabla-scroll' },
+          el('table', { class: 'tabla' },
+            el('thead', {}, el('tr', {}, ['Canal', 'Jugadores', 'Partidas', 'Llegaron', 'Códigos', 'Canjes'].map((t, i) => el('th', { class: i ? 'num' : '' }, t)))),
+            el('tbody', {}, r.filas.map(filaCanal)),
+            el('tfoot', {}, el('tr', {}, el('td', {}, el('b', {}, 'Total')),
+              ['jugadores', 'partidas', 'llegaron', 'codigos', 'canjes'].map((k) => el('td', { class: 'num' }, el('b', {}, suma(k)))))))));
+    }
+
+    async function cargarCanales() {
+      const mio = ++pedido;
+      reemplazar(cuerpo, el('p', { class: 'nota' }, 'Cargando…'));
+      try {
+        const r = await ctx.llamar('admin_canales', { p_periodo: periodo });
+        if (mio === pedido) pintarCanales(r);
+      } catch (e) {
+        if (mio !== pedido) return;
+        if (e instanceof ErrorServidor && e.tipo === 'faltan-funciones') {
+          reemplazar(cuerpo, el('p', { class: 'nota' }, 'Falta actualizar el servidor para ver esto: corre «npm run sql» y pega supabase/todo-junto.sql en el SQL Editor de Supabase.'));
+        } else if (e instanceof ErrorServidor && e.tipo === 'sesion') {
+          ctx.errorDeCarga(e);
+        } else {
+          reemplazar(cuerpo, el('p', { class: 'nota' }, 'No se pudo cargar esta tabla.'), el('button', { type: 'button', class: 'boton secundario chico', onclick: cargarCanales }, 'Reintentar'));
+        }
+      }
+    }
+
+    function pintarChips() {
+      reemplazar(chips, PERIODOS.map(([clave, nombre]) =>
+        el('button', { type: 'button', class: 'chip', 'aria-pressed': String(clave === periodo), onclick: () => { periodo = clave; pintarChips(); cargarCanales(); } }, nombre)));
+    }
+
+    pintarChips();
+    cargarCanales();
+    return el('div', { class: 'tarjeta' }, el('h2', {}, '¿De dónde vienen los jugadores?'), chips, cuerpo,
+      el('p', { class: 'nota' }, 'Cada enlace o QR lleva una etiqueta (mostrador, vasos, instagram, facebook…). Se cuenta cuando alguien EMPIEZA una partida, no cuando solo abre la página. «Entró directo» = abrió el juego sin etiqueta (por ejemplo, escribiendo la dirección).'));
+  }
+
   function pintar(r) {
     reemplazar(
       contenedor,
@@ -63,6 +121,7 @@ export function vistaResumen(ctx) {
       el('div', { class: 'tarjeta' }, el('h2', {}, 'Del juego a la caja'), embudo(r),
         r.partidas.rechazadas > 0 && el('p', { class: 'nota' }, `Victorias que el servidor rechazó: ${r.partidas.rechazadas} (llegaron muy rápido o con pocas frutas; puede ser trampa o un juego muy fácil).`),
         r.partidas.sinCupo > 0 && el('p', { class: 'nota' }, `Llegaron a la meta pero ya no había premios: ${r.partidas.sinCupo}.`)),
+      tarjetaCanales(),
       el('div', { class: 'tarjeta' }, el('h2', {}, 'Últimos 14 días'), tablaDias(r),
         el('p', { class: 'nota' }, `Datos al ${fechaCorta(r.ahoraISO)} (los días van en hora de Bogotá).`)),
       el('button', { type: 'button', class: 'boton secundario', onclick: () => ctx.cargar(contenedor, cargar) }, 'Actualizar'),

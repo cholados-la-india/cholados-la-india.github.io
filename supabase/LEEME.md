@@ -10,8 +10,9 @@ Todo el "cerebro" del juego (intentos, premios, códigos, vigencia, un código p
 |---|---|
 | `migrations/0001_tablas.sql` | Crea las tablas (`configuracion`, `partidas`, `codigos`), la vista `v_codigos` y los permisos |
 | `migrations/0002_funciones.sql` | Crea la lógica: las 6 funciones del juego y las ayudas internas |
-| `todo-junto.sql` | **GENERADO** (`npm run sql`): todo el SQL (0001 + 0002 + 0003 + auditoría) en un solo archivo para pegar de una vez |
+| `todo-junto.sql` | **GENERADO** (`npm run sql`): todo el SQL (0001 + 0002 + 0003 + 0004 + auditoría) en un solo archivo para pegar de una vez |
 | `sql/auditoria_permisos.sql` | Revisa en tu servidor real que nada quedó abierto de más (solo lectura; debe decir «✅ Todo en orden») |
+| `migrations/0004_canales.sql` | **Etapa 7:** etiquetas UTM en las partidas (`registrar_canal` para el juego, `admin_canales` para el panel) |
 | `migrations/0003_staff_admin.sql` | **Etapa 5:** el PIN de la caja, el canje, la lista de administradores y las 13 funciones de la caja y del panel |
 | `sql/consultas_utiles.sql` | Consultas para **mirar** y **cambiar** reglas desde el SQL Editor |
 | `sql/limpiar_pruebas.sql` | Borra partidas y códigos (solo antes del lanzamiento) |
@@ -177,3 +178,18 @@ Los límites por red frenan, pero quien tenga varias redes distintas todavía po
 - `npm run probar-canje` — 25 cajeros simultáneos intentan canjear el mismo código (**te pide el PIN en tu terminal**; nunca lo escribas en el chat).
 - `npm run revisar-secretos` — busca secretos en el repo y en todo su historial.
 - `supabase/sql/auditoria_permisos.sql` — la auditoría de permisos de tu servidor real (también va al final de `todo-junto.sql`).
+
+## Etapa 7 — De dónde vienen los jugadores (`0004_canales.sql`)
+
+Cada enlace que se reparte lleva etiquetas (`?utm_source=mostrador&utm_medium=qr&utm_campaign=lanzamiento`). El juego las lee, las recuerda 30 días y, al **empezar una partida**, se las manda al servidor; el panel las cuenta por canal. **No identifican a nadie.**
+
+| Qué | Detalle |
+|---|---|
+| Columnas nuevas | `utm_fuente`, `utm_medio`, `utm_campana` en `app.partidas` (vacías = «entró directo») |
+| `public.registrar_canal(p_token, p_fuente, p_medio, p_campana)` | La llama el juego (clave pública). Solo una vez por partida y en sus primeros 15 minutos. Limpia las etiquetas (minúsculas, a-z 0-9 . _ -, máx. 30 / 40): lo raro se descarta sin error |
+| `public.admin_canales(p_periodo)` | La llama el panel (solo administradores). Devuelve por canal: jugadores, partidas, llegaron a la meta, códigos y canjes; periodo `semana`, `30d` o `todo` |
+| Permisos | Igual que siempre: `registrar_canal` abierta a `anon`; `admin_canales` solo a `authenticated` y además exige estar en `app.admins`. La auditoría ahora espera **10** funciones abiertas al público y **12** de administrador |
+| Cómo se actualiza | `npm run sql` y pegar `todo-junto.sql` (seguro de repetir; no borra datos) |
+| Pruebas | `probar-sql` sección 25 (qué acepta y qué no, conteos por canal, periodos, permisos) y 3 mutaciones nuevas en `probar-mutaciones` |
+
+Para **borrar datos personales** al terminar una temporada y **cerrar el juego**: `documentos/operacion-corta.md`.

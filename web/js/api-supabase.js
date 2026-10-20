@@ -66,6 +66,13 @@ export const terminarPartida = ({ token, gano, progreso, frutas }) =>
 export const reclamarPremio = ({ token, nombre, celular, consentimiento }) =>
   rpc('reclamar_codigo', { p_token: token, p_nombre: nombre, p_celular: celular, p_consentimiento: Boolean(consentimiento) }, { reintentos: 2 });
 
+/**
+ * Anota de qué enlace llegó la persona (etiquetas UTM) en la partida que acaba de empezar. Es mejor esfuerzo: si falla, la partida
+ * sigue igual. El servidor solo lo acepta una vez por partida y en sus primeros 15 minutos.
+ */
+export const registrarCanal = ({ token, fuente, medio, campana }) =>
+  rpc('registrar_canal', { p_token: token, p_fuente: fuente ?? null, p_medio: medio ?? null, p_campana: campana ?? null }, { reintentos: 1 });
+
 export const miCodigo = () => rpc('mi_codigo', { p_device: idDispositivo() }, { reintentos: 2 });
 
 /** Despierta al servidor y devuelve su hora (la usa el aviso diario que evita que el proyecto gratis se pause). */

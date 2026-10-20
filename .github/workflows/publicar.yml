@@ -1,0 +1,61 @@
+# Publicar el juego en GitHub Pages
+#
+# Qué hace: cada vez que subes (push) a la rama main un cambio dentro de la carpeta web/, GitHub toma esa carpeta y la publica en
+#           https://cholados-la-india.github.io/  (tarda 1 o 2 minutos). Lo que NO está en web/ (historial, documentos, SQL, qr...) nunca se publica.
+# Antes de publicar revisa que no se haya colado ningún secreto (el repositorio es público): si lo encuentra, NO publica y te avisa.
+#
+# Puesta en marcha (una sola vez, la haces tú en github.com): repositorio → Settings → Pages → «Source» = GitHub Actions.
+# Para publicar a mano sin cambiar nada: pestaña Actions → «Publicar el juego» → Run workflow.
+name: Publicar el juego
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'web/**'
+      - '.github/workflows/publicar.yml'
+  workflow_dispatch:
+
+# Permisos mínimos que necesita GitHub Pages
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Una publicación a la vez (si subes dos cambios seguidos, la segunda espera a la primera)
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  publicar:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.despliegue.outputs.page_url }}
+    steps:
+      - name: Bajar el proyecto
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0   # todo el historial, para revisar también lo que se subió antes
+
+      - name: Revisar que no se haya colado ningún secreto
+        run: node tools/revisar-secretos.mjs
+
+      - name: Comprobar que lo mínimo está en web/
+        run: |
+          for f in web/index.html web/js/main.js web/js/supabase-config.js web/vendor/three/three.min.js web/canje/index.html web/admin/index.html; do
+            test -f "$f" || { echo "Falta $f"; exit 1; }
+          done
+
+      - name: Preparar GitHub Pages
+        uses: actions/configure-pages@v5
+
+      - name: Empacar la carpeta web/
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: web
+
+      - name: Publicar
+        id: despliegue
+        uses: actions/deploy-pages@v4

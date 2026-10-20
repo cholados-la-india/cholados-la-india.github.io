@@ -1,0 +1,55 @@
+# Mantener Supabase despierto
+#
+# Por qué existe: el plan gratis de Supabase PAUSA el proyecto si pasa ~1 semana sin actividad (y el juego dejaría de funcionar
+# hasta que alguien pulse «Resume project»). Esta tarea llama al servidor una vez al día para que eso no pase.
+#
+# Qué hace: llama a las funciones públicas ping() y estado() (las mismas que usa el juego; no gastan intentos ni premios y no
+#           guardan nada). Si el servidor NO responde bien, la tarea sale en ROJO y GitHub te manda un correo: es tu alarma.
+# Cómo ver que corre: pestaña Actions → «Mantener Supabase despierto» → debe haber una fila verde por día. Para probarla ya mismo:
+#           Run workflow (botón a la derecha). Detalle en documentos/publicacion.md.
+# ⚠️ Límite de GitHub: en repositorios públicos, las tareas programadas se APAGAN solas si pasan 60 días sin ninguna actividad
+#    (ningún commit). Si un día ves el aviso «scheduled workflows disabled», entra a Actions y pulsa «Enable workflow».
+name: Mantener Supabase despierto
+
+on:
+  schedule:
+    - cron: '23 10 * * *'   # todos los días a las 10:23 UTC (5:23 a. m. en Colombia); una hora «rara» para no coincidir con la fila de GitHub
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Bajar el proyecto
+        uses: actions/checkout@v4
+
+      - name: Llamar al servidor
+        run: |
+          # La dirección y la clave PÚBLICA salen de web/js/supabase-config.js (la misma que usa el juego; no hay secretos aquí).
+          URL=$(sed -n "s/.*url: '\([^']*\)'.*/\1/p" web/js/supabase-config.js | head -n 1)
+          KEY=$(sed -n "s/.*clave: '\([^']*\)'.*/\1/p" web/js/supabase-config.js | head -n 1)
+          test -n "$URL" -a -n "$KEY" || { echo "No pude leer la dirección o la clave pública de web/js/supabase-config.js"; exit 1; }
+
+          llamar() {
+            curl -sS --fail-with-body --max-time 30 --retry 3 --retry-delay 10 --retry-all-errors \
+              -X POST "$URL/rest/v1/rpc/$1" -H "apikey: $KEY" -H "Content-Type: application/json" -d "$2"
+          }
+
+          echo "ping():"
+          RESPUESTA=$(llamar ping '{}')
+          echo "$RESPUESTA"
+          echo "$RESPUESTA" | grep -Eq '"ok" *: *true' || { echo "ping() no respondió ok: ¿el proyecto de Supabase está pausado?"; exit 1; }
+
+          echo "estado() (lee la base de datos de verdad):"
+          RESPUESTA=$(llamar estado '{}')
+          echo "$RESPUESTA" | head -c 300; echo
+          echo "$RESPUESTA" | grep -q '"jugable"' || { echo "estado() no respondió lo esperado"; exit 1; }
+
+          {
+            echo "### Supabase respondió bien"
+            echo "Hora de Colombia: $(TZ=America/Bogota date '+%Y-%m-%d %H:%M')"
+          } >> "$GITHUB_STEP_SUMMARY"

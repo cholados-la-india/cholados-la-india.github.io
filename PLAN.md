@@ -1,7 +1,7 @@
 # PLAN.md — Cholado Runner
 
 Estado por etapas. **Regla:** solo se trabaja en la etapa que el usuario pida; al cerrar cada una se resume (qué se hizo, archivos tocados, frase de commit), se espera el visto bueno y se actualiza este archivo y los demás documentos.
-Última actualización: 2026-10-20 (noche; Etapa 6 **cerrada**; Fase A hecha por ahora). Orden decidido por el usuario: **Fase bonus A (bugs) ✅ por ahora → Fase bonus B (estética, MAÑANA) → Etapa 7 (publicación, la última)**. URL **decidida**: organización gratuita de GitHub `cholados-la-india`, sin ruta → `https://cholados-la-india.github.io/` (el usuario la crea y transfiere el repo antes de la Etapa 7; `pendientes.md` #14).
+Última actualización: 2026-10-20 (noche): Etapas 1–6 y Fases A y B **cerradas**; **Etapa 7 hecha en el repositorio, a la espera del visto bueno del usuario** (falta que él la ponga en marcha en GitHub y Supabase: `documentos/lista-de-lanzamiento.md`). URL: `https://cholados-la-india.github.io/` (organización y repo ya creados).
 Contexto completo en `CLAUDE.md`; historia detallada en `documentos/bitacora.md`; lo abierto en `pendientes.md`.
 
 | # | Etapa | Estado |
@@ -13,8 +13,8 @@ Contexto completo en `CLAUDE.md`; historia detallada en `documentos/bitacora.md`
 | 5 | Página del staff (PIN) y panel admin | ✅ Hecha, probada contra el servidor real y aprobada por el usuario (2026-10-19) |
 | 6 | Pruebas, seguridad y compatibilidad | ✅ **Cerrada** (2026-10-20): 244 pruebas SQL; servidor real 43 + 30 + 19 ✓; canje doble y limpieza hechos por el usuario; celulares reales en pendientes |
 | A | **Fase bonus A**: revisión de bugs en localhost | ✅ **Hecha por ahora** (Claude arregló 9 bugs; el usuario dijo «no más bugs por ahora»; la prueba en el XR queda opcional, `pendientes.md` #36) |
-| B | **Fase bonus B**: mejoras estéticas | ⏳ **Primera pasada hecha** (B.1–B.7); falta la segunda vuelta de ajustes que pida el usuario |
-| 7 | Publicación, QR y lista de lanzamiento | ⬜ **La última**: se hace cuando A y B estén listas (insumos en `CLAUDE.md` §14) y el usuario pegue el Prompt 7 |
+| B | **Fase bonus B**: mejoras estéticas | ✅ **Cerrada** (2026-10-20): cholado final «Mermelada», sonido sin aplausos, textos; hito `historial/09-fase-b-cierre/` |
+| 7 | Publicación, QR y lista de lanzamiento | ✅ **Hecha en el repo (2026-10-20), esperando visto bueno**: Pages + aviso diario como workflows, UTM por canal y panel, QR, textos legales, guías y lista de lanzamiento. **Falta que el usuario la active** (`documentos/lista-de-lanzamiento.md`) |
 
 ## Etapa 1 — Contexto y preguntas ✅
 Revisión de las 19 referencias y el menú; 10 preguntas respondidas por el usuario; análisis de la Ley 1581; creación de `CLAUDE.md`, `PLAN.md`, `pendientes.md`; `referencias-diseno/` agregada a `.gitignore`.
@@ -101,8 +101,16 @@ Lo que el usuario dijo que quería mejorar al final (ver `pendientes.md` #16): c
 - [x] **B.9 Cholado final «Mermelada»**: sin helado; morro de piña picadita tapado con mermelada de mora; leche condensada cálida con la uvita encima y centrada; vaso de almíbar rojo fuerte con frutas reconocibles por dentro; cuchara con el mango afuera. Se presentaron 3 interpretaciones (`documentos/cholado-3-versiones.png`) y el usuario eligió la 2.ª con 3 detalles que se corrigieron. `bitacora.md` §13.13.
 - [x] B.10 **Visto bueno del usuario** («esa versión 2 quedó perfecta»; «da por terminada esta fase B»). Hito `historial/09-fase-b-cierre/`. **Guía del administrador** (`documentos/guia-del-administrador.md`) hecha a pedido del usuario. **Siguiente: Etapa 7** cuando el usuario pegue su prompt.
 
-## Etapa 7 — Publicación ⬜ (la siguiente; falta el prompt del usuario)
-- [ ] GitHub Pages desde `web/` con workflow; URL permanente `https://cholados-la-india.github.io/` (organización `cholados-la-india`; repo renombrado a `cholados-la-india.github.io`); QR de alta resolución (mostrador y vasos); términos y condiciones; aviso de datos (Ley 1581); plan de contingencia; lista de lanzamiento; hito final en `historial/`.
+## Etapa 7 — Publicación ✅ (hecha en el repo; falta el visto bueno y que el usuario la active)
+Pidió al empezar: canje **todos los días** 2–9 p. m. ✅, **dirección y horario más visibles** ✅, **datos 6 meses + correo para borrar** ✅.
+- [x] 7.1 **GitHub Pages**: `.github/workflows/publicar.yml` (solo `web/`; revisa secretos antes) + `web/404.html`. Pasos en la interfaz de GitHub: `documentos/publicacion.md` §A.
+- [x] 7.2 **Aviso diario a Supabase**: `.github/workflows/mantener-supabase-despierto.yml` (`ping()` + `estado()`; rojo = alarma por correo). Cómo verificarlo: `publicacion.md` §B. Probado a mano contra el servidor real.
+- [x] 7.3 **UTM por canal** (mostrador, vasos, instagram, facebook): `web/js/canal.js`, `registrar_canal` y `admin_canales` (`0004_canales.sql`), tarjeta «¿De dónde vienen los jugadores?» en el Resumen del panel (y en la demo `?api=falsa`). `probar-sql` §25, `probar-canal`, 3 mutaciones nuevas.
+- [x] 7.4 **QR**: `npm run qr` → `qr/` (mostrador y vasos en SVG y PNG 2400 px + hoja para probarlos + los 4 enlaces). Decodificados y verificados.
+- [x] 7.5 **Textos legales** definitivos (sin «provisional») y `documentos/textos-legales.md` para revisarlos.
+- [x] 7.6 **Documentos**: `operacion-corta.md` (config, PIN, canjes, cerrar temporada, borrar datos), `publicacion.md`, `lista-de-lanzamiento.md` (ordenada, 29 pasos), `guia-del-administrador.md` y `guia-rapida.md` al día.
+- [ ] 7.7 **Visto bueno del usuario** y hito `historial/10-etapa-7-publicacion/`.
+- [ ] 7.8 **Lo que hace el usuario** (lista de lanzamiento): commit y push → Settings → Pages → Source = GitHub Actions → correr «Publicar el juego» → pegar `todo-junto.sql` → probar con el juego publicado → limpiar datos de prueba → imprimir los QR → abrir.
 
 ## Después de la Etapa 7
 El usuario seguirá haciendo cambios después de publicar. Las mejoras estéticas que antes iban aquí **se adelantaron** (Fase bonus B): quiere publicar con todo lo más pulido posible.

@@ -2,7 +2,7 @@
 
 Todo lo que conviene tener a mano para manejar el proyecto: comandos, SQL para copiar y pegar, qué se hace desde el panel y recordatorios de cómo funciona cada cosa. Si algo no está aquí y lo necesitas, pídeselo a Claude y se agrega.
 
-Última actualización: 2026-10-20 (cierre de la Fase B). **Para «¿qué hago si pasa esto?» (código de prueba, pausar el juego, caja bloqueada, perder un código…) mira [documentos/guia-del-administrador.md](documentos/guia-del-administrador.md).**
+Última actualización: 2026-10-20, noche (Etapa 7). **Para «¿qué hago si pasa esto?» mira [documentos/guia-del-administrador.md](documentos/guia-del-administrador.md); para lo de todos los días en una hoja, [documentos/operacion-corta.md](documentos/operacion-corta.md); para publicar, [documentos/publicacion.md](documentos/publicacion.md) y [documentos/lista-de-lanzamiento.md](documentos/lista-de-lanzamiento.md).**
 
 > **Nota para Claude (no borrar):** cada vez que agregues una funcionalidad clave, un comando nuevo, un cambio en cómo se opera el servidor o cualquier cosa que el dueño deba recordar, **añádela a esta guía** (en la sección que le toque) y actualiza la fecha de arriba **antes de cerrar la etapa**. Todo el SQL de los bloques ` ```sql ` se ejecuta en `npm run probar-sql`: si cambias una tabla o una función, esa prueba te avisa si algún bloque quedó roto. Los bloques de ejemplo que NO deben ejecutarse se marcan con ` ```text `. Esta guía está escrita para una persona que **no es experta**: tuteo, pasos cortos, cero jerga sin explicar.
 
@@ -69,6 +69,9 @@ Siempre se escriben en la terminal, **dentro de la carpeta del proyecto**. Prime
 | `npm run probar-canje` | 25 cajeros simultáneos contra un mismo código (te pide el PIN **en tu terminal**). Antes: limpiar (5.1). | **Sí → luego limpiar (5.1)** |
 | `npm run simular` | Un bot juega miles de partidas y dice qué tan difícil está el juego. Acepta cambios: `npm run simular -- 2000 velocidad.final=14` | No |
 | `npm run hito -- "nombre" "Título" "Descripción" "ruta/"` | Guarda una copia congelada del proyecto en `historial/` (Claude la usa al cerrar cada etapa). | No |
+| `npm run qr` | Genera los **QR** (mostrador y vasos) y los **4 enlaces con etiquetas** (mostrador, vasos, instagram, facebook) en la carpeta `qr/`. `-- --campana=nombre` cambia la campaña. **No imprimas hasta que la dirección funcione.** | No |
+| `npm run probar-canal` | Prueba (sin navegador) cómo el juego lee las etiquetas de los enlaces (≈ 1 s). | No |
+| `npm run textos-legales` | Escribe `documentos/textos-legales.md`: lo que el juego dice sobre premio, datos y local, para revisarlo. | No |
 | `npm run vendor` | Regenera Three.js recortado. **Solo** cuando el código del juego use una clase nueva de Three.js. | No |
 
 ---
@@ -268,7 +271,7 @@ where vence_en < now() - interval '180 days' and nombre <> '(borrado)';
 1. En la terminal: `npm run sql`.
 2. Abre `supabase/todo-junto.sql`, selecciona todo (`Ctrl + A`) y copia (`Ctrl + C`).
 3. SQL Editor → «+» → **Create a new snippet** → pegar → **Run** (si sale un aviso amarillo, «Run this query»).
-4. Abajo debe aparecer **«✅ Todo en orden»**. Es seguro repetirlo: no borra datos, ni el PIN, ni los administradores. Si lista problemas o da un error, pásaselo a Claude.
+4. Abajo debe aparecer **«✅ Todo en orden»**. (Ahora incluye 4 migraciones: 0001 a 0004.) Es seguro repetirlo: no borra datos, ni el PIN, ni los administradores. Si lista problemas o da un error, pásaselo a Claude.
 
 La **auditoría de permisos** sola (solo mira, no cambia nada) es el archivo `supabase/sql/auditoria_permisos.sql`.
 
@@ -280,7 +283,7 @@ Entra con tu correo y contraseña (no marques «mantener sesión» en un disposi
 
 | Pestaña | Para qué |
 |---|---|
-| **Resumen** | Premios que quedan (de la semana y de hoy si hay cupo diario), si el juego está abierto, partidas, quiénes llegaron a la meta, códigos y canjes de la semana, y los últimos 14 días. |
+| **Resumen** | **«¿De dónde vienen los jugadores?»** (por mostrador, vasos, instagram, facebook…; esta semana, 30 días o todo) y los premios que quedan (de la semana y de hoy si hay cupo diario), si el juego está abierto, partidas, quiénes llegaron a la meta, códigos y canjes de la semana, y los últimos 14 días. |
 | **Códigos** | Lista con filtros (activos, canjeados, vencidos, desactivados) y buscador (código, nombre o celular). Botones: **Canjear**, **Desactivar/Reactivar**, **Exportar CSV**. |
 | **Canjear** | La misma pantalla de la caja pero **sin PIN** y viendo nombre y celular del cliente. Útil si la caja está bloqueada. |
 | **Configuración** | **Todas** las reglas editables: premios por semana, **cupo diario (se prende y se apaga)**, intentos, vigencia, días entre códigos por celular, compra mínima, minutos que se aparta el premio, prefijo y largo del código, regalos (1 a 6), fechas de la campaña, duración de la partida, frutas mínimas, dificultad, y los límites de seguridad. «Guardar cambios» y listo; si algún valor está mal, no se guarda nada. |
@@ -387,6 +390,10 @@ Claude **nunca** hace commit ni push: lo haces tú. Las carpetas `node_modules/`
 | Archivo | Qué es |
 |---|---|
 | `guia-rapida.md` | **Esta guía.** |
+| `documentos/operacion-corta.md` | Una hoja: cambiar configuración, cambiar el PIN, ver canjes, cerrar la temporada, borrar datos personales. |
+| `documentos/publicacion.md` | Publicar en GitHub Pages paso a paso, verificar el aviso diario, enlaces UTM y QR. |
+| `documentos/lista-de-lanzamiento.md` | La lista de chequeo ordenada para abrir al público. |
+| `documentos/textos-legales.md` | Todo lo que el juego dice sobre premio, datos y local (generado). |
 | `documentos/guia-del-administrador.md` | **Situaciones del día a día** («¿qué hago si…?»): lista para abrir al público, borrar un código de prueba, pausar el juego, caja bloqueada, trampa, privacidad… |
 | `PLAN.md` | El estado de las etapas. |
 | `pendientes.md` | Lo que falta decidir o hacer. |

@@ -15,6 +15,9 @@ const MUTACIONES = [
   ['dejar la tabla de límites sin RLS', 'supabase/migrations/0001_tablas.sql', 'alter table app.limites_red   enable row level security;', ''],
   ['dejar rls_auto_enable() abierta al público', 'supabase/migrations/0002_funciones.sql', "revoke all on function public.rls_auto_enable() from public, anon, authenticated;", 'null;'],
   ['no mostrar las fechas de campaña', 'supabase/migrations/0002_funciones.sql', "'campana', jsonb_build_object(", "'campana_', jsonb_build_object("],
+  ['dejar que las etiquetas UTM se pisen', 'supabase/migrations/0004_canales.sql', 'where id = p_token and utm_fuente is null and inicio', 'where id = p_token and inicio'],
+  ['aceptar etiquetas UTM sin limpiar', 'supabase/migrations/0004_canales.sql', "select case when t.v ~ '^[a-z0-9][a-z0-9_.-]*$' and length(t.v) <= p_max then t.v end", 'select t.v'],
+  ['abrir admin_canales a quien no es administrador', 'supabase/migrations/0004_canales.sql', "if not app.es_admin() then\n    return jsonb_build_object('ok', false, 'motivo', 'no-autorizado');\n  end if;\n  v_desde", "if false then\n    return jsonb_build_object('ok', false, 'motivo', 'no-autorizado');\n  end if;\n  v_desde"],
 ];
 
 let sinDetectar = 0;

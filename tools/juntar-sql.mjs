@@ -2,13 +2,13 @@
 //
 //   Uso:  npm run sql        →  escribe  supabase/todo-junto.sql
 //
-// Contiene, en orden: 0001_tablas + 0002_funciones + 0003_staff_admin + la auditoría de permisos.
+// Contiene, en orden: 0001_tablas + 0002_funciones + 0003_staff_admin + 0004_canales + la auditoría de permisos.
 // Es seguro volver a pegarlo cuantas veces quieras: no borra datos (usa "if not exists" y "create or replace").
 // Úsalo cuando se actualice algo del servidor (así no hay que pegar archivo por archivo).
 import { readFile, writeFile } from 'node:fs/promises';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 
-const ARCHIVOS = ['migrations/0001_tablas.sql', 'migrations/0002_funciones.sql', 'migrations/0003_staff_admin.sql', 'sql/auditoria_permisos.sql'];
+const ARCHIVOS = ['migrations/0001_tablas.sql', 'migrations/0002_funciones.sql', 'migrations/0003_staff_admin.sql', 'migrations/0004_canales.sql', 'sql/auditoria_permisos.sql'];
 const RUTA = fileURLToPath(new URL('../supabase/todo-junto.sql', import.meta.url));
 
 export async function armar() {

@@ -106,7 +106,7 @@ seccion('G. Etapa 5: las funciones del administrador están cerradas para la cla
   const ARGS = {
     admin_yo: {}, admin_resumen: {}, admin_codigos: {}, admin_exportar: {}, admin_consultar_codigo: { p_codigo: 'X' },
     admin_canjear: { p_codigo: 'X' }, admin_estado_codigo: { p_codigo: 'X', p_estado: 'desactivado' }, admin_config: {},
-    admin_guardar_config: { p_cambios: {} }, admin_cambiar_pin: { p_pin: '0' }, admin_desbloquear_pin: {},
+    admin_guardar_config: { p_cambios: {} }, admin_cambiar_pin: { p_pin: '0' }, admin_desbloquear_pin: {}, admin_canales: { p_periodo: 'todo' },
   };
   const ADMIN = Object.keys(ARGS);
   const llamarCon = async (fn, extra = {}) => {
@@ -126,7 +126,7 @@ seccion('G. Etapa 5: las funciones del administrador están cerradas para la cla
   if (faltan.length === ADMIN.length) {
     ok('el servidor ya tiene la migración 0003_staff_admin.sql', false, 'NO está: pégala en el SQL Editor (ver supabase/LEEME.md, «Etapa 5»)');
   } else {
-    ok('el servidor tiene las 11 funciones de administrador (0003 aplicada)', faltan.length === 0, 'faltan: ' + faltan.join(', '));
+    ok('el servidor tiene las 12 funciones de administrador (0003 y 0004 aplicadas; si falta admin_canales: pega supabase/todo-junto.sql)', faltan.length === 0, 'faltan: ' + faltan.join(', '));
     ok('con la clave pública NINGUNA función de administrador responde (401/403)', abiertas.length === 0, abiertas.join(' | '));
     ok('con un token inventado tampoco', conTokenFalso.length === 0, conTokenFalso.join(' | '));
   }

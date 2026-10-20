@@ -180,6 +180,22 @@ function resumen() {
   };
 }
 
+// ── Canales (UTM) de muestra: cuánto vale cada periodo ──
+const CANALES_DEMO = [
+  // fuente, medio, campaña, [jugadores, partidas, llegaron, códigos, canjes] en: semana · 30 días · todo
+  ['mostrador', 'qr', 'lanzamiento', [[34, 61, 9, 8, 6], [92, 171, 24, 22, 15], [92, 171, 24, 22, 15]]],
+  ['vasos', 'qr', 'lanzamiento', [[21, 38, 5, 5, 3], [55, 99, 13, 12, 8], [55, 99, 13, 12, 8]]],
+  ['instagram', 'social', 'lanzamiento', [[17, 29, 3, 2, 1], [48, 80, 8, 6, 3], [48, 80, 8, 6, 3]]],
+  ['facebook', 'social', 'lanzamiento', [[6, 9, 0, 0, 0], [19, 31, 2, 1, 0], [19, 31, 2, 1, 0]]],
+  [null, null, null, [[5, 8, 1, 1, 1], [14, 22, 3, 3, 2], [14, 22, 3, 3, 2]]],
+];
+function canales(periodo) {
+  const i = periodo === 'semana' ? 0 : periodo === '30d' ? 1 : 2;
+  const filas = CANALES_DEMO.map(([fuente, medio, campana, datos]) => ({ fuente, medio, campana, jugadores: datos[i][0], partidas: datos[i][1], llegaron: datos[i][2], codigos: datos[i][3], canjes: datos[i][4] }))
+    .sort((x, y) => y.partidas - x.partidas);
+  return { ok: true, periodo: i === 0 ? 'semana' : i === 1 ? '30d' : 'todo', filas, ahoraISO: iso(ahora()) };
+}
+
 // ── Configuración ──
 const RANGOS = {
   intentosPorSemana: [1, 50, 'Intentos por semana'], premiosPorSemana: [0, 10000, 'Premios por semana'], cupoDiario: [0, 10000, 'Cupo diario'],
@@ -275,6 +291,7 @@ export async function llamar(nombre, a, token) {
       if (k.estado !== a.p_estado) k.estado = a.p_estado;
       return { ok: true, codigo: k.codigo, estado: efectivo(k) };
     }
+    case 'admin_canales': return canales(a.p_periodo);
     case 'admin_config': return { ok: true, config: structuredClone(cfg), ahoraISO: iso(ahora()) };
     case 'admin_guardar_config': return guardarConfig(a.p_cambios ?? {});
     case 'admin_cambiar_pin': return cambiarPin(a.p_pin);

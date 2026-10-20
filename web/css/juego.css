@@ -150,7 +150,12 @@ button { font: inherit; color: inherit; cursor: pointer; border: 0; background: 
 .restante b { color: #ffe86b; font-weight: 600; font-variant-numeric: tabular-nums; }
 .aviso-estado { font-size: 16px; padding: 8px 12px; border-radius: 12px; background: rgba(255, 255, 255, 0.1); color: #fbeaff; }
 .vale { font-size: 17px; color: #fbeaff; }
-.local { font-size: 14px; color: #e9d3f0; }
+/* El cuadro de la dirección y el horario: tiene que saltar a la vista entre tanto texto (pedido del usuario, Etapa 7) */
+.local { display: flex; flex-direction: column; align-items: center; gap: 4px; text-align: center; padding: 12px 14px; border-radius: 16px; background: rgba(255, 255, 255, 0.13); border: 2.5px solid var(--lima); }
+.local-titulo { font-size: 13px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--lima); }
+.local-direccion { font-family: var(--titulos); font-weight: 400; font-size: 22px; line-height: 1.12; letter-spacing: 0.02em; text-transform: uppercase; color: #fff; text-shadow: 0 2px 0 rgba(58, 15, 51, 0.55); }
+.local-dias { font-size: 16px; color: #fbeaff; }
+.local-horas { font-size: 21px; line-height: 1.1; color: var(--lima); text-shadow: 0 2px 0 rgba(58, 15, 51, 0.55); }
 .prueba { font-size: 13px; padding: 6px 10px; border-radius: 10px; color: #ffe86b; background: rgba(255, 232, 107, 0.14); }
 .chips { display: flex; justify-content: center; gap: 8px; }
 .chip { display: inline-flex; align-items: center; gap: 6px; padding: 5px 14px 5px 8px; border-radius: 99px; background: rgba(255, 255, 255, 0.14); font-size: 16px; }

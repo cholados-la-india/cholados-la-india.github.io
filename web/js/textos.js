@@ -5,8 +5,9 @@
 
 export const LOCAL = {
   direccion: 'Cholados La India, Canchas Panamericanas',
-  // Dos renglones, y las horas con espacio duro (\u00a0) para que «p. m.» nunca se parta. (El local abre más horas; esta es la franja para canjear.)
-  horario: 'Para canjear tu código:\nde 2:00\u00a0p.\u00a0m. a 9:00\u00a0p.\u00a0m.',
+  // Las horas llevan espacio duro (\u00a0) para que «p. m.» nunca se parta. (El local abre más horas; esta es la franja para canjear.)
+  dias: 'Todos los días',
+  horas: 'de 2:00\u00a0p.\u00a0m. a 9:00\u00a0p.\u00a0m.',
   responsableDatos: 'Cholados La India',
   correoContacto: 'choladoslaindia6@gmail.com',
 };
@@ -66,7 +67,7 @@ export const T = {
     cerrar: 'Entendido',
   },
 
-  // Las condiciones de la promoción (provisionales hasta la Etapa 7). Todo sale de lo que manda el servidor: si el dueño cambia
+  // Las condiciones de la promoción. Todo sale de lo que manda el servidor: si el dueño cambia
   // una regla en el panel, este texto cambia solo.
   condiciones: {
     titulo: 'Condiciones de la promoción',
@@ -74,13 +75,12 @@ export const T = {
       `Para ganar hay que <b>llegar a la meta</b> recogiendo al menos <b>${frutas} frutas</b>. Tienes <b>${intentos} intentos</b> por semana.`,
       `Cada código da <b>un solo regalo</b>: ${listaRegalos(r.regalos)}. <b>No es acumulable</b>: con una compra de ${pesos(r.compraMinima * 2)} también es un solo regalo.`,
       `Se necesita una compra mínima de <b>${pesos(r.compraMinima)}</b> en productos pagados; el regalo no cuenta.`,
-      `El código tiene un <b>plazo máximo de ${r.vigenciaDias} días</b> desde que lo recibes para usarlo (en tu código aparece hasta cuándo); se canjea <b>una sola vez</b> y <b>solo en el local</b>.`,
+      `El código tiene un <b>plazo máximo de ${r.vigenciaDias} días</b> desde que lo recibes para usarlo (en tu código aparece hasta cuándo); se canjea <b>una sola vez</b> y <b>solo en el local</b> (${LOCAL.direccion}), <b>${LOCAL.dias.toLowerCase()}, ${LOCAL.horas}</b>`, // (sin punto final: la hora ya termina en «p. m.»)
       `Se entrega <b>un código por celular cada ${r.diasEntreCodigosPorCelular} días</b>.`,
       premios ? `Hay <b>${premios} premios por semana</b>; se renuevan los lunes a las 12:00\u00a0a.\u00a0m. (hora de Bogotá). Cuando se acaban, toca esperar al lunes.` : null,
       r.cupoDiario > 0 ? `Además, cada día se reparten como máximo <b>${r.cupoDiario} premios</b>; el cupo del día se renueva a las 12:00\u00a0a.\u00a0m. (hora de Bogotá). Si ya se repartieron hoy, vuelve mañana.` : null,
       textoCampana(r.campana, dia) || 'Por ahora la campaña no tiene fechas anunciadas: puede terminar o cambiar, y lo avisaremos en nuestras redes (@cholados.laindia).',
     ].filter(Boolean),
-    provisional: '<i>Condiciones provisionales: el texto definitivo se publicará antes del lanzamiento.</i>',
     cerrar: 'Entendido',
   },
 
@@ -126,7 +126,7 @@ export const T = {
     },
     politica: {
       titulo: 'Política de datos',
-      texto: (r, c) => `Guardamos tu nombre y tu celular solo para entregarte y controlar tu premio de esta campaña (incluye evitar que un mismo número reclame varias veces). Se almacenan en un servicio en la nube (Supabase, fuera de Colombia). Responsable: <b>${r}</b>. Para consultar, corregir o borrar tus datos escribe a <b>${c}</b>. <i>(Texto provisional: pendiente de revisión.)</i>`,
+      texto: (r, c) => `Guardamos tu nombre y tu celular solo para entregarte y controlar tu premio de esta campaña (incluye evitar que un mismo número reclame varias veces). Se almacenan en un servicio en la nube (Supabase, fuera de Colombia). <b>Los conservamos hasta 6 meses después de que termine la campaña y luego los borramos.</b> También guardamos, sin identificarte, desde qué enlace llegaste (por ejemplo, el QR del mostrador) para saber qué publicidad funciona. Responsable: <b>${r}</b>. <b>Si quieres que consultemos, corrijamos o borremos tus datos, escríbenos a ${c}</b> con tu nombre y tu celular y lo hacemos.`,
     },
   },
 
@@ -145,6 +145,7 @@ export const T = {
       `Un regalo por código: <b>no es acumulable</b> (con ${pesos(compraMinima * 2)} tampoco te dan dos).`,
     ],
     condiciones: 'Ver condiciones',
+    canjeaAqui: 'Canjéalo aquí',
     copiar: 'Copiar código',
     copiado: '¡Copiado!',
     consejo: 'Tómale una captura de pantalla para no perderlo.',

@@ -200,7 +200,6 @@ export function crearUI(raiz, cfg) {
       <section class="pantalla centro fondo scroll"><div class="panel ayuda">
         <h2>${T.condiciones.titulo}</h2>
         <ul class="condiciones">${T.condiciones.lista(cfg.reglas, fechaDiaBogota, cfg.reglas.intentosPorSemana, cfg.reglas.premiosPorSemana, cfg.partida.frutasMinimas).map((x) => `<li>${x}</li>`).join('')}</ul>
-        <p class="nota">${T.condiciones.provisional}</p>
         <button type="button" class="boton" data-accion="cerrar-condiciones">${T.condiciones.cerrar}</button>
       </div></section>`,
 
@@ -230,7 +229,12 @@ export function crearUI(raiz, cfg) {
         <div class="codigo" id="codigo-texto"><small>${esc(prefijo)}-</small>${esc(resto ?? '')}</div>
         ${estados[estado] ?? estados.activo}
         ${estado === 'activo' ? `<ol class="pasos">${T.codigo.pasos(cfg.reglas.compraMinima, cfg.reglas.regalos).map((p) => `<li>${p}</li>`).join('')}</ol>
-        <p class="local"><b>${esc(LOCAL.direccion)}</b><br>${LOCAL.horario.split('\n').map(esc).join('<br>')}</p>
+        <div class="local">
+          <span class="local-titulo">${T.codigo.canjeaAqui}</span>
+          <b class="local-direccion">${esc(LOCAL.direccion)}</b>
+          <span class="local-dias">${esc(LOCAL.dias)}</span>
+          <b class="local-horas">${esc(LOCAL.horas)}</b>
+        </div>
         <button type="button" class="enlace" data-accion="condiciones">${T.codigo.condiciones}</button>` : puedeMas}
         ${esDePrueba ? `<p class="prueba">${T.codigo.prueba}</p>` : ''}
         ${estado === 'activo' ? `<p class="nota">${T.codigo.consejo}</p>
