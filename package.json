@@ -10,7 +10,8 @@
     "hito": "node tools/guardar-hito.mjs",
     "simular": "node tools/simular.mjs",
     "probar-sql": "node tools/probar-sql.mjs",
-    "probar-supabase": "node tools/probar-supabase.mjs"
+    "probar-supabase": "node tools/probar-supabase.mjs",
+    "probar-seguridad": "node tools/probar-supabase.mjs --rapido"
   },
   "devDependencies": {
     "@electric-sql/pglite": "0.5.10",

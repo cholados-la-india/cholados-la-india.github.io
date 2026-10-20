@@ -72,5 +72,20 @@
       "04-ver-mi-codigo-desde-el-servidor.jpg",
       "05-inicio-con-datos-reales-49-premios.jpg"
     ]
+  },
+  {
+    "id": "06-staff-admin",
+    "titulo": "Preview 7: caja con PIN y panel de administrador (Etapa 5)",
+    "descripcion": "La caja (web/canje/) verifica el PIN en el servidor y canjea una sola vez; el panel (web/admin/) tiene inicio de sesion, resumen, codigos con filtros y CSV, canje, configuracion editable y cuenta/PIN. Abrir con ?api=falsa para ver la demo con datos de mentira (PIN 1234; panel: cualquier correo y clave demo).",
+    "fecha": "2026-10-19",
+    "entrada": "canje/?api=falsa",
+    "capturas": [
+      "01-caja-codigo-valido.jpg",
+      "02-caja-canjeado.jpg",
+      "03-caja-ya-canjeado.jpg",
+      "04-admin-resumen.jpg",
+      "05-admin-codigos.jpg",
+      "06-admin-cuenta-y-pin.jpg"
+    ]
   }
 ]

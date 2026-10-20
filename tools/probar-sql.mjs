@@ -3,14 +3,15 @@
 //   Uso:  npm run probar-sql
 //
 // Usa PGlite (un Postgres que corre dentro de Node) con los mismos archivos que pegarás en Supabase.
-// Comprueba las reglas (intentos, semana, cupos, reservas, un código por celular, vigencia, permisos...).
+// Comprueba las reglas (intentos, semana, cupos, reservas, un código por celular, vigencia, permisos...) y, desde la\n// Etapa 5, el PIN del staff, el canje en caja y las funciones del panel de administrador.
 // OJO: aquí no hay concurrencia real (una sola conexión); eso se prueba contra Supabase con
 // `npm run probar-concurrencia`.
 import { readFile } from 'node:fs/promises';
 import { randomUUID } from 'node:crypto';
 import { PGlite } from '@electric-sql/pglite';
+import { pgcrypto } from '@electric-sql/pglite/contrib/pgcrypto';
 
-const db = new PGlite();
+const db = new PGlite({ extensions: { pgcrypto } });
 let fallos = 0;
 let total = 0;
 const ok = (nombre, cond, detalle = '') => {
@@ -22,7 +23,19 @@ const seccion = (t) => console.log(`\n${t}`);
 
 // Los roles que Supabase ya trae; aquí hay que crearlos
 await db.exec(`create role anon nologin; create role authenticated nologin; create role service_role nologin;`);
-const migraciones = ['0001_tablas.sql', '0002_funciones.sql'];
+// Supabase da permiso de ejecución por defecto a anon/authenticated en las funciones nuevas de "public". Se imita para
+// que las pruebas de permisos (Etapa 5) comprueben de verdad que las migraciones se los quitan a las funciones admin.
+await db.exec(`alter default privileges in schema public grant execute on functions to anon, authenticated;`);
+// Supabase Auth (el esquema "auth" lo trae Supabase; aquí se imita lo mínimo: usuarios y auth.uid() desde el "token")
+await db.exec(`
+  create schema auth;
+  create table auth.users (id uuid primary key default gen_random_uuid(), email text unique);
+  create function auth.uid() returns uuid language sql stable as $$ select nullif(current_setting('request.jwt.claim.sub', true), '')::uuid $$;
+  grant usage on schema auth to anon, authenticated;
+  grant execute on function auth.uid() to anon, authenticated;
+  create schema extensions;
+`);
+const migraciones = ['0001_tablas.sql', '0002_funciones.sql', '0003_staff_admin.sql'];
 for (const f of migraciones) await db.exec(await readFile(new URL(`../supabase/migrations/${f}`, import.meta.url), 'utf8'));
 
 const FIRMAS = {
@@ -279,7 +292,324 @@ seccion('9. Seguridad: lo que la clave pública (anon) NO puede hacer');
   ok('ping responde con la hora del servidor', typeof (await rpc('ping')).ahoraISO === 'string');
 }
 
-seccion('10. Volver a correr las migraciones no rompe nada');
+// ════════════════════════════════════ ETAPA 5: caja (PIN) y panel de administrador ════════════════════════════════════
+/** Llama a una función pública como la clave pública ('anon', la caja) o como un usuario con sesión ('authenticated', `sub` = su id de Auth). */
+async function como(rol, sub, fn, firma, ...args) {
+  await db.exec(`set role ${rol}`);
+  await db.query(`select set_config('request.jwt.claim.sub', $1, false)`, [sub ?? '']);
+  try {
+    const { rows } = await db.query(`select public.${fn}(${firma}) as r`, args);
+    return rows[0].r;
+  } finally {
+    await db.exec('reset role');
+    await db.query(`select set_config('request.jwt.claim.sub', '', false)`);
+  }
+}
+const FIRMAS5 = {
+  canje_consultar: '$1::text, $2::text', canje_confirmar: '$1::text, $2::text, $3::text',
+  admin_yo: '', admin_resumen: '', admin_codigos: '$1::text, $2::text, $3::int, $4::int', admin_exportar: '$1::text, $2::text',
+  admin_consultar_codigo: '$1::text', admin_canjear: '$1::text, $2::text', admin_estado_codigo: '$1::text, $2::text',
+  admin_config: '', admin_guardar_config: '$1::jsonb', admin_cambiar_pin: '$1::text', admin_desbloquear_pin: '',
+};
+const ADMIN_ID = randomUUID();
+const OTRO_ID = randomUUID();
+await sql(`insert into auth.users (id, email) values ($1, 'dueno@example.com'), ($2, 'otro@example.com')`, [ADMIN_ID, OTRO_ID]);
+const caja = (fn, ...a) => como('anon', null, fn, FIRMAS5[fn], ...a);
+const admin = (fn, ...a) => como('authenticated', ADMIN_ID, fn, FIRMAS5[fn], ...a);
+const otro = (fn, ...a) => como('authenticated', OTRO_ID, fn, FIRMAS5[fn], ...a);
+const PIN = '482916';
+const reiniciarStaff = () => sql(`update app.staff set fallos=0, bloqueos=0, ultimo_fallo=null, bloqueado_hasta=null where id=1`);
+const reiniciarConfig5 = () =>
+  sql(`update app.configuracion set premios_por_semana=50, intentos_por_semana=3, cupo_diario=0, vigencia_dias=7, compra_minima=30000, ventana_reclamo_min=15,
+         regalos='["Un raspao personal","Un cholado de 10 oz"]'::jsonb, campana_inicio=null, campana_fin=null, prefijo_codigo='LAINDIA', largo_codigo=4,
+         pin_intentos_max=5, pin_bloqueo_min=5, juego='{}', frutas_minimas=25, duracion_partida_s=60 where id=1`);
+async function nuevoCodigo(n, nombre = 'Marcela Escobar') {
+  const g = await ganar(randomUUID());
+  const r = await rpc('reclamar_codigo', g.token, nombre, CEL(n), true);
+  return r.codigo;
+}
+const estadoDe = async (cod) => uno('select estado from app.codigos where codigo = $1', [cod]);
+
+seccion('11. PIN del staff: guardado cifrado, límite de intentos y bloqueo');
+await reiniciarDatos();
+await reiniciarConfig5();
+await sql(`delete from app.admins`);
+await sql(`update app.staff set pin_hash=null, pin_cambiado_en=null where id=1`);
+await reiniciarStaff();
+{
+  ok('sin PIN configurado la caja no puede consultar (sin-pin)', (await caja('canje_consultar', '1234', 'LAINDIA-AAAA')).resultado === 'sin-pin');
+  ok('quien no está en app.admins no puede poner el PIN (no-autorizado)', (await admin('admin_cambiar_pin', PIN)).motivo === 'no-autorizado');
+  await sql(`insert into app.admins (user_id) values ($1)`, [ADMIN_ID]);
+  ok('admin_yo reconoce al administrador', (await admin('admin_yo')).esAdmin === true);
+  ok('PIN con letras → rechazado', (await admin('admin_cambiar_pin', '12ab')).motivo === 'pin-invalido');
+  ok('PIN de 3 números → rechazado', (await admin('admin_cambiar_pin', '123')).motivo === 'pin-invalido');
+  ok('PIN de 9 números → rechazado', (await admin('admin_cambiar_pin', '123456789')).motivo === 'pin-invalido');
+  const obvios = [];
+  for (const p of ['1234', '654321', '000000', '777777']) obvios.push((await admin('admin_cambiar_pin', p)).motivo);
+  ok('PIN obvio (1234, 654321, 000000, 777777) → pin-facil', obvios.every((m) => m === 'pin-facil'), JSON.stringify(obvios));
+  ok('seguía sin PIN después de tantos rechazos', (await uno('select pin_hash is null from app.staff')) === true);
+  ok('un PIN bueno se guarda', (await admin('admin_cambiar_pin', PIN)).ok === true);
+  const h = await uno('select pin_hash from app.staff where id = 1');
+  ok('el PIN se guarda CIFRADO (bcrypt), nunca en claro', /^\$2[aby]\$\d\d\$/.test(h) && !h.includes(PIN), h);
+
+  const r1 = await caja('canje_consultar', '000111', 'LAINDIA-AAAA');
+  ok('PIN malo → pin-incorrecto y dice cuántos intentos quedan (4)', r1.ok === false && r1.resultado === 'pin-incorrecto' && r1.intentosRestantes === 4, JSON.stringify(r1));
+  let r = r1;
+  for (let i = 0; i < 3; i++) r = await caja('canje_consultar', '000111', 'LAINDIA-AAAA');
+  ok('al 4.º PIN malo queda 1 intento', r.resultado === 'pin-incorrecto' && r.intentosRestantes === 1, JSON.stringify(r));
+  r = await caja('canje_consultar', '000111', 'LAINDIA-AAAA');
+  ok('al 5.º PIN malo seguido → bloqueado 5 minutos', r.resultado === 'bloqueado' && r.segundos === 300 && typeof r.hastaISO === 'string', JSON.stringify(r));
+  ok('bloqueado: NI el PIN correcto sirve (no se deja adivinar durante el bloqueo)', (await caja('canje_consultar', PIN, 'LAINDIA-AAAA')).resultado === 'bloqueado');
+  ok('bloqueado: seguir insistiendo no cambia la cuenta', (await uno('select bloqueos from app.staff')) === 1 && (await uno('select fallos from app.staff')) === 0);
+  await sql(`update app.staff set bloqueado_hasta = now() - interval '1 second'`);
+  ok('pasado el bloqueo, el PIN correcto vuelve a funcionar', (await caja('canje_consultar', PIN, 'LAINDIA-AAAA')).resultado === 'inexistente');
+  ok('…y un acierto borra los castigos', (await uno('select bloqueos from app.staff')) === 0 && (await uno('select bloqueado_hasta is null from app.staff')) === true);
+
+  // Cada bloqueo seguido dura el doble, hasta 60 min
+  const falla5 = async () => { let x; for (let i = 0; i < 5; i++) x = await caja('canje_consultar', '999000', 'X'); return x; };
+  const esperados = [300, 600, 1200, 2400, 3600, 3600];
+  const reales = [];
+  for (let i = 0; i < esperados.length; i++) {
+    reales.push((await falla5()).segundos);
+    await sql(`update app.staff set bloqueado_hasta = now() - interval '1 second'`);
+  }
+  ok('cada bloqueo seguido dura el doble (5, 10, 20, 40, 60 y 60 min)', JSON.stringify(reales) === JSON.stringify(esperados), JSON.stringify(reales));
+  await caja('canje_consultar', PIN, 'X'); // un acierto
+  await caja('canje_consultar', '999000', 'X'); await caja('canje_consultar', '999000', 'X'); await caja('canje_consultar', '999000', 'X');
+  await caja('canje_consultar', PIN, 'X');
+  r = await caja('canje_consultar', '999000', 'X');
+  ok('un acierto reinicia la cuenta (después de 3 fallos y un acierto, quedan 4 y no 1)', r.intentosRestantes === 4, JSON.stringify(r));
+  await sql(`update app.staff set fallos = 4, bloqueos = 3, ultimo_fallo = now() - interval '25 hours' where id = 1`);
+  r = await caja('canje_consultar', '999000', 'X');
+  ok('tras 24 h sin fallar se olvida el castigo (queda 4 y no se bloquea)', r.resultado === 'pin-incorrecto' && r.intentosRestantes === 4, JSON.stringify(r));
+  ok('un PIN vacío cuenta como PIN malo', (await caja('canje_consultar', null, 'X')).resultado === 'pin-incorrecto');
+
+  await reiniciarStaff();
+  await falla5();
+  ok('(preparación) la caja quedó bloqueada', (await caja('canje_consultar', PIN, 'X')).resultado === 'bloqueado');
+  ok('el administrador ve el bloqueo en el resumen', typeof (await admin('admin_resumen')).pin.bloqueadoHastaISO === 'string');
+  ok('el administrador lo desbloquea y la caja vuelve a funcionar', (await admin('admin_desbloquear_pin')).ok === true && (await caja('canje_consultar', PIN, 'X')).resultado === 'inexistente');
+
+  await sql(`update app.configuracion set pin_intentos_max = 3, pin_bloqueo_min = 1 where id = 1`);
+  await reiniciarStaff();
+  await caja('canje_consultar', '999000', 'X'); await caja('canje_consultar', '999000', 'X');
+  r = await caja('canje_consultar', '999000', 'X');
+  ok('el límite es configurable: con 3 intentos y 1 minuto, bloquea al 3.º por 60 s', r.resultado === 'bloqueado' && r.segundos === 60, JSON.stringify(r));
+  await reiniciarConfig5();
+  await reiniciarStaff();
+
+  ok('cambiar el PIN: el nuevo sirve', (await admin('admin_cambiar_pin', '135790')).ok === true && (await caja('canje_consultar', '135790', 'X')).resultado === 'inexistente');
+  ok('…y el viejo ya no', (await caja('canje_consultar', PIN, 'X')).resultado === 'pin-incorrecto');
+  await admin('admin_cambiar_pin', PIN);
+  await reiniciarStaff();
+}
+
+seccion('12. Canje en caja: consultar y confirmar');
+await reiniciarDatos();
+{
+  const cod = await nuevoCodigo(41);
+  const sufijo = cod.slice(-4);
+  const dev = await uno('select device_id from app.codigos where codigo = $1', [cod]);
+  let r = await caja('canje_consultar', PIN, cod);
+  ok('código válido → "valido" con la lista de regalos y la compra mínima', r.ok && r.resultado === 'valido' && r.regalos.length === 2 && r.compraMinima === 30000 && r.codigo === cod, JSON.stringify(r));
+  ok('la caja NO ve el nombre ni el celular del cliente', !JSON.stringify(r).includes('Marcela') && !JSON.stringify(r).includes(CEL(41)));
+  const resultados = [];
+  for (const v of ['laindia-' + sufijo.toLowerCase(), 'LAINDIA' + sufijo, '  laindia   ' + sufijo + ' ', sufijo, sufijo.toLowerCase()]) resultados.push((await caja('canje_consultar', PIN, v)).codigo);
+  ok('se acepta en minúsculas, sin guion, con espacios o solo las 4 letras finales', resultados.every((x) => x === cod), JSON.stringify(resultados));
+  ok('un código que no existe → inexistente', (await caja('canje_consultar', PIN, 'LAINDIA-ZZZZ')).resultado === 'inexistente');
+  ok('basura, vacío o nulo → inexistente (sin errores)', (await caja('canje_consultar', PIN, '!!')).resultado === 'inexistente' && (await caja('canje_consultar', PIN, '')).resultado === 'inexistente' && (await caja('canje_consultar', PIN, null)).resultado === 'inexistente');
+  ok('consultar NO canjea', (await estadoDe(cod)) === 'activo');
+
+  ok('confirmar con PIN malo → no canjea', (await caja('canje_confirmar', '000111', cod, 'Un raspao personal')).resultado === 'pin-incorrecto' && (await estadoDe(cod)) === 'activo');
+  ok('confirmar sin elegir regalo → regalo-invalido y NO canjea', (await caja('canje_confirmar', PIN, cod, null)).resultado === 'regalo-invalido' && (await estadoDe(cod)) === 'activo');
+  ok('un regalo que no está en la lista → regalo-invalido', (await caja('canje_confirmar', PIN, cod, 'Un carro')).resultado === 'regalo-invalido');
+  const c = await caja('canje_confirmar', PIN, cod, 'Un raspao personal');
+  ok('confirmar con regalo → canjeado-ahora', c.ok === true && c.resultado === 'canjeado-ahora' && c.regaloElegido === 'Un raspao personal' && typeof c.canjeadoISO === 'string', JSON.stringify(c));
+  const fila = (await sql('select estado, canjeado_por, canjeado_en, regalo_elegido from app.codigos where codigo = $1', [cod]))[0];
+  ok('queda canjeado, por "staff", con hora y regalo guardados', fila.estado === 'canjeado' && fila.canjeado_por === 'staff' && fila.canjeado_en && fila.regalo_elegido === 'Un raspao personal', JSON.stringify(fila));
+  const seg = await caja('canje_confirmar', PIN, cod, 'Un cholado de 10 oz');
+  ok('segundo toque / segundo cajero → ya canjeado (con fecha y el regalo de la primera vez)', seg.ok === false && seg.resultado === 'canjeado' && typeof seg.canjeadoISO === 'string' && seg.regaloElegido === 'Un raspao personal', JSON.stringify(seg));
+  ok('el regalo no se cambió con el segundo intento', (await uno('select regalo_elegido from app.codigos where codigo = $1', [cod])) === 'Un raspao personal');
+  r = await caja('canje_consultar', PIN, cod);
+  ok('consultar ahora dice "canjeado" con fecha y regalo', r.resultado === 'canjeado' && typeof r.canjeadoISO === 'string' && r.regaloElegido === 'Un raspao personal');
+  ok('canjeado queda desactivado: ni se reactiva ni se desactiva', (await admin('admin_estado_codigo', cod, 'activo')).motivo === 'canjeado' && (await admin('admin_estado_codigo', cod, 'desactivado')).motivo === 'canjeado');
+  ok('el juego (mi_codigo) también lo ve canjeado', (await rpc('mi_codigo', dev)).estado === 'canjeado');
+}
+{
+  const cod = await nuevoCodigo(42);
+  await sql(`update app.codigos set vence_en = now() - interval '1 minute' where codigo = $1`, [cod]);
+  const r = await caja('canje_consultar', PIN, cod);
+  ok('código vencido → "vencido" con su fecha de vencimiento', r.resultado === 'vencido' && typeof r.venceISO === 'string', JSON.stringify(r));
+  const c = await caja('canje_confirmar', PIN, cod, 'Un raspao personal');
+  ok('no se puede canjear un vencido (y queda como estaba)', c.ok === false && c.resultado === 'vencido' && (await estadoDe(cod)) === 'activo');
+}
+{
+  const cod = await nuevoCodigo(43);
+  ok('el administrador desactiva un código', (await admin('admin_estado_codigo', cod, 'desactivado')).estado === 'desactivado');
+  ok('la caja lo ve "desactivado" y no lo puede canjear', (await caja('canje_consultar', PIN, cod)).resultado === 'desactivado' && (await caja('canje_confirmar', PIN, cod, 'Un raspao personal')).resultado === 'desactivado');
+  ok('el administrador lo reactiva y vuelve a servir', (await admin('admin_estado_codigo', cod, 'activo')).estado === 'activo' && (await caja('canje_consultar', PIN, cod)).resultado === 'valido');
+  ok('estado inválido o código inexistente no rompe nada', (await admin('admin_estado_codigo', cod, 'canjeado')).motivo === 'datos' && (await admin('admin_estado_codigo', 'NOEXISTE', 'desactivado')).motivo === 'inexistente');
+}
+{
+  await sql(`update app.configuracion set regalos = '["Solo uno"]'::jsonb where id = 1`);
+  const cod = await nuevoCodigo(44);
+  const c = await caja('canje_confirmar', PIN, cod, null);
+  ok('si solo hay un regalo configurado no hace falta elegir', c.ok === true && c.regaloElegido === 'Solo uno', JSON.stringify(c));
+  await reiniciarConfig5();
+}
+
+seccion('13. Permisos: la clave pública NO entra a lo del administrador');
+{
+  const adminFns = [
+    ['admin_yo', []], ['admin_resumen', []], ['admin_codigos', ['todos', null, 0, 10]], ['admin_exportar', ['todos', null]],
+    ['admin_consultar_codigo', ['X']], ['admin_canjear', ['X', null]], ['admin_estado_codigo', ['X', 'desactivado']],
+    ['admin_config', []], ['admin_guardar_config', ['{}']], ['admin_cambiar_pin', ['135790']], ['admin_desbloquear_pin', []],
+  ];
+  let denegadas = 0;
+  for (const [fn, args] of adminFns) {
+    try { await como('anon', null, fn, FIRMAS5[fn], ...args); } catch (e) { if (/permission denied/.test(e.message)) denegadas++; }
+  }
+  ok('la clave pública (anon) NO puede llamar ninguna de las 11 funciones admin_*', denegadas === 11, `${denegadas} de 11`);
+  let respuestas = 0;
+  for (const [fn, args] of adminFns.filter(([f]) => f !== 'admin_yo')) {
+    const r = await como('authenticated', OTRO_ID, fn, FIRMAS5[fn], ...args);
+    if (r.ok === false && r.motivo === 'no-autorizado') respuestas++;
+  }
+  ok('un usuario con sesión que NO es administrador recibe "no-autorizado" en las otras 10', respuestas === 10, `${respuestas} de 10`);
+  ok('…y admin_yo le dice esAdmin = false', (await otro('admin_yo')).esAdmin === false);
+  ok('una sesión sin usuario (sin sub) tampoco es administrador', (await como('authenticated', null, 'admin_yo', '')).esAdmin === false);
+  ok('el PIN no cambió con los intentos de quien no es administrador', (await caja('canje_consultar', PIN, 'X')).resultado === 'inexistente');
+  const priv = await sql(`select p.proname, has_function_privilege('anon', p.oid, 'execute') anon, has_function_privilege('authenticated', p.oid, 'execute') auth
+                            from pg_proc p where p.pronamespace = 'public'::regnamespace and p.proname like 'admin\\_%'`);
+  ok('las 11 funciones admin_*: anon NO tiene permiso y authenticated SÍ', priv.length === 11 && priv.every((x) => x.anon === false && x.auth === true), JSON.stringify(priv.filter((x) => x.anon || !x.auth)));
+  const cj = await sql(`select has_function_privilege('anon','public.canje_consultar(text,text)','execute') a, has_function_privilege('anon','public.canje_confirmar(text,text,text)','execute') b`);
+  ok('la caja (clave pública) sí puede llamar canje_consultar y canje_confirmar', cj[0].a === true && cj[0].b === true);
+  const denegar = async (rol, q) => {
+    await db.exec(`set role ${rol}`);
+    let msg = null;
+    try { await db.query(q); } catch (e) { msg = e.message; } finally { await db.exec('reset role'); }
+    return msg !== null && /permission denied|does not exist/.test(msg);
+  };
+  const cierres = [];
+  for (const rol of ['anon', 'authenticated']) {
+    for (const q of ['select * from app.admins', 'select * from app.staff', 'select * from app.codigos', `select app.verificar_pin('x')`, `select app.canjear('a','b','c')`,
+                     `select app.guardar_config('{}'::jsonb)`, `select app.cambiar_pin('135790')`, 'select app.es_admin()']) {
+      cierres.push(await denegar(rol, q));
+    }
+  }
+  ok('ni anon ni authenticated tocan las tablas del PIN/admins ni las funciones internas', cierres.every(Boolean), JSON.stringify(cierres));
+  const rls = await sql(`select relname, relrowsecurity from pg_class where relnamespace = 'app'::regnamespace and relname in ('admins','staff')`);
+  ok('RLS activado en app.admins y app.staff', rls.length === 2 && rls.every((x) => x.relrowsecurity));
+  const fn = await sql(`select p.proname, p.prosecdef from pg_proc p where p.pronamespace = 'public'::regnamespace and (p.proname like 'admin\\_%' or p.proname like 'canje\\_%')`);
+  ok('las 13 funciones nuevas son SECURITY DEFINER', fn.length === 13 && fn.every((x) => x.prosecdef), JSON.stringify(fn));
+}
+
+seccion('14. Panel admin: métricas, lista, búsqueda y exportación');
+await reiniciarDatos();
+await reiniciarStaff();
+{
+  const a = await nuevoCodigo(51, 'María Pérez');
+  const b = await nuevoCodigo(52, 'Juan Gómez');
+  const c3 = await nuevoCodigo(53, 'Ana Ruiz');
+  await caja('canje_confirmar', PIN, a, 'Un raspao personal');
+  await admin('admin_estado_codigo', c3, 'desactivado');
+  await sql(`update app.codigos set vence_en = now() - interval '1 minute' where codigo = $1`, [b]);
+  const per = await rpc('iniciar_partida', randomUUID());
+  await rpc('terminar_partida', per.token, false, 0.3, 2);
+  const rap = await rpc('iniciar_partida', randomUUID());
+  await rpc('terminar_partida', rap.token, true, 1, 30);
+  const hoy = await uno(`select app.dia_de(now())::text`);
+
+  const res = await admin('admin_resumen');
+  ok('resumen: 3 códigos (1 canjeado, 1 vencido, 1 desactivado, 0 activos)', res.codigos.total === 3 && res.codigos.canjeados === 1 && res.codigos.vencidos === 1 && res.codigos.desactivados === 1 && res.codigos.activos === 0, JSON.stringify(res.codigos));
+  ok('resumen: 5 partidas, 3 ganadoras, 1 rechazada', res.partidas.total === 5 && res.partidas.ganadores === 3 && res.partidas.rechazadas === 1, JSON.stringify(res.partidas));
+  ok('resumen: quedan 47 de 50 premios y el juego está abierto', res.premiosRestantes === 47 && res.premiosPorSemana === 50 && res.jugable === true);
+  ok('resumen: 14 días; el primero es hoy (hora de Bogotá) con 3 códigos, 1 canje y 5 partidas', res.dias.length === 14 && res.dias[0].dia === hoy && res.dias[0].codigos === 3 && res.dias[0].canjes === 1 && res.dias[0].partidas === 5, JSON.stringify(res.dias[0]));
+  ok('resumen: dice que el PIN está configurado', res.pin.configurado === true);
+
+  let l = await admin('admin_codigos', 'todos', null, 0, 50);
+  ok('lista: 3 filas, la más nueva primero', l.ok && l.total === 3 && l.filas.length === 3 && l.filas[0].codigo === c3 && l.filas[2].codigo === a, JSON.stringify(l.filas.map((f) => f.codigo)));
+  ok('lista: cada fila trae nombre, celular, estado, fechas y regalo', l.filas[2].nombre === 'María Pérez' && l.filas[2].celular === CEL(51) && l.filas[2].estado === 'canjeado' && l.filas[2].regalo === 'Un raspao personal' && l.filas[2].canjeadoPor === 'staff');
+  const cuenta = async (estado, buscar = null) => (await admin('admin_codigos', estado, buscar, 0, 50)).total;
+  ok('filtros: canjeado 1 · vencido 1 · desactivado 1 · activo 0', (await cuenta('canjeado')) === 1 && (await cuenta('vencido')) === 1 && (await cuenta('desactivado')) === 1 && (await cuenta('activo')) === 0);
+  ok('buscar sin tilde ni mayúsculas: "maria" encuentra a María; "GOMEZ" a Juan', (await cuenta('todos', 'maria')) === 1 && (await cuenta('todos', 'GOMEZ')) === 1);
+  ok('buscar por código (en minúsculas)', (await cuenta('todos', a.toLowerCase())) === 1);
+  ok('buscar por celular: parte de él o completo con espacios', (await cuenta('todos', '000052')) === 1 && (await cuenta('todos', '310 000 0053')) === 1);
+  ok('buscar "%" o "_" no devuelve todo (no son comodines)', (await cuenta('todos', '%')) === 0 && (await cuenta('todos', '_')) === 0);
+  ok('buscar + filtrar a la vez', (await cuenta('canjeado', 'maria')) === 1 && (await cuenta('vencido', 'maria')) === 0);
+  l = await admin('admin_codigos', 'todos', null, 2, 2);
+  ok('paginación: desde 2, de a 2 → 1 fila (total 3)', l.total === 3 && l.filas.length === 1 && l.filas[0].codigo === a);
+  ok('un límite exagerado se recorta sin romper', (await admin('admin_codigos', 'todos', null, 0, 99999)).filas.length === 3);
+
+  const ex = await admin('admin_exportar', 'todos', null);
+  ok('exportar: trae todas las filas con sus datos', ex.ok && ex.total === 3 && ex.filas.length === 3 && ex.filas.every((f) => f.nombre && f.celular && f.estado));
+  const exF = await admin('admin_exportar', 'canjeado', null);
+  ok('exportar respeta el filtro', exF.filas.length === 1 && exF.filas[0].codigo === a);
+
+  const d = await admin('admin_consultar_codigo', a);
+  ok('el administrador SÍ ve nombre y celular al consultar', d.resultado === 'canjeado' && d.nombre === 'María Pérez' && d.celular === CEL(51) && d.canjeadoPor === 'staff', JSON.stringify(d));
+  const nuevo = await nuevoCodigo(54, 'Pedro Gil');
+  const ca = await admin('admin_canjear', nuevo, 'Un cholado de 10 oz');
+  ok('el administrador canjea sin PIN (queda "admin")', ca.ok === true && (await uno('select canjeado_por from app.codigos where codigo = $1', [nuevo])) === 'admin');
+  ok('el administrador no canjea dos veces el mismo', (await admin('admin_canjear', nuevo, 'Un cholado de 10 oz')).resultado === 'canjeado');
+}
+
+seccion('15. Editor de configuración (todo o nada)');
+await reiniciarDatos();
+await reiniciarConfig5();
+{
+  const cfg = await admin('admin_config');
+  ok('admin_config trae toda la configuración', cfg.ok && cfg.config.intentosPorSemana === 3 && cfg.config.premiosPorSemana === 50 && cfg.config.compraMinima === 30000 && cfg.config.regalos.length === 2 &&
+     cfg.config.prefijoCodigo === 'LAINDIA' && cfg.config.pinIntentosMax === 5 && cfg.config.frutasMinimas === 25 && cfg.config.campanaInicioISO === null && typeof cfg.config.actualizadoISO === 'string', JSON.stringify(cfg.config));
+  const guardar = (o) => admin('admin_guardar_config', JSON.stringify(o));
+  let g = await guardar({ premiosPorSemana: 40, intentosPorSemana: 4, cupoDiario: 7, vigenciaDias: 10, compraMinima: 35000, regalos: ['Raspao', 'Cholado 10 oz', 'Jugo'], ventanaReclamoMin: 20 });
+  ok('un cambio válido se guarda y devuelve la configuración nueva', g.ok === true && g.config.premiosPorSemana === 40 && g.config.regalos.length === 3, JSON.stringify(g));
+  let e = await rpc('estado', null);
+  ok('el juego (estado) ya ve los cambios', e.premiosPorSemana === 40 && e.intentosPorSemana === 4 && e.reglas.compraMinima === 35000 && e.reglas.vigenciaDias === 10 && e.reglas.regalos.length === 3 && e.reglas.ventanaReclamoMin === 20);
+  ok('lo que no se mandó no cambió (duración y frutas siguen igual)', e.juego.partida.duracionS === 60 && e.juego.partida.frutasMinimas === 25);
+
+  const malos = [
+    ['intentos en 0', { intentosPorSemana: 0 }], ['premios con texto', { premiosPorSemana: 'muchos' }], ['premios decimal', { premiosPorSemana: 10.5 }],
+    ['premios gigantes', { premiosPorSemana: 999999 }], ['sin regalos', { regalos: [] }], ['regalo de 1 letra', { regalos: ['x'] }],
+    ['regalos repetidos', { regalos: ['Raspao', ' Raspao '] }], ['demasiados regalos', { regalos: ['a1', 'b2', 'c3', 'd4', 'e5', 'f6', 'g7'] }],
+    ['prefijo con espacio', { prefijoCodigo: 'la india' }], ['prefijo muy corto', { prefijoCodigo: 'A' }],
+    ['campaña al revés', { campanaInicioISO: '2099-02-01T00:00:00Z', campanaFinISO: '2099-01-01T00:00:00Z' }], ['fecha basura', { campanaInicioISO: 'mañana' }],
+    ['velocidad absurda', { juego: { velocidad: { inicial: 1000 } } }], ['grupo desconocido', { juego: { hack: { x: 1 } } }], ['valor no numérico', { juego: { velocidad: { inicial: 'rápido' } } }],
+    ['juego no es objeto', { juego: [1, 2] }], ['largo de código 2', { largoCodigo: 2 }], ['duración 5 s', { duracionPartidaS: 5 }],
+  ];
+  const fallas = [];
+  for (const [nombre, o] of malos) {
+    const r = await guardar(o);
+    if (!(r.ok === false && r.motivo === 'datos' && typeof r.mensaje === 'string' && r.mensaje.length > 5)) fallas.push(nombre + ': ' + JSON.stringify(r));
+  }
+  ok(`${malos.length} configuraciones inválidas se rechazan con un mensaje claro`, fallas.length === 0, fallas.join(' | '));
+  g = await guardar({ premiosPorSemana: 10, intentosPorSemana: 0 });
+  ok('TODO O NADA: si un campo es inválido, ninguno se guarda', g.ok === false && (await rpc('estado', null)).premiosPorSemana === 40);
+  ok('(la configuración sigue teniendo su única fila)', Number(await uno('select count(*) from app.configuracion')) === 1);
+
+  g = await guardar({ campanaInicioISO: '2099-01-01T05:00:00Z', campanaFinISO: '2099-03-01T04:59:59Z' });
+  e = await rpc('estado', null);
+  ok('fechas de campaña: antes de empezar el juego dice campana-inactiva', g.ok === true && g.config.campanaInicioISO === '2099-01-01T05:00:00.000Z' && e.jugable === false && e.motivo === 'campana-inactiva', JSON.stringify(e));
+  g = await guardar({ campanaInicioISO: null, campanaFinISO: null });
+  ok('se puede dejar la campaña sin fechas (siempre activa)', g.ok === true && g.config.campanaInicioISO === null && (await rpc('estado', null)).jugable === true);
+
+  g = await guardar({ juego: { velocidad: { inicial: 11, final: 15 }, obstaculos: { separacionFinalS: 1.1 }, partida: { vidas: 4 } }, frutasMinimas: 22 });
+  e = await rpc('estado', null);
+  ok('dificultad: llega al juego, junto con las frutas mínimas', g.ok === true && e.juego.velocidad.inicial === 11 && e.juego.velocidad.final === 15 && e.juego.obstaculos.separacionFinalS === 1.1 && e.juego.partida.vidas === 4 && e.juego.partida.frutasMinimas === 22, JSON.stringify(e.juego));
+  g = await guardar({ juego: { partida: { frutasMinimas: 3, duracionS: 7, vidas: 3 } } });
+  const parte = await uno(`select juego -> 'partida' from app.configuracion`);
+  ok('frutasMinimas/duracionS escritas dentro de "juego" no pisan las columnas reales', (await uno('select frutas_minimas from app.configuracion')) === 22 && (await uno('select duracion_partida_s from app.configuracion')) === 60 && !('frutasMinimas' in parte) && !('duracionS' in parte), JSON.stringify(parte));
+  g = await guardar({ juego: {} });
+  ok('"juego: {}" vuelve a los valores de fábrica de config.js', g.ok === true && !('velocidad' in (await rpc('estado', null)).juego));
+  g = await guardar({ prefijoCodigo: ' cholado ', largoCodigo: 5 });
+  const nc = await nuevoCodigo(61);
+  ok('prefijo y largo nuevos se aplican a los códigos que se expidan (CHOLADO-XXXXX)', g.ok === true && /^CHOLADO-[A-Z2-9]{5}$/.test(nc), nc);
+  ok('…y la caja encuentra el código por sus 5 letras finales', (await caja('canje_consultar', PIN, nc.slice(-5))).resultado === 'valido');
+  await reiniciarConfig5();
+  ok('un usuario que no es administrador no puede guardar configuración', (await otro('admin_guardar_config', JSON.stringify({ premiosPorSemana: 1 }))).motivo === 'no-autorizado' && (await rpc('estado', null)).premiosPorSemana === 50);
+}
+
+seccion('16. Volver a correr las migraciones no rompe nada');
 {
   let fallo = null;
   try {
@@ -287,7 +617,7 @@ seccion('10. Volver a correr las migraciones no rompe nada');
   } catch (e) {
     fallo = e.message;
   }
-  ok('las dos migraciones se pueden repetir (idempotentes)', fallo === null, fallo ?? '');
+  ok('las tres migraciones se pueden repetir (idempotentes)', fallo === null, fallo ?? '');
   ok('y la configuración conserva su única fila', Number(await uno('select count(*) from app.configuracion')) === 1);
 }
 

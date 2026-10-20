@@ -1,7 +1,7 @@
 # pendientes.md — Cosas por resolver
 
 Lo que **NO** está decidido o falta. Mientras tanto se usan **placeholders visibles** en el código y los textos (no se inventa). Actualizar al resolver cada punto.
-Última actualización: 2026-10-19 (cierre de la Etapa 4).
+Última actualización: 2026-10-19 (cierre de la Etapa 5).
 
 ## Abiertos
 | # | Pendiente | Placeholder actual | Se necesita en | Notas |
@@ -14,22 +14,25 @@ Lo que **NO** está decidido o falta. Mientras tanto se usan **placeholders visi
 | 6 | **Fechas de la primera campaña** y de lanzamiento | `campana_inicio` / `campana_fin` = null (siempre activa) en `app.configuracion` | Antes de lanzar | Se fijan con `update app.configuracion set campana_inicio = ..., campana_fin = ...` |
 | 7 | ~~Regla de vencimiento~~ → resuelta: minuto de expedición + 7 días exactos; se muestra «vale hasta» vence − 1 min (ver `CLAUDE.md` §3). Si el usuario prefiere otra, es una línea en `app.vencimiento` | — | — | ✅ pendiente de que el usuario la vea y confirme |
 | 8 | **Evitar la pausa del plan gratis** de Supabase (~1 semana sin actividad): tarea diaria de GitHub Actions que llame a `ping()` | — | Etapa 7 | Límites ya verificados (`CLAUDE.md` §5) |
-| 9 | **Dispositivo del staff** para canjear y quién usa el PIN (PIN compartido, cambiable) | — | Etapa 5 | Cualquiera que atienda |
+| 9 | **Dispositivo del staff** y quién sabe el PIN. La caja ya funciona en cualquier navegador (`/canje/`); falta decidir en qué dispositivo del local se deja abierta y a quién se le da el PIN | — | Etapa 7 (antes de lanzar) | Guardar la dirección como acceso directo en ese dispositivo. Al cambiar de personal, cambiar el PIN (panel → Cuenta) |
 | 10 | **Música y sonidos** (salsa caleña, frescura) con **licencia libre** o generados. No estaba en el Prompt 3: decidir si va como mini-etapa o después | sin audio | por decidir | |
 | 11 | **Android de gama baja** para probar (hoy solo iPhone XR) | emulación en DevTools | Etapa 6 | Pedir uno prestado |
 | 12 | **Probar en el navegador interno de Instagram/Facebook** (iOS y Android) y medir FPS del juego completo en el iPhone con `?debug=1` | — | Etapa 6 | El usuario ya probó el prototipo: «todo bien» |
 | 13 | **Términos y condiciones** (vigencia, límite semanal, un cupón por número, compra mínima, un regalo por código, frutas mínimas) | texto provisional | Etapa 7 | |
-| 14 | **Dominio propio** (opcional; «depende de qué nos vaya») | URL de GitHub Pages | futuro | |
+| 14 | **Dirección (URL) del juego: personalizarla o no.** Hoy sería `https://hachescc.github.io/cholado-runner/` (lleva el usuario de GitHub). Opciones: (a) **dominio propio** apuntando a GitHub Pages (pago pequeño anual, el más duradero para los QR), (b) **organización gratuita de GitHub** con el nombre del negocio (`nombre.github.io/cholado-runner`; hay que mover el repo), (c) dejarlo como está | URL de GitHub Pages | **ANTES de imprimir los QR** (Etapa 7) | Preguntado por el usuario el 2026-10-19. Supabase no es el link. Decidir y luego no cambiar |
 | 15 | **Deslizar hacia abajo** (agacharse): probar más adelante | se ignora | futuro | Puede chocar con gestos del navegador de Instagram |
 | 16 | **Mejoras estéticas** (pospuestas a propósito hasta terminar todas las etapas): cholado con frutas «adentro» del vaso; bola de helado «pintada hasta la mitad»; más detalle en La India y el escenario; más elementos de escenario; cartel ¡META! poco legible a distancia; animación de choque simple; posible cambio de colores | — | después de la Etapa 7 | |
 | 17 | En iPhone con **modo de bajo consumo** (30 fps) la imagen no mejora aunque baje la calidad | la calidad adaptativa vuelve atrás | — | Solo informativo |
-| 18 | **Limpiar los datos de prueba antes del lanzamiento**: `supabase/sql/limpiar_pruebas.sql` (hoy hay códigos y partidas de prueba, p. ej. `LAINDIA-QB9A`) | — | Etapa 7 (antes de abrir al público) | Nunca con clientes reales |
-| 19 | **Restaurar la dificultad del servidor** tras la prueba (se dejó `velocidad.inicial = 11` y `frutas_minimas = 24`): `update app.configuracion set juego = '{}'::jsonb, frutas_minimas = 25 where id = 1;` | — | **Ya** | El usuario debe correrlo; Claude lo verifica |
+| 18 | **Limpiar los datos de prueba antes del lanzamiento**: `supabase/sql/limpiar_pruebas.sql` (hoy hay códigos y partidas de prueba; `LAINDIA-QB9A` quedó **canjeado** en la prueba de la caja) | — | Etapa 7 (antes de abrir al público) | Nunca con clientes reales. El PIN y el administrador NO se borran con esa limpieza (están en otras tablas) |
 | 20 | **Limitar partidas por IP** (un script con muchos id de dispositivo podría gastar el banco esperando 45 s por partida). Cuidado con IPs móviles compartidas | — | Etapa 6 | Antifraude bajo aceptado, pero es el hueco conocido |
-| 21 | **Backups**: el plan gratis no hace; exportar CSV de `codigos` de vez en cuando (botón en el panel admin) | — | Etapa 5 | |
+| 21 | **Backups**: el plan gratis no hace copias. El botón existe (panel → Códigos → Exportar CSV y Cuenta → Respaldo); falta el **hábito**: descargarlo cada semana y guardarlo en un lugar privado (trae nombres y celulares) | — | desde el lanzamiento | |
 | 22 | **Contraseña de la base de datos de Supabase**: la guarda el usuario en privado; Claude nunca la ve | — | siempre | Si se pierde se puede restablecer desde el panel |
-| 23 | **Regalo elegido al canjear**: la columna `regalo_elegido` ya existe; se llena en la Etapa 5 | NULL | Etapa 5 | |
 | 24 | **Plazo de conservación de datos** (nombre y celular): decidir cuándo borrar/anonimizar (p. ej. al cerrar la campaña) | — | Etapa 7 | Ver Ley 1581 (#2) |
+| 26 | **Bloqueo de la caja por terceros**: el límite de PIN es global, así que cualquiera que conozca `/canje/` puede gastar los 5 intentos y bloquearla unos minutos (no puede entrar). El dueño desbloquea o canjea desde el panel. Arreglo de fondo: límite por IP (unir con #20) | global | Etapa 6 | Compromiso aceptado |
+| 27 | **Seguridad extra del administrador** (opcional): 2FA con Supabase MFA, bitácora de acciones del admin («quién cambió qué»), «olvidé mi contraseña» por correo (hoy se cambia en Supabase → Authentication → Users) | no hay | Etapa 6 o después | |
+| 28 | **Un canje equivocado no se deshace desde el panel** (regla: canjeado = desactivado para siempre). Si pasa de verdad hay una consulta manual en `supabase/sql/consultas_utiles.sql` | — | informativo | Decidir si el dueño quiere un botón «anular canje» con confirmación |
+| 29 | **Datos personales en el CSV y en el panel** (nombres y celulares): quién los puede ver, dónde se guardan los respaldos y cuándo se borran | — | Etapa 7 (con la política de datos, #2 y #24) | El panel solo lo ve el administrador; la caja no los ve |
+| 30 | **Rotar el PIN de la caja** cuando alguien del personal se vaya, y definir quién más es administrador (otro usuario + otra fila en `app.admins`) | — | desde el lanzamiento | |
 
 ## Resueltos (para memoria)
 - **Instalar Node.js** (v24.20.0) y política de scripts de PowerShell → ✅ (Etapa 2).
@@ -42,6 +45,10 @@ Lo que **NO** está decidido o falta. Mientras tanto se usan **placeholders visi
 - **Celular limitado a 10 dígitos**, **un deslizamiento = un carril**, **cupón único por número** (mensaje, sin revelar el código) → ✅.
 - **Historial protegido** (`!historial/**` en `.gitignore` + aviso del script) → ✅.
 - **Etapa 4 (2026-10-19)**: cuenta y proyecto de Supabase creados; SQL pegado y probado; códigos al reclamar; premio apartado 15 min; dificultad editable desde el servidor; códigos `LAINDIA-XXXX`; cupo diario implementado (apagado); `ping()` listo; regalo elegido al canjear (columna lista).
+- **Restaurar la dificultad del servidor** tras la prueba de la Etapa 4 → ✅ el usuario corrió la línea y Claude verificó (25 frutas, sin cambios de velocidad).
+- **Regalo elegido al canjear** → ✅ la caja lo pide y lo guarda en `regalo_elegido` (Etapa 5).
+- **Etapa 5 (2026-10-19)**: caja con PIN (bcrypt, bloqueo), panel de administrador con login de Supabase Auth, editor de configuración, CSV, métricas, canje desde el panel; el PIN no tiene valor por defecto ni está en el repo.
+- **Probar la caja y el panel contra el servidor real** → ✅ (2026-10-19): el usuario pegó 0003, creó su usuario, apagó el registro público, se anotó como administrador, puso el PIN y probó el canje real; `npm run probar-seguridad` 17/17 ✓.
 - FPS de los previews en el iPhone XR → ✅ ~60 (mínimo 57).
 
 ## Análisis: ¿aplica la Ley 1581 de 2012? (2026-10-19)

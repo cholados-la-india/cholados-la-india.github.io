@@ -1,6 +1,7 @@
 // probar-supabase.mjs — Prueba el servidor REAL (Supabase) como lo haría un celular, y lo somete a concurrencia.
 //
-//   Uso:  npm run probar-supabase
+//   Uso:  npm run probar-supabase               (completo, ~1 min, deja datos de prueba)
+//         npm run probar-seguridad              (solo la parte de seguridad, ~3 s, NO deja datos)
 //
 // Antes: pegar las migraciones en Supabase y rellenar web/js/supabase-config.js (URL y clave pública).
 // Dura ~1 minuto porque respeta el tiempo mínimo de juego (45 s): así prueba también las reglas reales.
@@ -16,6 +17,7 @@
 //   E. Tope semanal: 100 ganadores a la vez → solo se aparta el cupo que queda; luego los reclamos simultáneos
 //      dan códigos TODOS DISTINTOS y nunca más que el tope.
 //   F. Ver mi código: cuenta regresiva de ~7 días, con la hora del servidor.
+//   G. (Etapa 5) Que las 11 funciones del administrador NO se pueden llamar con la clave pública ni con un token falso.
 import { SUPABASE } from '../web/js/supabase-config.js';
 
 if (!SUPABASE.url || !SUPABASE.clave) {
@@ -95,6 +97,49 @@ seccion('A. Seguridad: desde afuera no se llega a las tablas');
   ok('ping responde con la hora del servidor', typeof p.ahoraISO === 'string', JSON.stringify(p));
   const dif = Math.abs(Date.parse(p.ahoraISO) - Date.now());
   console.log(`      (hora del servidor vs la de este computador: ${Math.round(dif / 1000)} s de diferencia)`);
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+seccion('G. Etapa 5: las funciones del administrador están cerradas para la clave pública');
+{
+  // (con los nombres de parámetros reales: si no, PostgREST diría "no existe" aunque la función esté)
+  const ARGS = {
+    admin_yo: {}, admin_resumen: {}, admin_codigos: {}, admin_exportar: {}, admin_consultar_codigo: { p_codigo: 'X' },
+    admin_canjear: { p_codigo: 'X' }, admin_estado_codigo: { p_codigo: 'X', p_estado: 'desactivado' }, admin_config: {},
+    admin_guardar_config: { p_cambios: {} }, admin_cambiar_pin: { p_pin: '0' }, admin_desbloquear_pin: {},
+  };
+  const ADMIN = Object.keys(ARGS);
+  const llamarCon = async (fn, extra = {}) => {
+    const res = await fetch(`${SUPABASE.url}/rest/v1/rpc/${fn}`, { method: 'POST', headers: { ...cab, ...extra }, body: JSON.stringify(ARGS[fn]) });
+    return { status: res.status, texto: (await res.text()).slice(0, 140) };
+  };
+  const faltan = [];
+  const abiertas = [];
+  const conTokenFalso = [];
+  for (const f of ADMIN) {
+    const r = await llamarCon(f);
+    if (r.status === 404 && /PGRST202|Could not find/.test(r.texto)) faltan.push(f);
+    else if (!(r.status === 401 || r.status === 403)) abiertas.push(`${f}: HTTP ${r.status} ${r.texto}`);
+    const r2 = await llamarCon(f, { Authorization: 'Bearer esto.no.es-un-token' });
+    if (!(r2.status === 401 || r2.status === 403)) conTokenFalso.push(`${f}: HTTP ${r2.status}`);
+  }
+  if (faltan.length === ADMIN.length) {
+    ok('el servidor ya tiene la migración 0003_staff_admin.sql', false, 'NO está: pégala en el SQL Editor (ver supabase/LEEME.md, «Etapa 5»)');
+  } else {
+    ok('el servidor tiene las 11 funciones de administrador (0003 aplicada)', faltan.length === 0, 'faltan: ' + faltan.join(', '));
+    ok('con la clave pública NINGUNA función de administrador responde (401/403)', abiertas.length === 0, abiertas.join(' | '));
+    ok('con un token inventado tampoco', conTokenFalso.length === 0, conTokenFalso.join(' | '));
+  }
+  for (const t of ['admins', 'staff']) {
+    const res = await fetch(`${SUPABASE.url}/rest/v1/${t}?select=*&limit=1`, { headers: { ...cab, 'Accept-Profile': 'app' } });
+    ok(`GET app.${t} (PIN y administradores) no se puede leer (HTTP ${res.status})`, res.status >= 400, (await res.text()).slice(0, 120));
+  }
+}
+if (process.argv.includes('--rapido')) {
+  console.log(`
+${fallos === 0 ? '✅ TODO BIEN' : '❌ HAY FALLOS'} — ${total - fallos} de ${total} comprobaciones correctas.
+`);
+  process.exit(fallos === 0 ? 0 : 1);
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

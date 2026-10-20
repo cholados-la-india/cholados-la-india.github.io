@@ -42,3 +42,27 @@ select * from app.configuracion;
 -- ═══════════════ CÓDIGOS A MANO ═══════════════
 -- Desactivar un código (alguien lo perdió o hubo un error); NO se recicla:
 -- update app.codigos set estado = 'desactivado' where codigo = 'LAINDIA-XXXX';
+
+-- ═══════════════ CAJA Y ADMINISTRADORES (Etapa 5) ═══════════════
+-- ¿Quiénes son administradores? (cruza con el correo de Authentication → Users)
+select a.user_id, u.email, a.creado_en from app.admins a left join auth.users u on u.id = a.user_id;
+
+-- Anotar a un administrador (cambia TU-CORREO por el correo del usuario creado en Authentication → Users):
+-- insert into app.admins (user_id) select id from auth.users where email = 'TU-CORREO' on conflict do nothing;
+-- Quitar a un administrador:
+-- delete from app.admins where user_id = (select id from auth.users where email = 'SU-CORREO');
+
+-- Estado del PIN de la caja (el PIN en sí NO se puede ver: está cifrado): ¿configurado? ¿bloqueado?
+select pin_hash is not null as pin_configurado, pin_cambiado_en at time zone 'America/Bogota' as cambiado_bogota,
+       fallos, bloqueos, bloqueado_hasta at time zone 'America/Bogota' as bloqueado_hasta_bogota from app.staff;
+
+-- Desbloquear la caja a mano (también se puede desde el panel → Cuenta):
+-- update app.staff set fallos = 0, bloqueos = 0, ultimo_fallo = null, bloqueado_hasta = null where id = 1;
+
+-- Los canjes de hoy (hora de Bogotá), con el regalo entregado y quién lo canjeó (staff = la caja, admin = el panel):
+select codigo, nombre, regalo_elegido, canjeado_por, canjeado_en at time zone 'America/Bogota' as canjeado_bogota
+from app.codigos where estado = 'canjeado' and app.dia_de(canjeado_en) = app.dia_de(now()) order by canjeado_en desc;
+
+-- SOLO SI UN CANJE FUE UN ERROR DE VERDAD (el panel no lo permite a propósito: canjeado = desactivado para siempre).
+-- Revisa bien el código antes de correrlo; esto devuelve el código a "activo":
+-- update app.codigos set estado = 'activo', canjeado_en = null, canjeado_por = null, regalo_elegido = null where codigo = 'LAINDIA-XXXX' and estado = 'canjeado';
