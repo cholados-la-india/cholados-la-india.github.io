@@ -175,7 +175,7 @@ button { font: inherit; color: inherit; cursor: pointer; border: 0; background: 
 .gira { display: none; position: fixed; inset: 0; z-index: 99; flex-direction: column; align-items: center; justify-content: center; gap: 8px; padding: 20px; text-align: center; background: #120b14; color: var(--crema); }
 .gira b { font-family: var(--titulos); font-weight: 400; font-size: 28px; color: #ffe86b; }
 .gira span { font-size: 16px; color: #fbeaff; }
-@media (orientation: landscape) and (max-height: 500px) and (pointer: coarse) { .gira { display: flex; } }
+html.apaisado .gira { display: flex; } /* main.js pone la clase «apaisado» según la orientación del APARATO (no el tamaño de la ventana: con el teclado abierto la ventana queda más ancha que alta) */
 /* Fase B — pulido de pantallas: entradas suaves, botón que late, brillo en el código y saltico de las frutas */
 @keyframes sube { from { opacity: 0; transform: translateY(14px) scale(0.97); } to { opacity: 1; transform: none; } }
 @keyframes fundido { from { opacity: 0; } to { opacity: 1; } }

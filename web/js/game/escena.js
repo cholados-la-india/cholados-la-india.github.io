@@ -14,9 +14,12 @@ const LARGO = 80; // vuelta completa del decorado lejano
 const Z_LEJOS = -78;
 const CAMARA_INICIO = { pos: [0, 2.1, 4.6], mira: [0, 0.55, 0] };
 const COLORES_CONFETI = [0xd8287f, 0xb6e80a, 0x66c3e0, 0xffe86b, 0xff8a1f, 0xffffff];
-const MAX = { cajaBaja: 26, pilaAlta: 18, barraBaja: 6, fresa: 40, mango: 40 };
+const MAX = { cajaBaja: 26, pilaAlta: 18, barraBaja: 6, fruta: 30 };
+const TIPOS_FRUTA = ['fresa', 'mango', 'lulo', 'pinita', 'papaya', 'manzana'];
+// Colores de las chispas al recoger cada fruta
+const COLORES_FRUTA = { fresa: [0xe5233e, 0xff8fa8], mango: [0xffb21a, 0xff6b3a], lulo: [0xffa21f, 0xffd27a], pinita: [0xf2a31b, 0x4caf3d], papaya: [0xff8a3c, 0xffb36a], manzana: [0xe5233e, 0xffd0d8] };
 // Festejo al llegar a la meta: [segundos desde que ganó, x, y] de cada nueva ola de confeti (además del primer chorro)
-const ONDAS_META = [[0.25, -2.2, 2.0], [0.5, 2.2, 2.0], [0.8, 0, 2.8], [1.1, -1.3, 1.8], [1.35, 1.3, 1.8]];
+const ONDAS_META = [[0.25, -2.2, 2.0], [0.5, 2.2, 2.0], [0.8, 0, 2.8], [1.1, -1.3, 1.8], [1.35, 1.3, 1.8], [1.9, -2.4, 2.2], [2.2, 2.4, 2.2], [2.6, 0, 3.0], [3.0, -1.6, 2.0], [3.3, 1.6, 2.0], [3.7, 0, 2.6]];
 
 export function crearEscena(canvas, contenedor, cfg, tema = {}) {
   // Celulares de entrada (Chrome/Android informa la memoria aproximada; el iPhone no la informa, así que nunca cae aquí):
@@ -93,12 +96,11 @@ export function crearEscena(canvas, contenedor, cfg, tema = {}) {
   const iNubes = new THREE.InstancedMesh(M.nube, new THREE.MeshBasicMaterial({ vertexColors: true, fog: false }), nubes.length);
   iNubes.frustumCulled = false;
   const iRayas = crearMalla(fusionar([pieza(M.caja(0.09, 0.02, 1.1), pal.linea)]), { instancias: nRayas * 2, conContorno: false });
-  const iCajas = crearMalla(M.cajaFruta, { instancias: MAX.cajaBaja });
+  const iCajas = M.cajasFruta.map((g) => crearMalla(g, { instancias: MAX.cajaBaja })); // 3 variantes: cada caja lleva siempre la misma fruta
   const iPilas = crearMalla(crearPilaAlta(), { instancias: MAX.pilaAlta });
   const iBarras = crearMalla(crearBarraBaja(), { instancias: MAX.barraBaja });
-  const iFresas = crearMalla(M.fresa, { instancias: MAX.fresa });
-  const iMangos = crearMalla(M.mango, { instancias: MAX.mango });
-  const todasInstancias = [iPalmas, iSombrillas, iPinas, iRayas, iCajas, iPilas, iBarras, iFresas, iMangos];
+  const iFrutas = Object.fromEntries(TIPOS_FRUTA.map((k) => [k, crearMalla(M[k], { instancias: MAX.fruta })]));
+  const todasInstancias = [iPalmas, iSombrillas, iPinas, iRayas, ...iCajas, iPilas, iBarras, ...Object.values(iFrutas)];
   escena.add(...todasInstancias, iGente, iPuestos, iCuerdas, iNubes);
 
   const maxSombras = 1 + MAX.cajaBaja + MAX.pilaAlta;
@@ -115,7 +117,8 @@ export function crearEscena(canvas, contenedor, cfg, tema = {}) {
   meta.add(crearMalla(crearArcoMeta()));
   meta.add(crearCartelMeta(tema.textoMeta ?? '¡META!'));
   const premio = crearMalla(M.cholado.cuerpo, { geoContorno: M.cholado.contornoCuerpo });
-  premio.add(new THREE.Mesh(M.cholado.cascaron, new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.22, depthWrite: false })));
+  const premioCascaron = new THREE.Mesh(M.cholado.cascaron, new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.15, depthWrite: false }));
+  premio.add(premioCascaron);
   premio.scale.setScalar(1.55);
   premio.position.set(0, 4.65, 0);
   premio.rotation.y = Math.PI; // la carita mira hacia quien llega
@@ -124,7 +127,7 @@ export function crearEscena(canvas, contenedor, cfg, tema = {}) {
   escena.add(meta);
 
   /* ───────────── Personajes ───────────── */
-  const plastico = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.22, depthWrite: false });
+  const plastico = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.15, depthWrite: false });
   function ensamblar(modelo) {
     const g = new THREE.Group();
     const partes = { g, escala: modelo.escala, cuerpo: crearMalla(modelo.cuerpo, { geoContorno: modelo.contornoCuerpo }) };
@@ -287,11 +290,10 @@ export function crearEscena(canvas, contenedor, cfg, tema = {}) {
     }
 
     // --- Obstáculos, frutas, meta
-    let nCaja = 0;
+    const nCaja = [0, 0, 0];
     let nPila = 0;
     let nBarra = 0;
-    let nFresa = 0;
-    let nMango = 0;
+    const nFruta = Object.fromEntries(TIPOS_FRUTA.map((k) => [k, 0]));
     let nSombra = 1;
     const horizonte = cfg.obstaculos.horizonte;
     if (p) {
@@ -302,8 +304,10 @@ export function crearEscena(canvas, contenedor, cfg, tema = {}) {
         // aparece despacio a lo lejos y, al quedar detrás del personaje, se encoge (si no, tapa la cámara)
         const s = suave((horizonte - dz) / 10) * suave((dz + 2.6) / 1.8);
         const x = o.carril < 0 ? 0 : (o.carril - 1) * W;
-        if (o.tipo === 'cajaBaja' && nCaja < MAX.cajaBaja) poner(iCajas, nCaja++, x, 0, -dz, s);
-        else if (o.tipo === 'pilaAlta' && nPila < MAX.pilaAlta) poner(iPilas, nPila++, x, 0, -dz, s);
+        if (o.tipo === 'cajaBaja') {
+          const v = Math.floor(o.d * 3.7) % 3; // cada caja siempre lleva la misma fruta
+          if (nCaja[v] < MAX.cajaBaja) poner(iCajas[v], nCaja[v]++, x, 0, -dz, s);
+        } else if (o.tipo === 'pilaAlta' && nPila < MAX.pilaAlta) poner(iPilas, nPila++, x, 0, -dz, s);
         else if (o.tipo === 'barraBaja' && nBarra < MAX.barraBaja) poner(iBarras, nBarra++, x, 0, -dz, s);
         if (o.tipo !== 'barraBaja' && nSombra < maxSombras) poner(sombras, nSombra++, x, 0.02, -dz, 1.45 * s);
       }
@@ -313,8 +317,8 @@ export function crearEscena(canvas, contenedor, cfg, tema = {}) {
         if (dz < -2.6 || f.recogida) continue;
         const s = suave((horizonte - dz) / 10) * suave((dz + 2.6) / 1.8);
         const y = f.y + Math.sin(idleT * 4 + f.d) * 0.06;
-        if (f.tipo === 'fresa' && nFresa < MAX.fresa) poner(iFresas, nFresa++, (f.carril - 1) * W, y, -dz, s, idleT * 3 + f.d);
-        else if (f.tipo === 'mango' && nMango < MAX.mango) poner(iMangos, nMango++, (f.carril - 1) * W, y, -dz, s, idleT * 3 + f.d);
+        const malla = iFrutas[f.tipo];
+        if (malla && nFruta[f.tipo] < MAX.fruta) poner(malla, nFruta[f.tipo]++, (f.carril - 1) * W, y, -dz, s, idleT * 3 + f.d);
       }
       const zMeta = -(p.dMeta - p.D);
       meta.visible = zMeta > -80 && zMeta < 5;
@@ -327,11 +331,10 @@ export function crearEscena(canvas, contenedor, cfg, tema = {}) {
     } else {
       meta.visible = false;
     }
-    fijarCuenta(iCajas, nCaja);
+    iCajas.forEach((m, i) => fijarCuenta(m, nCaja[i]));
     fijarCuenta(iPilas, nPila);
     fijarCuenta(iBarras, nBarra);
-    fijarCuenta(iFresas, nFresa);
-    fijarCuenta(iMangos, nMango);
+    for (const k of TIPOS_FRUTA) fijarCuenta(iFrutas[k], nFruta[k]);
     sombras.count = nSombra;
 
     // --- Eventos de la lógica → efectos
@@ -345,9 +348,11 @@ export function crearEscena(canvas, contenedor, cfg, tema = {}) {
           tropiezo = 0.6;
           temblor = 0.45;
         } else if (e.tipo === 'fruta') {
-          emitir(7, (e.fruta.carril - 1) * W, e.fruta.y, 0, e.fruta.tipo === 'mango' ? [0xffb21a, 0xff6b3a] : [0xe5233e, 0xff8fa8], { vel: 2.6, tam: 0.09, vida: 0.45, gravedad: 4 });
+          emitir(7, (e.fruta.carril - 1) * W, e.fruta.y, 0, COLORES_FRUTA[e.fruta.tipo] ?? COLORES_FRUTA.fresa, { vel: 2.6, tam: 0.09, vida: 0.45, gravedad: 4 });
         } else if (e.tipo === 'aterrizo') {
           emitir(4, p.x, 0.05, 0.1, [0xffffff, 0xf7b6c6], { vel: 1.8, tam: 0.08, vida: 0.35, gravedad: 2, arriba: 0.6 });
+        } else if (e.tipo === 'minimo') {
+          emitir(26, p.x, 1.5, 0, COLORES_CONFETI, { vel: 3.4, tam: 0.12, vida: 1.1, gravedad: 5, arriba: 2.6 }); // ya tiene las frutas para ganar
         } else if (e.tipo === 'meta' && !metaCelebrada) {
           metaCelebrada = true;
           emitir(70, 0, 2.8, -0.5, COLORES_CONFETI, { vel: 5, tam: 0.13, vida: 1.6, gravedad: 6, arriba: 2.4 });
@@ -447,7 +452,7 @@ export function crearEscena(canvas, contenedor, cfg, tema = {}) {
     pj.g.visible = !(p && estado === 'jugando' && p.t < p.invulHasta && Math.floor(p.t * 14) % 2 === 0); // parpadea tras un choque
 
     poner(sombras, 0, px, 0.02, 0, 1.2 - Math.abs(s) * 0.1 - py * 0.35);
-    for (const m of [iCajas, iPilas, iBarras, iFresas, iMangos, iPalmas, iSombrillas, iPinas, iRayas, sombras, iGente, iPuestos, iCuerdas, iNubes]) m.instanceMatrix.needsUpdate = true;
+    for (const m of [...iCajas, iPilas, iBarras, ...Object.values(iFrutas), iPalmas, iSombrillas, iPinas, iRayas, sombras, iGente, iPuestos, iCuerdas, iNubes]) m.instanceMatrix.needsUpdate = true;
 
     // --- Cámara
     const objetivoModo = jugando ? 1 : 0;

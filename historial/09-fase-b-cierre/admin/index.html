@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="es-CO">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <!-- Panel privado del dueño: fuera de los buscadores. La protege el inicio de sesión (Supabase Auth) y, además, el servidor
+       solo responde a usuarios que estén en la lista app.admins. -->
+  <meta name="robots" content="noindex, nofollow">
+  <meta name="theme-color" content="#d8287f">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; font-src 'self'; img-src 'self' data:; connect-src 'self' https://*.supabase.co; base-uri 'none'; form-action 'none'">
+  <title>Panel de administrador · Cholados La India</title>
+  <link rel="icon" type="image/png" sizes="32x32" href="../assets/marca/favicon-32.png">
+  <link rel="preload" href="../assets/fonts/fredoka-600.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="preload" href="../assets/fonts/lilita-one.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="stylesheet" href="../css/panel.css">
+</head>
+<body>
+  <header class="franja">
+    <div>
+      <h1>Panel de administrador</h1>
+      <small>Cholados La India</small>
+    </div>
+    <div id="quien" class="quien" hidden></div>
+  </header>
+  <div id="demo" class="demo" hidden></div>
+  <nav id="pestanas" class="pestanas" role="tablist" aria-label="Secciones del panel" hidden></nav>
+  <main id="app" class="pagina ancha"></main>
+  <noscript><p style="padding:24px">Para usar esta página necesitas activar JavaScript.</p></noscript>
+  <script type="module" src="admin.js"></script>
+</body>
+</html>

@@ -175,7 +175,7 @@ export function crearUI(raiz, cfg) {
       <section class="pantalla centro fondo scroll"><form class="panel ganaste" data-accion="reclamar" novalidate>
         <h2 class="grande-titulo">${T.ganaste.titulo}</h2>
         <p class="mensaje">${T.ganaste.subtitulo}</p>
-        <p class="nota">${T.ganaste.ventana(cfg.reglas.ventanaReclamoMin)}</p>
+        <p class="nota">${T.ganaste.ventana()}</p>
         <label class="campo"><span>${T.ganaste.nombre}</span>
           <input name="nombre" type="text" autocomplete="name" maxlength="60" autocapitalize="words" required></label>
         <label class="campo"><span>${T.ganaste.celular}</span>
@@ -230,7 +230,7 @@ export function crearUI(raiz, cfg) {
         <div class="codigo" id="codigo-texto"><small>${esc(prefijo)}-</small>${esc(resto ?? '')}</div>
         ${estados[estado] ?? estados.activo}
         ${estado === 'activo' ? `<ol class="pasos">${T.codigo.pasos(cfg.reglas.compraMinima, cfg.reglas.regalos).map((p) => `<li>${p}</li>`).join('')}</ol>
-        <p class="local"><b>${esc(LOCAL.direccion)}</b><br>${esc(LOCAL.horario)}</p>
+        <p class="local"><b>${esc(LOCAL.direccion)}</b><br>${LOCAL.horario.split('\n').map(esc).join('<br>')}</p>
         <button type="button" class="enlace" data-accion="condiciones">${T.codigo.condiciones}</button>` : puedeMas}
         ${esDePrueba ? `<p class="prueba">${T.codigo.prueba}</p>` : ''}
         ${estado === 'activo' ? `<p class="nota">${T.codigo.consejo}</p>

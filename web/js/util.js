@@ -21,7 +21,7 @@ export function horaBogota(ms) {
   const b = enBogota(ms);
   const h = b.getUTCHours();
   const m = String(b.getUTCMinutes()).padStart(2, '0');
-  return `${h % 12 || 12}:${m} ${h < 12 ? 'a. m.' : 'p. m.'}`;
+  return `${h % 12 || 12}:${m}\u00a0${h < 12 ? 'a.\u00a0m.' : 'p.\u00a0m.'}`; // espacios duros: «p. m.» no se parte entre renglones
 }
 
 /** "martes 27 de octubre, 2:50 p. m." */

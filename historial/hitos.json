@@ -119,5 +119,19 @@
       "08-imagen-para-compartir.jpg",
       "09-inicio-con-boton-de-sonido.jpg"
     ]
+  },
+  {
+    "id": "09-fase-b-cierre",
+    "titulo": "Preview 10: Cierre de la Fase B (cholado final)",
+    "descripcion": "Cholado final «Mermelada» (piña picadita, mermelada de mora, leche condensada con uvita y cuchara con el mango afuera, vaso rojo con frutas por dentro), sin aplausos, música a 168 BPM, texto de plazo máximo del código, datos del local. Usar ?api=falsa para el juego de práctica.",
+    "fecha": "2026-10-20",
+    "entrada": "index.html",
+    "capturas": [
+      "01-cholado-final-de-frente.jpg",
+      "02-cholado-final-de-espaldas.jpg",
+      "03-cholado-final-desde-arriba.jpg",
+      "04-llegando-a-la-meta.jpg",
+      "05-las-3-versiones-que-se-compararon.png"
+    ]
   }
 ]

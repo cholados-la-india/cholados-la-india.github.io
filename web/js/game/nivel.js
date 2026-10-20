@@ -122,7 +122,8 @@ export function crearGenerador(cfg, rng) {
       }
       const largo = f.largoMin + Math.floor(rng() * (f.largoMax - f.largoMin + 1));
       const carril = Math.floor(rng() * 3);
-      const tipo = rng() < f.probMango ? 'mango' : 'fresa';
+      const tipos = f.tipos ?? ['fresa', 'mango'];
+      const tipo = tipos[Math.min(tipos.length - 1, Math.floor(rng() * tipos.length))];
       const d0 = g.dFruta;
       for (let i = 0; i < largo; i++) {
         const d = d0 + i * f.separacion;

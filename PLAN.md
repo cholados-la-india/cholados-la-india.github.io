@@ -83,7 +83,7 @@ Claude le entrega el juego, la caja y el panel para que el usuario los ejecute e
 - [~] A.3 Prueba del usuario en el XR (controles, fluidez, teclado, rotar, Instagram): **en pausa por decisión del usuario** («no más bugs por ahora»); queda en `pendientes.md` #36. Si manda una lista, Claude la ordena y arregla.
 - [x] A.4 El usuario decidió pasar a la Fase B mañana (2026-10-20, noche).
 
-## Fase bonus B — Mejoras estéticas ⏳ (primera pasada hecha; falta la segunda vuelta del usuario)
+## Fase bonus B — Mejoras estéticas ✅ (cerrada el 2026-10-20)
 Lo que el usuario dijo que quería mejorar al final (ver `pendientes.md` #16): cholado con frutas «adentro» del vaso, bola de helado, más detalle en La India y el escenario, más elementos de escenario, posibles cambios de color, sonido y música (#10), cartel ¡META! legible, animación de choque.
 
 **Lo que el usuario eligió al empezar (marcó TODO) y cómo se trabaja: una por una** (Claude hace la mejora, deja la dirección para verla en el PC y en el XR, el usuario aprueba o ajusta y se sigue). Regla de la Fase B: **todo cambio de estilo o animación se aplica a los dos personajes**; respetar la receta del estilo «G» (CLAUDE.md §6b); no subir el brillo (`setScalar(1.15)`); cuidar el rendimiento (celulares de gama baja) y volver a correr `npm run vendor` si se usa una clase nueva de Three.js.
@@ -94,9 +94,14 @@ Lo que el usuario dijo que quería mejorar al final (ver `pendientes.md` #16): c
 - [x] B.5 **Sonido y música**: todo generado por código (sin archivos ni licencias); botón de sonido. `bitacora.md` §13.7. **Falta que el usuario lo ESCUCHE** (no se pudo oír desde aquí).
 - [x] B.6 **Ícono y vista previa del link**: favicon, ícono de inicio, manifiesto e imagen 1200×630. `bitacora.md` §13.8.
 - [x] B.7 **Pulir pantallas**: entradas suaves, botón que late, brillo del código, saltico de frutas, últimos 10 s. `bitacora.md` §13.9.
-- [~] B.8 Hito `historial/08-fase-b-primera-pasada/` hecho. **Falta la segunda vuelta del usuario** (él pide los ajustes específicos al final) → visto bueno → Etapa 7.
+- [x] B.8 Hito `historial/08-fase-b-primera-pasada/` hecho.
+- [x] **Segunda vuelta, tanda 1** (el usuario probó en su PC, un iPhone XR y un iPhone 13 Pro y pidió 12 cosas; `bitacora.md` §13.11): texto «Solo falta un paso» en vez de «apartado 15 min» + botón «Activar mi código»; festejo de 4,5 s antes del formulario; **sonido en iPhone** (no sonaba nada: desbloqueo con touchend/click + «Probar sonido» en `/diagnostico/`); **música de salsa reescrita** (investigada, ver `documentos/salsa-referencia.md`); música también en el inicio; aplausos y gente alentando; horario sin la «m.» suelta; cholado −9 % de tamaño; 6 frutas y 3 cajas con frutas distintas.
+- [x] **Segunda vuelta, tanda 2** (el usuario probó en el XR, `bitacora.md` §13.12): la música seguía sin sonar a salsa → **segunda ronda de investigación** y reescritura (marcha de congas, bajo anticipado, guajeo, coro, redoble); los **aplausos y la hinchada no se oían** (estaban 20 dB por debajo de la música): subidos y con la música bajando mientras suenan; **bug del iPhone: «Gira tu celular» salía con el teclado abierto** → ahora se mira la orientación del aparato; **robustez de «¡Tu premio te espera!»** (vale 2 h, máx. 3 avisos, se olvida si el celular ya tiene cupón, muestra el código si ya se reclamó); festejo a 4 s.
+- [x] **Segunda vuelta, tanda 3** (el usuario probó en un XR, un iPhone 13 Pro y un Android de gama baja —fluido—; `bitacora.md` §13.13): **fuera aplausos, hinchada y coro** (sonaban a distorsión); música a **168 BPM**; el texto del formulario ahora dice «plazo máximo de N días para usar tu código (una sola vez)»; datos del local ya llenos.
+- [x] **B.9 Cholado final «Mermelada»**: sin helado; morro de piña picadita tapado con mermelada de mora; leche condensada cálida con la uvita encima y centrada; vaso de almíbar rojo fuerte con frutas reconocibles por dentro; cuchara con el mango afuera. Se presentaron 3 interpretaciones (`documentos/cholado-3-versiones.png`) y el usuario eligió la 2.ª con 3 detalles que se corrigieron. `bitacora.md` §13.13.
+- [x] B.10 **Visto bueno del usuario** («esa versión 2 quedó perfecta»; «da por terminada esta fase B»). Hito `historial/09-fase-b-cierre/`. **Guía del administrador** (`documentos/guia-del-administrador.md`) hecha a pedido del usuario. **Siguiente: Etapa 7** cuando el usuario pegue su prompt.
 
-## Etapa 7 — Publicación ⬜
+## Etapa 7 — Publicación ⬜ (la siguiente; falta el prompt del usuario)
 - [ ] GitHub Pages desde `web/` con workflow; URL permanente `https://cholados-la-india.github.io/` (organización `cholados-la-india`; repo renombrado a `cholados-la-india.github.io`); QR de alta resolución (mostrador y vasos); términos y condiciones; aviso de datos (Ley 1581); plan de contingencia; lista de lanzamiento; hito final en `historial/`.
 
 ## Después de la Etapa 7

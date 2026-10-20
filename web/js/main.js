@@ -25,7 +25,8 @@ api.configurar?.(cfg);
 const ui = crearUI(raiz, cfg);
 ui.marcarSonido(audio.encendido);
 // Los navegadores solo dejan sonar después de un toque o una tecla: se desbloquea con el primero
-for (const evento of ['pointerdown', 'keydown']) document.addEventListener(evento, () => audio.activar(), { capture: true });
+// En iPhone el audio solo se desbloquea cuando el toque TERMINA (touchend/click), no con pointerdown: se prueba en todos.
+for (const evento of ['pointerdown', 'pointerup', 'touchend', 'click', 'keydown']) document.addEventListener(evento, () => audio.activar(), { capture: true });
 
 /** Qué suena con cada cosa que pasa en la partida (los eventos los genera la lógica). */
 function sonar(e) {
@@ -37,6 +38,8 @@ function sonar(e) {
   else if (e.tipo === 'fruta') audio.fruta();
   else if (e.tipo === 'choque') audio.choque();
   else if (e.tipo === 'meta') audio.meta();
+  else if (e.tipo === 'minimo') audio.logro(true); // ya tiene las frutas para ganar
+  else if (e.tipo === 'mitad') audio.logro(false);
 }
 let escena;
 try {
@@ -62,17 +65,24 @@ const hooks = { alTerminar: [] }; // el panel de debug se engancha aquí
 /* ───────────── Victoria pendiente (K1) ─────────────
    Al llegar a la meta se anota en este navegador el token de la partida. Si la persona cierra o recarga la página antes de
    reclamar (o se cae el internet justo al terminar), al volver se le ofrece reclamar. Es solo una ayuda: el servidor decide
-   si todavía se puede (la reserva dura 15 min y puede reclamar hasta unas 6 h después, mientras haya premios). */
+   si todavía se puede (el servidor aparta el premio 15 min y deja reclamar hasta unas 6 h después, mientras queden premios).
+   Para que la pantalla «¡Tu premio te espera!» no se quede pegada: el aviso vale 2 h, sale máximo 3 veces y se borra si el
+   servidor dice que ya no vale, que ya reclamó o que ese celular ya tiene cupón. */
 const CLAVE_VICTORIA = 'cholado-victoria-pendiente' + (api.esFalsa ? '-falsa' : ''); // la simulación y el servidor real NO se mezclan
-const VICTORIA_MAX_MS = 6 * 3600e3;
+const VICTORIA_MAX_MS = 2 * 3600e3; // (el servidor aguanta hasta 6 h, pero el aviso no se queda tanto)
+const VICTORIA_MAX_AVISOS = 3;
 let pendienteDescartado = false; // «Ahora no»: no se vuelve a ofrecer hasta recargar la página
 const guardarVictoria = (v) => almacen.escribir(CLAVE_VICTORIA, { ...v, guardadoMs: Date.now() });
 const olvidarVictoria = () => almacen.borrar(CLAVE_VICTORIA);
+const marcarVictoria = (parche) => {
+  const v = almacen.leer(CLAVE_VICTORIA);
+  if (v) almacen.escribir(CLAVE_VICTORIA, { ...v, ...parche });
+};
 function victoriaPendiente() {
   const v = almacen.leer(CLAVE_VICTORIA);
   if (!v) return null;
   const edad = Date.now() - v.guardadoMs;
-  if (typeof v.token !== 'string' || !(edad >= -60000 && edad <= VICTORIA_MAX_MS)) {
+  if (typeof v.token !== 'string' || v.yaTiene || (v.avisos ?? 0) >= VICTORIA_MAX_AVISOS || !(edad >= -60000 && edad <= VICTORIA_MAX_MS)) {
     olvidarVictoria();
     return null;
   }
@@ -126,7 +136,7 @@ async function irInicio(recargar = true) {
   terminada = false;
   ui.mostrarHUD(false);
   ui.mostrarCuenta(null);
-  audio.musicaOff();
+  audio.musica('menu'); // en el inicio y las pantallas suena la salsa suave (desde el primer toque)
   if (recargar || !estadoServidor) {
     ui.mostrar('cargando');
     try {
@@ -138,7 +148,9 @@ async function irInicio(recargar = true) {
     }
   }
   const tieneCodigo = tieneCodigoActivo();
-  if (recargar && !pendienteDescartado && victoriaPendiente()) {
+  const pendiente = recargar && !pendienteDescartado ? victoriaPendiente() : null;
+  if (pendiente) {
+    marcarVictoria({ avisos: (pendiente.avisos ?? 0) + 1 }); // cuenta las veces que se le avisa (máximo 3)
     ui.mostrar('premio-pendiente', {});
     return;
   }
@@ -173,7 +185,7 @@ async function iniciarJuego() {
     ui.mostrarHUD(true);
     ui.mostrarCuenta(T.juego.cuenta[0]);
     audio.activar();
-    audio.musicaOn(); // la música suena mientras se juega, desde la cuenta atrás
+    audio.musica('juego'); // la misma salsa, ahora completa y con metales
     audio.cuenta();
   } catch {
     ui.toast(T.inicio.errorConexion);
@@ -195,12 +207,26 @@ function alternarPausa(forzar) {
     audio.reanudar();
   }
 }
-// Celular acostado: se tapa con un aviso (CSS, .gira) y se pausa, para no perder la partida al girarlo sin querer
-const apaisado = window.matchMedia('(orientation: landscape) and (max-height: 500px) and (pointer: coarse)');
+// Celular acostado: se tapa con un aviso (CSS, .gira) y se pausa, para no perder la partida al girarlo sin querer.
+// OJO: se mira la orientación del APARATO, no el tamaño de la ventana. En iPhone, al abrir el teclado (p. ej. para escribir el
+// nombre) la ventana queda más ancha que alta aunque el celular siga vertical, y el aviso salía por error.
 document.getElementById('gira').innerHTML = `<b>${T.gira.titulo}</b><span>${T.gira.mensaje}</span>`;
-const alGirar = (e) => e.matches && alternarPausa(true);
-if (apaisado.addEventListener) apaisado.addEventListener('change', alGirar);
-else apaisado.addListener?.(alGirar); // iOS < 14
+const tactil = window.matchMedia('(pointer: coarse)');
+function celularAcostado() {
+  if (!tactil.matches || Math.min(screen.width, screen.height) > 500) return false; // solo celulares (no tabletas ni computadores)
+  const tipo = screen.orientation?.type;
+  if (tipo) return tipo.startsWith('landscape');
+  if (typeof window.orientation === 'number') return Math.abs(window.orientation) === 90; // iPhone viejo
+  return false; // sin datos: no se tapa nada
+}
+function revisarGiro() {
+  const acostado = celularAcostado();
+  document.documentElement.classList.toggle('apaisado', acostado);
+  if (acostado) alternarPausa(true);
+}
+screen.orientation?.addEventListener?.('change', () => setTimeout(revisarGiro, 60));
+window.addEventListener('orientationchange', () => setTimeout(revisarGiro, 150));
+revisarGiro();
 document.addEventListener('visibilitychange', () => {
   if (document.hidden) audio.pausar(); // el sonido se calla en cuanto se sale de la página
   else if (!pausado) audio.reanudar();
@@ -210,7 +236,7 @@ document.addEventListener('visibilitychange', () => {
 /* ───────────── Fin de la partida ───────────── */
 function alTerminarPartida(p) {
   terminada = true;
-  audio.musicaOff();
+  audio.musica('menu');
   if (p.estado === 'perdio' && p.motivoFin !== 'frutas') audio.perdio();
   const resumen = {
     gano: p.estado === 'gano',
@@ -224,7 +250,7 @@ function alTerminarPartida(p) {
   if (resumen.gano) guardarVictoria({ token, progreso: resumen.progreso, frutas: resumen.frutas }); // por si recarga antes de reclamar (K1)
   const pedido = api.terminarPartida({ token, gano: resumen.gano, progreso: resumen.progreso, frutas: resumen.frutas }).catch((error) => ({ error }));
   hooks.alTerminar.forEach((f) => f(resumen));
-  const espera = resumen.gano || resumen.motivo === 'frutas' ? cfg.partida.celebracionS * 1000 : 900; // si llegó a la meta, pasa bajo el arco
+  const espera = resumen.gano ? cfg.partida.festejoS * 1000 : resumen.motivo === 'frutas' ? cfg.partida.celebracionS * 1000 : 900; // si llegó a la meta, pasa bajo el arco
   setTimeout(async () => {
     const r = await pedido;
     mostrarResultado(resumen, r);
@@ -280,6 +306,12 @@ async function recuperarVictoria() {
   } catch (error) {
     r = error?.http && error.http < 500 ? { ok: false, motivo: 'partida-invalida' } : { error }; // 4xx: el servidor la rechaza, no es mala señal
   }
+  if (r && !r.error && r.estado && !r.puedeReclamar && !r.motivo && r.estado.miCodigoActivo) {
+    // el servidor dice que esa victoria ya se reclamó (la respuesta se perdió por mala señal): se le muestra el código que ya tiene
+    olvidarVictoria();
+    verMiCodigo();
+    return;
+  }
   token = v.token;
   mostrarResultado({ gano: true, motivo: null, progreso: v.progreso ?? 1, frutas: v.frutas ?? 0, frutasMinimas: cfg.partida.frutasMinimas }, r);
 }
@@ -317,6 +349,7 @@ async function reclamar() {
     } catch {
       /* si falla, simplemente no se ofrece el botón */
     }
+    marcarVictoria({ yaTiene: true }); // ese celular no puede reclamar: si cierra aquí, no se le vuelve a ofrecer
     ui.mostrar('ya-tienes-cupon', { puedeVolverMs: Date.parse(r.puedeVolverISO), dias: r.dias, tieneCodigo: tiene });
   } else if (r.motivo === 'limite-red') {
     ui.errorFormulario(T.limiteRed.codigos);

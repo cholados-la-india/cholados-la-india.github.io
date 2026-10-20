@@ -1,0 +1,26 @@
+{
+  "name": "Corre por tu cholado · Cholados La India",
+  "short_name": "Cholado Run",
+  "description": "Corre, esquiva, recoge frutas y gana un regalo en Cholados La India (Cali).",
+  "lang": "es-CO",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "theme_color": "#d8287f",
+  "background_color": "#120b14",
+  "icons": [
+    {
+      "src": "assets/marca/icono-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "assets/marca/icono-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ]
+}

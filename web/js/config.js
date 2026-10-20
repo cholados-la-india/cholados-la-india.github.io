@@ -19,7 +19,8 @@ export const CONFIG = {
     cuentaAtrasS: 3, // 3, 2, 1... ¡a correr!
     invulnerabilidadS: 1.3, // tras un choque no te pueden quitar otra vida durante este tiempo
     toleranciaColision: 0.18, // 0 = hitbox exacta · 0.18 = se perdona un 18 % del borde · 0.4 = muy permisivo
-    celebracionS: 1.4, // lo que se queda corriendo y festejando tras cruzar la meta, antes de la pantalla "ganaste"
+    celebracionS: 1.4, // lo que tarda en frenar bajo el arco (y lo que se espera si llegó sin las frutas mínimas)
+    festejoS: 4.0, // lo que se queda festejando en pantalla tras GANAR, antes de mostrar el formulario (el muñeco celebra y sale confeti)
   },
 
   /* ───────────── Velocidad del mundo (unidades por segundo) ───────────── */
@@ -72,7 +73,7 @@ export const CONFIG = {
     largoMax: 6,
     separacion: 1.25, // distancia entre frutas de una misma hilera
     sobreCajasBajas: true, // si una hilera cruza una caja baja, sube en arco (hay que saltar para cogerlas)
-    probMango: 0.4, // el resto son fresas
+    tipos: ['fresa', 'mango', 'lulo', 'pinita', 'papaya', 'manzana'], // cada hilera trae una sola clase, escogida al azar (todas valen 1)
   },
 
   /* ───────────── Controles ───────────── */

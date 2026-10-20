@@ -36,6 +36,7 @@ export function crearPartida(cfg, { semilla = Date.now(), sinCuenta = false, inv
     vidas: cfg.partida.vidas,
     invulHasta: -1,
     invencible,
+    mitadHecha: false, // ya se avisó que va por la mitad del camino
     frutas: 0, // frutas recogidas
     frutasGeneradas: 0, // frutas que han salido en el camino (para saber cuántas había disponibles)
     choques: 0,
@@ -75,6 +76,10 @@ export function paso(p, dt) {
   p.vel = velocidadEn(cfg, p.t);
   p.t += dt;
   p.D += p.vel * dt;
+  if (!p.mitadHecha && p.t >= T * 0.5) {
+    p.mitadHecha = true;
+    p.eventos.push({ tipo: 'mitad' }); // la mitad del camino (suena un aliento de la gente)
+  }
 
   // Movimiento lateral (a velocidad constante hacia el carril elegido)
   const objX = (p.carrilObjetivo - 1) * cfg.carriles.ancho;
@@ -173,6 +178,8 @@ function recogerFrutas(p) {
     f.recogida = true;
     p.frutas += 1;
     p.eventos.push({ tipo: 'fruta', fruta: f });
+    const minimo = p.cfg.partida.frutasMinimas ?? 0;
+    if (minimo > 0 && p.frutas === minimo) p.eventos.push({ tipo: 'minimo' }); // ya tiene las frutas para ganar: aplausos
   }
 }
 

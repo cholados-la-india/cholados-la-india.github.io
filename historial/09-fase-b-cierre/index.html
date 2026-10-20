@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="es-CO">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+  <meta name="theme-color" content="#d8287f">
+  <meta name="description" content="Corre por tu cholado: corre, esquiva, recoge frutas y gana un regalo en Cholados La India (Cali).">
+  <!-- Vista previa al compartir el link (WhatsApp, Instagram, Facebook): título, texto e imagen 1200×630 -->
+  <meta property="og:type" content="website">
+  <meta property="og:locale" content="es_CO">
+  <meta property="og:site_name" content="Cholados La India">
+  <meta property="og:title" content="Corre por tu cholado · Cholados La India">
+  <meta property="og:description" content="Corre, esquiva, recoge frutas y gana un regalo en Cholados La India (Cali).">
+  <meta property="og:url" content="https://cholados-la-india.github.io/">
+  <meta property="og:image" content="https://cholados-la-india.github.io/assets/marca/compartir.jpg">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta name="twitter:card" content="summary_large_image">
+  <title>Corre por tu cholado · Cholados La India</title>
+  <link rel="icon" type="image/png" sizes="32x32" href="assets/marca/favicon-32.png">
+  <link rel="apple-touch-icon" href="assets/marca/apple-touch-icon.png">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="preload" href="assets/fonts/fredoka-600.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="preload" href="assets/fonts/lilita-one.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="stylesheet" href="css/juego.css">
+  <!-- Precarga de los módulos: sin esto el navegador descubre los archivos de a uno (main → escena → three…) y en 4G se pierde
+       cerca de un segundo en viajes de ida y vuelta. Con esto se piden todos a la vez. (Si agregas o renombras un módulo en js/,
+       actualiza esta lista; si falta alguno, el juego funciona igual, solo carga más lento.) -->
+  <link rel="modulepreload" href="vendor/three/three.min.js">
+  <link rel="modulepreload" href="js/game/escena.js">
+  <link rel="modulepreload" href="js/game/modelos.js">
+  <link rel="modulepreload" href="js/game/modelos-nivel.js">
+  <link rel="modulepreload" href="js/game/materiales.js">
+  <link rel="modulepreload" href="js/game/matcap.js">
+  <link rel="modulepreload" href="js/game/paleta.js">
+  <link rel="modulepreload" href="js/game/nivel.js">
+  <link rel="modulepreload" href="js/game/logica.js">
+  <link rel="modulepreload" href="js/game/controles.js">
+  <link rel="modulepreload" href="js/ui/ui.js">
+  <link rel="modulepreload" href="js/api.js">
+  <link rel="modulepreload" href="js/api-supabase.js">
+  <link rel="modulepreload" href="js/api-falsa.js">
+  <link rel="modulepreload" href="js/supabase-config.js">
+  <link rel="modulepreload" href="js/dispositivo.js">
+  <link rel="modulepreload" href="js/audio.js">
+  <link rel="modulepreload" href="js/reloj.js">
+  <link rel="modulepreload" href="js/config.js">
+  <link rel="modulepreload" href="js/textos.js">
+  <link rel="modulepreload" href="js/util.js">
+</head>
+<body>
+  <main id="escena" class="escena">
+    <canvas id="lienzo"></canvas>
+    <div id="golpe" class="golpe" aria-hidden="true"></div>
+    <div id="hud" class="hud" hidden></div>
+    <div id="cuenta" class="cuenta" aria-live="assertive" hidden></div>
+    <div id="pantalla" class="capa" hidden></div>
+    <p id="sin-webgl" class="sin-webgl" hidden>Este navegador no puede mostrar el juego. Ábrelo en Chrome o Safari.</p>
+  </main>
+  <div id="gira" class="gira" role="status"></div>
+  <noscript><p style="padding:24px;font:16px system-ui">Para jugar necesitas activar JavaScript.</p></noscript>
+  <script type="module" src="js/main.js"></script>
+</body>
+</html>

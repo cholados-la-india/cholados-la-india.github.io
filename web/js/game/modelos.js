@@ -86,10 +86,12 @@ export function crearModelos(detalle) {
   const trozo = (rTop, rBase, h, th0, thL) => new THREE.CylinderGeometry(rTop, rBase, h, Math.max(1, Math.round(detalle)), 1, true, th0, thL);
 
   /**
-   * El choladito, fiel a las fotos de referencia. Mira hacia -z (hacia donde corre).
-   *  - Vaso de plástico transparente SIN adornos por fuera: se ve lo que lleva adentro (almíbar rojo, hielo,
-   *    piña, guanábana, banano, maracuyá y papaya), con un casco translúcido encima.
-   *  - Arriba: una bola de helado rosada con leche condensada, uvita, wafer, manzana roja, pitillo y cuchara.
+   * El cholado (Fase B, B.9: versión «Mermelada», elegida por el usuario). Mira hacia -z (hacia donde corre).
+   *  - Vaso de plástico transparente SIN adornos por fuera, con almíbar rojo fuerte y las frutas reconocibles (lulo, guanábana,
+   *    maracuyá, papaya, piña, fresa) DENTRO del plástico, con un casco translúcido encima.
+   *  - Arriba, un morro de piña picadita tapado con mermelada de mora; encima la leche condensada (crema cálida, no blanca), con la
+   *    uvita en la punta y un poco de leche condensada sobre ella; wafer, manzana roja, pitillo y la cuchara (el mango asoma por fuera
+   *    y la cuchara en sí queda metida en el cholado).
    */
   function cholado() {
     const R0 = 0.34;
@@ -97,75 +99,56 @@ export function crearModelos(detalle) {
     const Y0 = 0.46;
     const H = 0.9;
     const YT = Y0 + H;
-    const rAt = (t) => mezcla(R0, R1, t);
+    const rAt = (u) => mezcla(R0, R1, u);
+    const NUC = 0.88; // el contenido llega al 88 % del radio: queda un huequito donde van los trozos de fruta, contra el plástico
     const p = [];
-    // El contenido (hielo, almíbar) llega solo hasta el 88 % del radio del vaso: entre él y el plástico queda un huequito
-    // donde van los trozos de fruta, así se ven DENTRO del vaso (antes estaban pegados al contenido y parecían por fuera).
-    const NUC = 0.88;
 
-    // Contenido del vaso: 6 filas × 12 sectores de 30°. Cada letra es un ingrediente.
-    const COL = {
-      J: 0xb50f2e, // almíbar rojo oscuro
-      R: 0xd92f58, // almíbar rojo claro
-      r: 0xf7b6c6, // hielo teñido de almíbar
-      I: 0xfff3e8, // hielo
-      Y: 0xffd24a, // piña
-      O: 0xff9a3c, // papaya
-      C: 0xfff1a8, // banano
-      P: 0xffb62e, // maracuyá
-      G: 0xfffdf2, // guanábana
-    };
-    const filas = [0, 0.24, 0.38, 0.54, 0.7, 0.85, 1];
-    const mapa = [
-      'JJJJJJJJJJJJ', // base: almíbar
-      'JRJRRrRRrRJR',
-      'YROPIIIICORY', // sectores 4-7 = frente (hielo blanco, ahí va la carita)
-      'OCPRIIIIYROP',
-      'RYGOIIIIPCRG',
-      'RIIGIIIIIGIR', // hielo hasta el borde, con vetas de almíbar
-    ];
-    const semillas = (cx, cy, cz, tx, tz, lista) => lista.forEach(([dx, dy]) => p.push(pieza(esf(0.014, 5, 4), 0x2a1a14, [cx + tx * dx, cy + dy, cz + tz * dx])));
+    /* ───── El cuerpo del vaso: almíbar rojo fuerte + frutas ───── */
+    const COL = { J: 0x7d0a22, R: 0xb90f33, F: 0xd51a40 };
+    const filas = [0, 0.22, 0.38, 0.54, 0.7, 0.86, 1];
+    // 6 filas × 12 sectores de 30°; los sectores 4-7 (frente) en las filas 2-4 = «ventana» roja más viva donde va la carita
+    const mapa = ['JJJJJJJJJJJJ', 'JRJRJRRJRJRJ', 'RJRRFFFFRRRJ', 'JRRJFFFFRJRR', 'RJRRFFFFJRRJ', 'JRJRRJRJRRJR'];
     mapa.forEach((fila, f) => {
-      const t0 = filas[f];
-      const t1 = filas[f + 1];
-      const h = (t1 - t0) * H;
-      const y = Y0 + ((t0 + t1) / 2) * H;
+      const u0 = filas[f];
+      const u1 = filas[f + 1];
+      const h = (u1 - u0) * H;
+      const y = Y0 + ((u0 + u1) / 2) * H;
       [...fila].forEach((ch, s) => {
-        // Cada trozo varía muy poco de tono (±3 %): con más variación el hielo parecía un tablero de ajedrez.
-        const k = 0.97 + ((f * 37 + s * 17) % 11) / 170;
-        p.push(pieza(trozo(rAt(t1) * NUC, rAt(t0) * NUC, h, s * 30 * RAD, 30 * RAD), tono(COL[ch], k), [0, y, 0]));
-        if (f >= 2 && f <= 4 && 'YOCPG'.includes(ch)) {
-          // trozo de fruta pegado al plástico por dentro
-          const th = (s + 0.5) * 30 * RAD;
-          const rr = rAt((t0 + t1) / 2) * 0.985 - 0.04;
-          const cx = Math.sin(th) * rr;
-          const cz = Math.cos(th) * rr;
-          const tx = Math.cos(th);
-          const tz = -Math.sin(th);
-          p.push(pieza(ico(0.095, 0), COL[ch], [cx, y, cz], [0, th, 0], [1.2, 1.05, 0.4]));
-          p.push(pieza(ico(0.058, 0), COL[ch], [cx - tx * 0.065, y + 0.055, cz - tz * 0.065], [0, th, 0.4], [1.1, 1, 0.4]));
-          if (ch === 'P') semillas(cx + Math.sin(th) * 0.04, y, cz + Math.cos(th) * 0.04, tx, tz, [[-0.04, 0.02], [0.03, 0.03], [0, -0.03], [0.05, -0.015]]);
-          if (ch === 'G') semillas(cx + Math.sin(th) * 0.04, y, cz + Math.cos(th) * 0.04, tx, tz, [[-0.03, 0.01], [0.035, -0.02]]);
-        }
+        const k = 0.97 + ((f * 37 + s * 17) % 11) / 170; // cada trozo varía muy poco de tono
+        p.push(pieza(trozo(rAt(u1) * NUC, rAt(u0) * NUC, h, s * 30 * RAD, 30 * RAD), tono(COL[ch], k), [0, y, 0]));
       });
     });
-    // Trozos de fruta (mango, papaya, banano, fresa, kiwi, maracuyá) contra el plástico por dentro: dos anillos completos,
-    // uno sobre el almíbar y otro bajo el helado, que se ven a través del vaso (la carita queda entre los dos).
-    const FRUTAS = [0xffc43d, 0xff8a3c, 0xfff1a8, 0xe5233e, 0x8bc34a, 0xffb62e];
-    const anillo = (t, n, tam, desfase) => {
-      const rr = rAt(t) * 0.985 - 0.04;
-      for (let i = 0; i < n; i++) {
-        const th = ((i + desfase) / n) * Math.PI * 2;
-        const color = tono(FRUTAS[(i * 5 + Math.round(t * 10)) % FRUTAS.length], 0.95 + ((i * 29) % 7) / 60);
-        const y = Y0 + t * H + (((i * 13) % 5) - 2) * 0.008;
-        p.push(pieza(ico(tam * 0.8, 0), color, [Math.sin(th) * rr, y, Math.cos(th) * rr], [0.15 * (i % 3), th, i % 2 ? 0.3 : -0.25], [1.25, 1, 0.5]));
+    // Trozos de fruta pegados al plástico POR DENTRO (con sus semillitas, para que se entienda qué fruta es)
+    const FR = {
+      lulo: [0x93c83e, 0xf5e27a],
+      guanabana: [0xfffbea, 0x2a1a14],
+      maracuya: [0xffb21a, 0x3a2418],
+      papaya: [0xff7a2b, null],
+      pina: [0xf6d44a, null],
+      fresa: [0xe5233e, 0xffe3a0],
+    };
+    const fruta = (tipo, th, u, tam) => {
+      const [c, sem] = FR[tipo];
+      const rr = rAt(u) * 0.985 - 0.045;
+      const dx = Math.sin(th);
+      const dz = Math.cos(th);
+      const y = Y0 + u * H;
+      p.push(pieza(ico(tam, 0), c, [dx * rr, y, dz * rr], [0, th, 0], [1.2, 1.05, 0.5]));
+      if (sem) {
+        for (let k = 0; k < 5; k++) {
+          const a = (k - 2) * 0.55;
+          const dy = (((k * 37) % 5) - 2) * 0.018;
+          p.push(pieza(esfMini(0.011), sem, [dx * (rr + tam * 0.45) + dz * Math.sin(a) * tam * 0.6, y + dy, dz * (rr + tam * 0.45) - dx * Math.sin(a) * tam * 0.6]));
+        }
       }
     };
-    anillo(0.27, 11, 0.12, 0);
-    anillo(0.9, 11, 0.11, 0.5);
-    p.push(pieza(new THREE.CircleGeometry(rAt(1) * 0.985, S(12)).rotateX(-Math.PI / 2), 0xfff5ec, [0, YT - 0.01, 0]));
+    // [fruta, ángulo, altura (0 = fondo, 1 = borde), tamaño]
+    [['lulo', 0.5, 0.3, 0.16], ['guanabana', 1.5, 0.4, 0.17], ['maracuya', 2.4, 0.3, 0.15], ['papaya', 4.6, 0.36, 0.15], ['lulo', 5.4, 0.55, 0.16],
+      ['guanabana', 0.2, 0.62, 0.15], ['maracuya', 1.1, 0.74, 0.15], ['fresa', 5.9, 0.78, 0.12], ['papaya', 1.9, 0.9, 0.13], ['pina', 4.5, 0.9, 0.11],
+      ['lulo', 3.4, 0.24, 0.13], ['guanabana', 5.0, 0.8, 0.13], ['maracuya', 0.1, 0.2, 0.12], ['pina', 2.9, 0.92, 0.1]].forEach(([tipo, th, u, tam]) => fruta(tipo, th, u, tam));
+    p.push(pieza(new THREE.CircleGeometry(rAt(1) * 0.985, S(12)).rotateX(-Math.PI / 2), 0xb90f33, [0, YT - 0.01, 0]));
 
-    // Cara (al frente, o sea hacia -z): ojos, mejillas y sonrisa sobre el hielo blanco.
+    /* ───── Cara (al frente, hacia -z), sobre la ventana roja ───── */
     const yCara = Y0 + 0.62 * H;
     const rCara = rAt(0.62) * NUC + 0.02;
     for (const lado of [-1, 1]) {
@@ -174,43 +157,64 @@ export function crearModelos(detalle) {
       p.push(pieza(esf(0.085, 6, 5), 0xffffff, [x, yCara, z], [0, 0, 0], [1, 1.15, 0.55]));
       p.push(pieza(esf(0.042, 5, 4), 0x20121a, [x * 0.92, yCara - 0.005, z - 0.035], [0, 0, 0], [1, 1.1, 0.6]));
       p.push(pieza(esfMini(0.015), 0xffffff, [x * 0.92 + 0.014, yCara + 0.016, z - 0.058])); // brillo en el ojo: lo hace ver vivo
-      p.push(pieza(caja(0.11, 0.022, 0.02), 0x5a2a1a, [x, yCara + 0.14, -Math.sqrt(rCara ** 2 - x ** 2)], [0, lado * 0.3, -lado * 0.2])); // ceja
+      p.push(pieza(caja(0.11, 0.022, 0.02), 0x2a0a10, [x, yCara + 0.14, -Math.sqrt(rCara ** 2 - x ** 2)], [0, lado * 0.3, -lado * 0.2])); // ceja
       const xm = lado * 0.27;
       p.push(pieza(esf(0.05, 5, 4), 0xff8fa8, [xm, yCara - 0.13, -Math.sqrt((rAt(0.5) * NUC + 0.015) ** 2 - xm ** 2)], [0, 0, 0], [1, 0.8, 0.5]));
     }
     p.push(pieza(toro(0.085, 0.018, 3, 8, Math.PI), 0x6b0f22, [0, yCara - 0.12, -(rAt(0.5) * NUC + 0.02)], [0, 0, Math.PI]));
 
-    // Helado: UNA bola rosada (fresa/mora) con vetas oscuras; la leche condensada la cubre solo por arriba,
-    // chorrea en lenguas planas pegadas a la bola, y encima va la uvita.
-    const ey = YT + 0.17;
-    const rb = 0.41;
-    p.push(pieza(ico(rb, 2), 0xe59ab0, [0, ey, 0], [0, 0.4, 0], [1, 0.85, 1]));
-    [[0.3, 0.0, 0.2], [-0.28, 0.02, -0.16], [0.02, -0.04, 0.36], [-0.2, 0.0, 0.3]].forEach(([x, y, z]) => p.push(pieza(ico(0.09, 0), 0xb5617f, [x, ey + y, z], [x, z, 0], [1.3, 0.8, 0.7])));
-    p.push(pieza(new THREE.SphereGeometry(rb + 0.012, S(12), S(7), 0, Math.PI * 2, 0, Math.PI * 0.36), 0xeef2d2, [0, ey, 0], [0, 0.4, 0], [1, 0.85, 1]));
-    const bordeY = ey + (rb + 0.012) * Math.cos(Math.PI * 0.36) * 0.85;
-    const bordeR = (rb + 0.012) * Math.sin(Math.PI * 0.36);
-    // Falda del helado (el borde con volumen que tienen las bolas de helado) apoyada en el borde del vaso.
-    p.push(pieza(toro(0.4, 0.075, 4, 14), 0xd98aa3, [0, YT + 0.02, 0], [Math.PI / 2, 0, 0]));
-    // Borde irregular de la leche condensada: ya no es una línea recta «pintada», sino una nata que se desborda en gotas.
-    [0.2, 0.9, 1.5, 2.1, 2.8, 3.4, 4.0, 4.7, 5.4].forEach((a, i) => {
-      const fi = 0.3 * Math.PI + (i % 3) * 0.035 * Math.PI;
-      const R = rb + 0.012;
-      p.push(pieza(esf(0.075 + (i % 2) * 0.02, 6, 5), 0xeef2d2, [Math.sin(fi) * Math.cos(a) * R, ey + Math.cos(fi) * R * 0.85, Math.sin(fi) * Math.sin(a) * R]));
+    /* ───── Arriba: el morro de piña picadita + mermelada de mora + uvita + leche condensada ───── */
+    const Rm = rAt(1) * 0.95;
+    const hm = 0.95; // altura del morro
+    const sobre = (phi, th, k = 1) => [Math.sin(phi) * Math.cos(th) * Rm * k, YT + Math.cos(phi) * Rm * hm * k, Math.sin(phi) * Math.sin(th) * Rm * k];
+    const normal = (phi, th) => new THREE.Vector3(Math.sin(phi) * Math.cos(th), Math.cos(phi) / hm, Math.sin(phi) * Math.sin(th)).normalize();
+    const alinear = (n) => {
+      const e = new THREE.Euler().setFromQuaternion(new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 1, 0), n));
+      return [e.x, e.y, e.z];
+    };
+    // Cuánto baja cada capa desde la punta (en radianes): la leche condensada es la de más afuera, luego la mermelada, y abajo se asoma la piña
+    const phiCrema = Math.PI * 0.24; // un poquito más de leche condensada que en la primera versión (0,20)
+    const phiMora = 1.28;
+    // (1) la piña: una media esfera amarilla cubierta de trocitos (solo se ven los que no tapa la mermelada)
+    p.push(pieza(new THREE.SphereGeometry(Rm * 0.9, S(12), S(7), 0, Math.PI * 2, 0, Math.PI / 2), 0xe3b82c, [0, YT - 0.01, 0], [0, 0, 0], [1, hm, 1]));
+    for (let k = 0; k < 150; k++) {
+      const phi = Math.acos(1 - ((k + 0.5) / 150) * 0.97);
+      if (phi < phiMora - 0.1) continue;
+      const th = k * 2.39996;
+      p.push(pieza(ico(0.04 + (k % 3) * 0.007, 0), [0xf6d44a, 0xffe27a, 0xe9c230][k % 3], sobre(phi, th, 0.91), [k, th, 0.4 * k], [1.1, 0.8, 1.1])); // piña en cuadritos chiquitos
+    }
+    // (2) la mermelada de mora: una cáscara oscura que tapa la piña + grumos para que no se vea lisa
+    p.push(pieza(new THREE.SphereGeometry(Rm * 0.99, S(14), S(8), 0, Math.PI * 2, 0, phiMora), 0x4d1038, [0, YT - 0.01, 0], [0, 0, 0], [1, hm, 1]));
+    for (let k = 0; k < 40; k++) {
+      const phi = 0.2 + ((k * 0.61803) % 1) * (phiMora - 0.04 - 0.2);
+      const th = k * 2.39996 * 1.3;
+      p.push(pieza(ico(0.11, 0), [0x6a1a4c, 0x3b0d2c, 0x57163f][k % 3], sobre(phi, th, 1.0), alinear(normal(phi, th)), [1.25, 0.5, 1.25]));
+    }
+    for (let k = 0; k < 14; k++) p.push(pieza(ico(0.055 + (k % 2) * 0.015, 0), k % 2 ? 0x6a1a4c : 0x3b0d2c, sobre(phiMora - 0.02 + (k % 3) * 0.04, k * 0.449, 1.0), [k, k * 0.7, 0], [1.2, 0.8, 1.2])); // borde irregular
+    // (3) la uvita, en la punta del morro (por encima de todo)
+    const cima = YT + Rm * 1.13 * hm;
+    p.push(pieza(esf(0.088, 8, 6), 0x4a2a6e, [0, cima + 0.03, 0]));
+    // (4) la leche condensada (crema cálida, no blanca): una cobija por arriba con gotas que se riegan
+    const crema = 0xfce4a8;
+    const cremaClara = 0xfff1c8;
+    p.push(pieza(new THREE.SphereGeometry(Rm * 1.13, S(14), S(8), 0, Math.PI * 2, 0, phiCrema), crema, [0, YT - 0.01, 0], [0, 0, 0], [1, hm, 1]));
+    for (let k = 0; k < 9; k++) {
+      const th = k * 0.698 + (k % 2) * 0.1;
+      const phi = phiCrema + (k % 3) * 0.05;
+      p.push(pieza(esf(0.055 + (k % 2) * 0.015, 6, 5), k % 2 ? crema : cremaClara, sobre(phi, th, 1.13)));
+    }
+    [[0.3, 0.2], [1.0, 0.1], [1.7, 0.24], [2.4, 0.13], [3.1, 0.2], [3.8, 0.09], [4.5, 0.22], [5.2, 0.12], [5.8, 0.17]].forEach(([th, largo]) => {
+      const [gx, gy, gz] = sobre(phiCrema + 0.03, th, 1.14);
+      p.push(pieza(capsula(0.032, largo * 0.9), crema, [gx, gy - largo * 0.5, gz], [0, -th, 0], [0.85, 1, 0.85]));
     });
-    [[0.3, 0.2], [1.0, 0.1], [1.7, 0.24], [2.4, 0.13], [3.1, 0.2], [3.8, 0.09], [4.5, 0.22], [5.2, 0.12], [5.8, 0.17]].forEach(([a, h]) => {
-      const rr = bordeR + 0.012 + h * 0.08;
-      p.push(pieza(capsula(0.034, h * 0.9), 0xeef2d2, [Math.cos(a) * rr, bordeY - h * 0.55 + 0.03, Math.sin(a) * rr], [0, -a, 0], [0.85, 1, 0.85]));
-    });
-    // Chispitas de colores sobre la leche condensada
-    [[0.1, 0xd8287f], [0.9, 0xffd21f], [1.7, 0x66c3e0], [2.5, 0xd8287f], [3.3, 0x7bc043], [4.1, 0xffd21f], [4.9, 0x66c3e0], [5.7, 0xff8a1f]].forEach(([a, c], i) => {
-      const fi = 0.12 * Math.PI + (i % 3) * 0.06 * Math.PI;
-      const R = rb + 0.03;
-      p.push(pieza(caja(0.07, 0.022, 0.022), c, [Math.sin(fi) * Math.cos(a) * R, ey + Math.cos(fi) * R * 0.85, Math.sin(fi) * Math.sin(a) * R], [i * 0.7, a, i * 0.5]));
-    });
-    p.push(pieza(esf(0.088, 8, 6), 0x4a2a86, [-0.04, ey + 0.41, 0.02]));
-    p.push(pieza(cil(0.012, 0.012, 0.05, 4), 0x5a3d1c, [-0.04, ey + 0.49, 0.02]));
+    // vetas de leche condensada que bajan por la mermelada
+    for (let q = 0; q < 6; q++) {
+      for (let k = 0; k < 5; k++) p.push(pieza(ico(0.05 - k * 0.004, 0), crema, sobre(0.5 + k * 0.15, q * 1.05 + 0.3, 1.13), [q, k, 0], [1.2, 0.6, 1.2]));
+    }
+    // y un poco de leche condensada encima de la uvita, BIEN CENTRADA (sin ladearla)
+    p.push(pieza(new THREE.SphereGeometry(0.1, S(8), S(5), 0, Math.PI * 2, 0, Math.PI * 0.5), crema, [0, cima + 0.06, 0]));
 
-    // Wafer (galletica cuadriculada), manzana roja, pitillo y cuchara transparente.
+    /* ───── Wafer, manzana, pitillo y cuchara ───── */
     p.push(...grupo([
       pieza(caja(0.3, 0.46, 0.035), 0xf2cb80),
       ...[-0.12, 0, 0.12].map((y) => pieza(caja(0.31, 0.014, 0.042), 0xd9a650, [0, y, 0])),
@@ -224,17 +228,17 @@ export function crearModelos(detalle) {
       pieza(cil(0.03, 0.03, 0.8, 6, true), 0xffb81c, [0, 0.4, 0]),
       pieza(cil(0.03, 0.03, 0.24, 6, true), 0xffb81c, [0.08, 0.84, 0], [0, 0, -0.7]),
     ], [0.14, YT - 0.02, 0.26], [0.12, 0, -0.2]));
+    // La cuchara: la parte que recoge (el cucharón) queda ABAJO, metida en el cholado, y el mango asoma hacia arriba
     p.push(...grupo([
-      pieza(capsula(0.018, 0.6), 0xe9f5ff, [0, 0.36, 0]),
-      pieza(ico(0.07, 1), 0xe9f5ff, [0, 0.74, 0], [0, 0, 0], [1, 1.5, 0.45]),
+      pieza(capsula(0.02, 0.78), 0xe9f5ff, [0, 0.47, 0]),
+      pieza(ico(0.07, 1), 0xe9f5ff, [0, 0.03, 0], [0, 0, 0], [1, 1.5, 0.45]),
     ], [-0.18, YT - 0.02, 0.3], [0.12, 0, 0.26]));
 
-    // Casco de plástico translúcido (con las rayitas del vaso): lo dibuja el kit con su propio material.
+    /* ───── Casco de plástico translúcido (con las rayitas del vaso), brazos y piernas ───── */
     const perfil = [];
     for (let i = 0; i <= 16; i++) perfil.push(new THREE.Vector2(rAt(i / 16) * 1.035 + (i % 2 ? 0.006 : 0), Y0 + (i / 16) * H));
     perfil.push(new THREE.Vector2(rAt(1) * 1.06, YT + 0.005), new THREE.Vector2(rAt(1) * 1.06, YT - 0.02));
     const cascaron = new THREE.LatheGeometry(perfil, Math.max(12, S(16)));
-
     // Extremidades: cada una es su propia malla para poder animarla (pivote en el hombro / la cadera).
     // Brazos: manga cremita con puño rojo y mano de guante blanco con pulgar. Piernas: medias de rayas y tenis con suela, puntera y cordones.
     const brazo = fusionar([
@@ -253,14 +257,13 @@ export function crearModelos(detalle) {
       ...[-0.02, -0.08, -0.14].map((z) => pieza(caja(0.13, 0.014, 0.02), 0xffffff, [0, -0.335, z])),
     ]);
     const hombro = rAt(0.55) + 0.03;
-    // Silueta simplificada solo para dibujar el contorno (sin semillas, frutitas ni carita): ~5 veces menos triángulos.
+    // Silueta simplificada solo para dibujar el contorno (sin semillas, frutitas ni carita): bastantes menos triángulos.
     const silueta = [
       pieza(cil(R1 * 0.99, R0, H, 12), 0xc83c66, [0, Y0 + H / 2, 0]),
-      pieza(ico(rb, 1), 0xe59ab0, [0, ey, 0], [0, 0.4, 0], [1, 0.85, 1]),
-      pieza(esf(0.088, 5, 4), 0x4a2a86, [-0.04, ey + 0.41, 0.02]),
+      pieza(esf(Rm * 1.1, 8, 6), 0xe3b82c, [0, YT, 0], [0, 0, 0], [1, hm, 1]),
       ...grupo([pieza(caja(0.3, 0.46, 0.035), 0xf2cb80)], [-0.36, YT + 0.34, 0.12], [0.1, 0.35, 0.55]),
       ...grupo([pieza(cil(0.03, 0.03, 0.8, 6, true), 0xffb81c, [0, 0.4, 0])], [0.14, YT - 0.02, 0.26], [0.12, 0, -0.2]),
-      ...grupo([pieza(capsula(0.018, 0.6), 0xe9f5ff, [0, 0.36, 0])], [-0.18, YT - 0.02, 0.3], [0.12, 0, 0.26]),
+      ...grupo([pieza(capsula(0.02, 0.78), 0xe9f5ff, [0, 0.47, 0])], [-0.18, YT - 0.02, 0.3], [0.12, 0, 0.26]),
       ...grupo([pieza(medio(0.21, 0.045), 0xc9262e, [0, 0, 0], [Math.PI / 2, 0, 0])], [0.46, YT + 0.12, 0.04], [0, 0.55, -0.55]),
     ];
     return {
@@ -269,7 +272,7 @@ export function crearModelos(detalle) {
       cascaron,
       brazo,
       pierna,
-      escala: 1.15,
+      escala: 1.05, // era 1,15: un poco más chico para que no sobresalga tanto del carril (sigue siendo grande: es la mascota)
       anclas: { brazoI: [-hombro, Y0 + 0.5 * H, 0], brazoD: [hombro, Y0 + 0.5 * H, 0], piernaI: [-0.17, Y0 + 0.04, 0], piernaD: [0.17, Y0 + 0.04, 0] },
     };
   }
@@ -399,14 +402,41 @@ export function crearModelos(detalle) {
     };
   }
 
-  /** Obstáculo: caja de madera con fruta encima. */
-  function cajaFruta() {
+  /**
+   * Obstáculo: caja de madera con fruta encima. Hay 3 variantes para que no sean siempre naranjas:
+   *   0 = naranjas y mango · 1 = papayas y manzanas · 2 = piñas, lulos y limones.
+   */
+  function cajaFruta(variante = 0) {
     const p = [pieza(caja(1, 0.55, 0.8), 0xc98a3f, [0, 0.275, 0])];
     [0.1, 0.275, 0.45].forEach((y) => p.push(pieza(caja(1.02, 0.06, 0.82), 0x9a6428, [0, y, 0])));
     [[-0.5, -0.4], [0.5, -0.4], [-0.5, 0.4], [0.5, 0.4]].forEach(([x, z]) => p.push(pieza(caja(0.09, 0.6, 0.09), 0x7b4b1d, [x, 0.3, z])));
-    [[-0.25, -0.1], [0.2, -0.15], [0, 0.15]].forEach(([x, z]) => p.push(pieza(ico(0.2), 0xff8a1f, [x, 0.72, z])));
-    p.push(pieza(ico(0.17), 0xffb21a, [0.32, 0.7, 0.18], [0, 0, 0], [1, 1.2, 0.9]));
-    p.push(pieza(cono(0.09, 0.2, 4), 0x4caf3d, [-0.1, 0.92, 0.02]));
+    if (variante === 0) {
+      [[-0.25, -0.1], [0.2, -0.15], [0, 0.15]].forEach(([x, z]) => p.push(pieza(ico(0.2), 0xff8a1f, [x, 0.72, z])));
+      p.push(pieza(ico(0.17), 0xffb21a, [0.32, 0.7, 0.18], [0, 0, 0], [1, 1.2, 0.9]));
+      p.push(pieza(cono(0.09, 0.2, 4), 0x4caf3d, [-0.1, 0.92, 0.02]));
+    } else if (variante === 1) {
+      // dos papayas acostadas (naranja con la barriga más clara) y tres manzanas rojas con su hoja
+      [[-0.2, -0.12, 0.2], [0.1, 0.18, -0.15]].forEach(([x, z, g]) => {
+        p.push(pieza(ico(0.19), 0xff8a3c, [x, 0.72, z], [0, g, Math.PI / 2], [0.8, 1.55, 0.8]));
+        p.push(pieza(ico(0.12), 0xffb26a, [x - 0.02, 0.8, z + 0.02], [0, g, Math.PI / 2], [0.6, 1.2, 0.5]));
+      });
+      [[0.33, -0.14], [-0.35, 0.2], [0.3, 0.22]].forEach(([x, z]) => {
+        p.push(pieza(ico(0.15), 0xe5233e, [x, 0.7, z]));
+        p.push(pieza(cono(0.04, 0.1, 4), 0x4caf3d, [x, 0.88, z], [0.5, 0, 0.5]));
+      });
+    } else {
+      // dos piñas paradas con su penacho, lulos naranja y unos limones verdes
+      [[-0.22, -0.1], [0.12, 0.16]].forEach(([x, z]) => {
+        p.push(pieza(ico(0.17), 0xf2a31b, [x, 0.78, z], [0, 0, 0], [1, 1.45, 1]));
+        for (let k = 0; k < 5; k++) p.push(...grupo([pieza(cono(0.05, 0.28, 4), 0x3fa34d, [0, 0.14, 0], [0, 0, 0], [1, 1, 0.5])], [x, 1.0, z], [0, (k / 5) * Math.PI * 2, 0.5]));
+      });
+      [[0.34, -0.12], [-0.38, 0.18], [0.3, 0.25]].forEach(([x, z]) => {
+        p.push(pieza(ico(0.12), 0xffa21f, [x, 0.68, z]));
+        p.push(pieza(cono(0.05, 0.08, 4), 0x5bbd3a, [x, 0.8, z]));
+      });
+      p.push(pieza(ico(0.09), 0xb6e80a, [0.02, 0.62, -0.22], [0, 0, 0], [1.2, 0.9, 1]));
+      p.push(pieza(ico(0.09), 0xb6e80a, [-0.08, 0.62, 0.3], [0, 0.6, 0], [1.2, 0.9, 1]));
+    }
     return fusionar(p);
   }
 
@@ -419,6 +449,29 @@ export function crearModelos(detalle) {
     pieza(ico(0.17), 0xffb21a, [0, 0, 0], [0, 0, 0.4], [1, 1.18, 0.88]),
     pieza(ico(0.09), 0xff6b3a, [0.06, -0.03, 0.08]),
     pieza(cono(0.07, 0.16, 4), 0x4caf3d, [0.03, 0.21, 0], [0, 0, -0.5]),
+  ]);
+
+  // Frutas nuevas para recoger (cada hilera trae una sola clase): lulo, piñita, papaya y manzana
+  const lulo = () => {
+    const p = [pieza(ico(0.15), 0xffa21f, [0, 0, 0]), pieza(ico(0.07), 0xffcf6a, [0.05, 0.05, -0.1])];
+    for (let k = 0; k < 4; k++) p.push(...grupo([pieza(cono(0.04, 0.11, 4), 0x5bbd3a, [0, 0.055, 0], [0, 0, 0], [1, 1, 0.5])], [0, 0.13, 0], [0, (k / 4) * Math.PI * 2, 0.6]));
+    return fusionar(p);
+  };
+  const pinita = () => {
+    const p = [pieza(ico(0.12), 0xf2a31b, [0, 0, 0], [0, 0, 0], [1, 1.4, 1])];
+    for (let k = 0; k < 5; k++) p.push(...grupo([pieza(cono(0.045, 0.2, 4), 0x3fa34d, [0, 0.1, 0], [0, 0, 0], [1, 1, 0.5])], [0, 0.15, 0], [0, (k / 5) * Math.PI * 2, 0.45]));
+    return fusionar(p);
+  };
+  const papaya = () => fusionar([
+    pieza(ico(0.14), 0xff8a3c, [0, 0, 0], [0, 0, 0.35], [0.8, 1.5, 0.8]),
+    pieza(ico(0.09), 0xffb26a, [0.04, 0.02, 0.08], [0, 0, 0.35], [0.6, 1.2, 0.5]),
+    pieza(cono(0.04, 0.1, 4), 0x4caf3d, [-0.06, 0.2, 0], [0, 0, 0.35]),
+  ]);
+  const manzana = () => fusionar([
+    pieza(ico(0.15), 0xe5233e, [0, 0, 0]),
+    pieza(ico(0.06), 0xff8fa0, [0.06, 0.05, 0.1]),
+    pieza(cil(0.015, 0.015, 0.07, 4), 0x6b4423, [0, 0.16, 0]),
+    pieza(cono(0.04, 0.1, 4), 0x4caf3d, [0.05, 0.17, 0], [0, 0, -1.2]),
   ]);
 
   const palmera = () => {
@@ -502,6 +555,6 @@ export function crearModelos(detalle) {
     return fusionar([...persona(-0.32, 0xd8287f, 0xc9987f, 0x16100e), ...persona(0.34, 0xffd21f, 0x8d5a3b, 0x3a2418)]);
   };
 
-  return { cholado: cholado(), india: india(), cajaFruta: cajaFruta(), fresa: fresa(), mango: mango(), palmera: palmera(), sombrilla: sombrilla(), pina: pina(), nube: nube(), banderines: banderines(), puesto: puesto(), gente: gente(), caja, cono };
+  return { cholado: cholado(), india: india(), cajaFruta: cajaFruta(0), cajasFruta: [cajaFruta(0), cajaFruta(1), cajaFruta(2)], fresa: fresa(), mango: mango(), lulo: lulo(), pinita: pinita(), papaya: papaya(), manzana: manzana(), palmera: palmera(), sombrilla: sombrilla(), pina: pina(), nube: nube(), banderines: banderines(), puesto: puesto(), gente: gente(), caja, cono };
 }
 

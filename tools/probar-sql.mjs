@@ -915,5 +915,62 @@ seccion('23. La guía rápida (guia-rapida.md): todo su SQL funciona');
   ok('todos los bloques SQL de la guía se ejecutan sin error (los nombres de tablas y columnas siguen al día)', errores.length === 0, errores.join(' | '));
 }
 
+seccion('24. La guía del administrador (documentos/guia-del-administrador.md): su SQL funciona y hace lo que dice');
+{
+  const guia = await readFile(new URL('../documentos/guia-del-administrador.md', import.meta.url), 'utf8');
+  const bloques = [...guia.matchAll(/```sql\r?\n([\s\S]*?)```/g)].map((m) => m[1]);
+  ok(`la guía del administrador trae ${bloques.length} bloques de SQL (hay al menos 10)`, bloques.length >= 10);
+  const errores = [];
+  for (const [i, b] of bloques.entries()) {
+    try {
+      await db.exec(b);
+    } catch (e) {
+      errores.push(`bloque ${i + 1} («${b.trim().slice(0, 40)}…»): ${e.message}`);
+    }
+  }
+  ok('todos los bloques SQL de la guía del administrador se ejecutan sin error', errores.length === 0, errores.join(' | '));
+  await db.exec('update app.configuracion set campana_inicio = null, campana_fin = null where id = 1');
+
+  // Las recetas de borrado hacen lo que dicen (con datos de verdad)
+  const una = bloques.find((b) => b.includes('with borrado as') && b.includes("codigo = 'LAINDIA-XXXX'"));
+  const porCelular = bloques.find((b) => b.includes('with mios as'));
+  const extender = bloques.find((b) => b.includes("interval '3 days'"));
+  const devolver = bloques.find((b) => b.includes('delete from app.partidas p') && !b.includes('with mios'));
+  ok('encontré las 4 recetas (borrar uno, borrar por celular, extender, devolver intentos)', Boolean(una && porCelular && extender && devolver));
+  await db.exec('truncate app.codigos, app.partidas, app.limites_red restart identity cascade');
+  const sem = "app.semana_de(now())";
+  const par = (id, dev) => `insert into app.partidas (id, device_id, semana, resultado, reclamada) values ('${id}', '${dev}', ${sem}, 'gano_validado', true)`;
+  const cod = (c, cel, partida, dev) => `insert into app.codigos (codigo, nombre, celular, consentimiento, device_id, partida_id, vence_en, semana, dia) values ('${c}', 'Prueba', '${cel}', true, '${dev}', '${partida}', now() + interval '7 days', ${sem}, app.dia_de(now()))`;
+  const D1 = '00000000-0000-0000-0000-0000000000d1';
+  const D2 = '00000000-0000-0000-0000-0000000000d2';
+  const P = (n) => `00000000-0000-0000-0000-0000000000a${n}`;
+  await db.exec([
+    par(P(1), D1), cod('LAINDIA-AAAA', '3001234567', P(1), D1),            // el celular de prueba
+    `insert into app.partidas (id, device_id, semana, resultado) values ('${P(2)}', '${D1}', ${sem}, 'perdio')`, // un intento gastado sin código, mismo aparato
+    par(P(3), D1), cod('LAINDIA-CCCC', '3009999999', P(3), D1),            // OTRO celular en el mismo aparato: debe quedar intacto
+    par(P(4), D2), cod('LAINDIA-XXXX', '3008888888', P(4), D2),            // el que se borra «uno solo»
+    `insert into app.partidas (id, device_id, semana, resultado) values ('${P(5)}', '${D2}', ${sem}, 'perdio')`,
+  ].join(';\n'));
+  const cuenta = async (sql) => Number((await db.query(sql)).rows[0].n);
+  const antes = (await db.query('select * from app.cupos()')).rows[0].restantes;
+
+  await db.exec(una);
+  ok('receta 2.1 (borrar UN código): se fue el código y su partida, y nada más', (await cuenta("select count(*) n from app.codigos where codigo = 'LAINDIA-XXXX'")) === 0 && (await cuenta(`select count(*) n from app.partidas where id = '${P(4)}'`)) === 0 && (await cuenta('select count(*) n from app.codigos')) === 2 && (await cuenta(`select count(*) n from app.partidas where id = '${P(5)}'`)) === 1);
+  const despues = (await db.query('select * from app.cupos()')).rows[0].restantes;
+  ok('…y el premio volvió al banco', despues === antes + 1, `${antes} → ${despues}`);
+
+  await db.exec(porCelular);
+  ok('receta 2.1 (borrar por celular): se fue ese celular, sus partidas y sus intentos gastados', (await cuenta("select count(*) n from app.codigos where celular = '3001234567'")) === 0 && (await cuenta(`select count(*) n from app.partidas where id in ('${P(1)}', '${P(2)}')`)) === 0);
+  ok('…y NO tocó el código de otro celular que usó el mismo aparato', (await cuenta("select count(*) n from app.codigos where codigo = 'LAINDIA-CCCC'")) === 1 && (await cuenta(`select count(*) n from app.partidas where id = '${P(3)}'`)) === 1);
+
+  await db.exec("update app.codigos set vence_en = now() - interval '1 day' where codigo = 'LAINDIA-CCCC'");
+  await db.exec(extender.replace('LAINDIA-XXXX', 'LAINDIA-CCCC'));
+  ok('receta 2.5 (más días): un código vencido vuelve a estar activo', (await db.query("select estado_efectivo from app.v_codigos where codigo = 'LAINDIA-CCCC'")).rows[0].estado_efectivo === 'activo');
+
+  await db.exec(devolver);
+  ok('receta 3.2 (devolver intentos): borra los intentos sueltos pero NO los códigos ni sus partidas', (await cuenta('select count(*) n from app.codigos')) === 1 && (await cuenta('select count(*) n from app.partidas')) === 1);
+  await db.exec('truncate app.codigos, app.partidas, app.limites_red restart identity cascade');
+}
+
 console.log(`\n${fallos === 0 ? '✅ TODO BIEN' : '❌ HAY FALLOS'} — ${total - fallos} de ${total} comprobaciones correctas.\n`);
 process.exit(fallos === 0 ? 0 : 1);

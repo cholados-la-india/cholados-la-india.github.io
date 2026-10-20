@@ -5,7 +5,8 @@
 
 export const LOCAL = {
   direccion: 'Cholados La India, Canchas Panamericanas',
-  horario: 'Para canjear tu código: de 2:00 p. m. a 9:00 p. m.', // (el local abre más horas; esta es la franja para canjear)
+  // Dos renglones, y las horas con espacio duro (\u00a0) para que «p. m.» nunca se parta. (El local abre más horas; esta es la franja para canjear.)
+  horario: 'Para canjear tu código:\nde 2:00\u00a0p.\u00a0m. a 9:00\u00a0p.\u00a0m.',
   responsableDatos: 'Cholados La India',
   correoContacto: 'choladoslaindia6@gmail.com',
 };
@@ -73,10 +74,10 @@ export const T = {
       `Para ganar hay que <b>llegar a la meta</b> recogiendo al menos <b>${frutas} frutas</b>. Tienes <b>${intentos} intentos</b> por semana.`,
       `Cada código da <b>un solo regalo</b>: ${listaRegalos(r.regalos)}. <b>No es acumulable</b>: con una compra de ${pesos(r.compraMinima * 2)} también es un solo regalo.`,
       `Se necesita una compra mínima de <b>${pesos(r.compraMinima)}</b> en productos pagados; el regalo no cuenta.`,
-      `El código vale <b>${r.vigenciaDias} días</b> desde que lo recibes (en tu código aparece hasta cuándo), se canjea <b>una sola vez</b> y <b>solo en el local</b>.`,
+      `El código tiene un <b>plazo máximo de ${r.vigenciaDias} días</b> desde que lo recibes para usarlo (en tu código aparece hasta cuándo); se canjea <b>una sola vez</b> y <b>solo en el local</b>.`,
       `Se entrega <b>un código por celular cada ${r.diasEntreCodigosPorCelular} días</b>.`,
-      premios ? `Hay <b>${premios} premios por semana</b>; se renuevan los lunes a las 12:00 a. m. (hora de Bogotá). Cuando se acaban, toca esperar al lunes.` : null,
-      r.cupoDiario > 0 ? `Además, cada día se reparten como máximo <b>${r.cupoDiario} premios</b>; el cupo del día se renueva a las 12:00 a. m. (hora de Bogotá). Si ya se repartieron hoy, vuelve mañana.` : null,
+      premios ? `Hay <b>${premios} premios por semana</b>; se renuevan los lunes a las 12:00\u00a0a.\u00a0m. (hora de Bogotá). Cuando se acaban, toca esperar al lunes.` : null,
+      r.cupoDiario > 0 ? `Además, cada día se reparten como máximo <b>${r.cupoDiario} premios</b>; el cupo del día se renueva a las 12:00\u00a0a.\u00a0m. (hora de Bogotá). Si ya se repartieron hoy, vuelve mañana.` : null,
       textoCampana(r.campana, dia) || 'Por ahora la campaña no tiene fechas anunciadas: puede terminar o cambiar, y lo avisaremos en nuestras redes (@cholados.laindia).',
     ].filter(Boolean),
     provisional: '<i>Condiciones provisionales: el texto definitivo se publicará antes del lanzamiento.</i>',
@@ -101,16 +102,17 @@ export const T = {
 
   ganaste: {
     titulo: '¡Lo lograste!',
-    subtitulo: 'Atrapaste tu cholado. Ahora solo falta reclamar tu premio.',
-    ventana: (min) => `Tu premio está apartado por <b>${min} minutos</b>: llena tus datos y ¡listo!`,
+    subtitulo: 'Atrapaste tu cholado.',
+    // Ojo: no hablar de plazos (la gente podría creer que el código dura solo unos minutos): solo decir que falta un paso.
+    ventana: () => 'Solo falta un paso: <b>llena tus datos para activar tu código</b>.',
     nombre: 'Tu nombre',
     celular: 'Tu celular (10 dígitos)',
     consentimiento: 'Autorizo a Cholados La India a guardar mi nombre y celular para entregarme y controlar mi premio (Ley 1581 de 2012).',
     verPolitica: 'Ver política de datos',
-    resumen: (r) => `Tu código vale <b>${r.vigenciaDias} días</b> · un regalo por código, <b>no acumulable</b> · compra mínima de <b>${pesos(r.compraMinima)}</b>.`,
+    resumen: (r) => `Tienes un plazo máximo de <b>${r.vigenciaDias} días</b> para usar tu código (una sola vez) · un regalo por código, <b>no acumulable</b> · compra mínima de <b>${pesos(r.compraMinima)}</b>.`,
     verCondiciones: 'Ver condiciones',
-    boton: 'Reclamar mi premio',
-    enviando: 'Reclamando...',
+    boton: 'Activar mi código',
+    enviando: 'Activando...',
     errores: {
       nombre: 'Escribe tu nombre.',
       celular: 'Escribe un celular colombiano de 10 dígitos (empieza por 3).',
@@ -153,8 +155,8 @@ export const T = {
   // Ganó, cerró o recargó la página antes de reclamar y vuelve a entrar
   premioPendiente: {
     titulo: '¡Tu premio te espera!',
-    mensaje: 'Llegaste a la meta hace poco y no alcanzaste a reclamar tu código. Si todavía queda un premio, es tuyo.',
-    boton: 'Reclamar mi premio',
+    mensaje: 'Llegaste a la meta hace poco y no alcanzaste a activar tu código. Si todavía queda un premio, es tuyo.',
+    boton: 'Activar mi código',
     luego: 'Ahora no',
   },
 

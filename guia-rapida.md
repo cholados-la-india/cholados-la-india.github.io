@@ -2,7 +2,7 @@
 
 Todo lo que conviene tener a mano para manejar el proyecto: comandos, SQL para copiar y pegar, qué se hace desde el panel y recordatorios de cómo funciona cada cosa. Si algo no está aquí y lo necesitas, pídeselo a Claude y se agrega.
 
-Última actualización: 2026-10-20 (Fase A: bugs encontrados y arreglados; ver `documentos/fase-a-paquete.md` §7a).
+Última actualización: 2026-10-20 (cierre de la Fase B). **Para «¿qué hago si pasa esto?» (código de prueba, pausar el juego, caja bloqueada, perder un código…) mira [documentos/guia-del-administrador.md](documentos/guia-del-administrador.md).**
 
 > **Nota para Claude (no borrar):** cada vez que agregues una funcionalidad clave, un comando nuevo, un cambio en cómo se opera el servidor o cualquier cosa que el dueño deba recordar, **añádela a esta guía** (en la sección que le toque) y actualiza la fecha de arriba **antes de cerrar la etapa**. Todo el SQL de los bloques ` ```sql ` se ejecuta en `npm run probar-sql`: si cambias una tabla o una función, esa prueba te avisa si algún bloque quedó roto. Los bloques de ejemplo que NO deben ejecutarse se marcan con ` ```text `. Esta guía está escrita para una persona que **no es experta**: tuteo, pasos cortos, cero jerga sin explicar.
 
@@ -366,8 +366,9 @@ Claude **nunca** hace commit ni push: lo haces tú. Las carpetas `node_modules/`
 | `npm` no se reconoce | Instala Node.js LTS y abre una terminal nueva. |
 | El celular no abre `http://192.168…` | Misma wifi, y permitir *Node.js* en el firewall de Windows (sección 3). |
 | `npm run probar-sql` falla en «todo-junto.sql está al día» | Corre `npm run sql`. |
-| Un cliente dice «gané y se me perdió el premio» (recargó o se cerró la página) | Ya no se pierde: al volver a abrir el juego le sale «¡Tu premio te espera!» (por 6 h, mientras queden premios). Si le sale «no pudimos validar tu partida», pasó demasiado tiempo: que vuelva a jugar. |
-| «No suena nada» en el celular | ¿Tiene el interruptor de silencio (iPhone, el botoncito del lado)? ¿El botón de sonido del inicio/pausa está en «no»? El sonido solo empieza después del primer toque. |
+| Un cliente dice «gané y se me perdió el premio» (recargó o se cerró la página) | Ya no se pierde: al volver a abrir el juego le sale «¡Tu premio te espera!» (por 2 h y máximo 3 veces). Si le sale «no pudimos validar tu partida», pasó demasiado tiempo: que vuelva a jugar. |
+| El contador baja pero «nadie reclamó» (premio apartado) | Al ganar, el servidor **aparta** un premio **15 minutos** para esa persona y **lo libera solo** si no lo reclama (panel → Configuración → «ventana de apartado»; puedes bajarla a 5-10 min). Nunca queda apartado para siempre. La persona, si volvió a entrar, ve «¡Tu premio te espera!» hasta 2 h y máximo 3 veces. |
+| «No suena nada» en el celular | Abre `/diagnostico/` en ese celular y pulsa **«Probar sonido»**: dice si el navegador dejó sonar. ¿Tiene el interruptor de silencio (iPhone, el botoncito del lado)? ¿El botón de sonido del inicio/pausa está en «no»? El sonido empieza con el primer toque (en iPhone tiene que ser un toque completo, no solo apoyar el dedo). |
 | En `?debug=1&api=falsa` los intentos no bajan | Es a propósito: en el cuadrito de arriba dice «INTENTOS ILIMITADOS»; desmárcalo en el botón «Debug». |
 
 ---
@@ -386,6 +387,7 @@ Claude **nunca** hace commit ni push: lo haces tú. Las carpetas `node_modules/`
 | Archivo | Qué es |
 |---|---|
 | `guia-rapida.md` | **Esta guía.** |
+| `documentos/guia-del-administrador.md` | **Situaciones del día a día** («¿qué hago si…?»): lista para abrir al público, borrar un código de prueba, pausar el juego, caja bloqueada, trampa, privacidad… |
 | `PLAN.md` | El estado de las etapas. |
 | `pendientes.md` | Lo que falta decidir o hacer. |
 | `CLAUDE.md` | El contexto del proyecto para Claude (reglas, decisiones, arquitectura). |

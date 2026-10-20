@@ -5,6 +5,7 @@
 // espera, pulsa «Probar rendimiento», y al final «Copiar resultado» (o tómale una captura de pantalla).
 import { SUPABASE } from '../js/supabase-config.js';
 import { el, reemplazar } from '../js/panel/dom.js';
+import { audio } from '../js/audio.js';
 
 const ua = navigator.userAgent;
 const filas = []; // { grupo, nombre, estado: 'si'|'no'|'quiza'|'info', valor }
@@ -301,6 +302,20 @@ async function copiar(boton) {
   setTimeout(() => { boton.textContent = 'Copiar resultado'; }, 3500);
 }
 
+// Sonido: se prueba el mismo módulo que usa el juego (en iPhone el audio solo se desbloquea con un toque que termina)
+const salidaSonido = el('div', { class: 'nota' }, '');
+const botonSonido = el('button', { type: 'button', class: 'boton', onclick: () => pruebaSonido() }, 'Probar sonido');
+function pruebaSonido() {
+  const antes = audio.estado;
+  audio.prueba();
+  salidaSonido.textContent = `Probando… (el audio estaba «${antes}»)`;
+  setTimeout(() => {
+    const ahora = audio.estado;
+    salidaSonido.textContent = ahora === 'running'
+      ? `El navegador dejó sonar (el audio pasó de «${antes}» a «${ahora}»). ¿Oíste dos pitidos? Si no: sube el volumen y revisa el interruptor de silencio (el botoncito al lado del iPhone) y que el sonido de Safari/Instagram no esté silenciado.`
+      : `El navegador NO dejó sonar: el audio sigue «${ahora}». Cierra y vuelve a abrir esta página, toca el botón otra vez y cuéntanos qué app y qué iPhone es.`;
+  }, 700);
+}
 const salidaRendimiento = el('div', {});
 const botonRendimiento = el('button', { type: 'button', class: 'boton', onclick: () => pruebaRendimiento(botonRendimiento, salidaRendimiento) }, 'Probar rendimiento');
 const botonCopiar = el('button', { type: 'button', class: 'boton secundario', onclick: () => copiar(botonCopiar) }, 'Copiar resultado');
@@ -308,6 +323,7 @@ reemplazar(raiz,
   el('p', { class: 'nota' }, 'Esta página solo mira tu celular y mide la conexión con el servidor; no guarda ni envía nada más. Abre el enlace dentro de la app que quieras probar (Instagram, Facebook, Safari, Chrome…).'),
   caja,
   cajaGestos(),
+  el('section', { class: 'tarjeta' }, el('h2', {}, 'Sonido'), el('p', { class: 'nota' }, `Pulsa y escucha: deben sonar dos pitidos. Modo de audio del navegador: ${navigator.audioSession ? navigator.audioSession.type : 'no disponible'}.`), botonSonido, salidaSonido),
   el('section', { class: 'tarjeta' }, el('h2', {}, 'Rendimiento'), el('p', { class: 'nota' }, 'Dibuja durante 4 segundos una escena parecida a la del juego y mide los cuadros por segundo. Mejor con la pila al 100 % o cargando y sin «ahorro de batería».'), botonRendimiento, salidaRendimiento),
   el('div', { class: 'fila-botones' }, botonCopiar));
 pintar();
