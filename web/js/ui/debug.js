@@ -98,6 +98,9 @@ export function iniciarDebug({ cfg, escena, api, hooks, reiniciar, obtenerPartid
     if (!ruta) html += `<h3>${etq}</h3>`;
     else html += `<label class="s"><span>${etq}<b data-v="${ruta}"></b></span><input type="range" data-r="${ruta}" min="${min}" max="${max}" step="${paso}"></label>`;
   }
+  html += api.debug
+    ? ''
+    : '<h3>API real (Supabase)</h3><div class="caja" style="white-space:normal">Estás hablando con el servidor real: no existen los interruptores de intentos ilimitados ni de error de red, y la dificultad NO se mezcla con la del servidor mientras uses ?debug=1. Para calibrar sin gastar intentos reales abre <b>?debug=1&amp;api=falsa</b>.</div>';
   html += `
     <h3>Pruebas</h3>
     <label class="c"><input type="checkbox" id="dbg-inv"> Invencible (no pierdo vidas)</label>
@@ -143,12 +146,12 @@ export function iniciarDebug({ cfg, escena, api, hooks, reiniciar, obtenerPartid
   $('#dbg-intentos').value = ajustes.intentosPorSemana ?? cfg.reglas.intentosPorSemana;
   $('#dbg-inv').checked = cfg.desarrollo.invencible;
   $('#dbg-inv').addEventListener('change', (e) => (cfg.desarrollo.invencible = e.target.checked));
-  $('#dbg-ilim').addEventListener('change', (e) => api.debug.fijar({ ilimitado: e.target.checked }));
-  $('#dbg-red').addEventListener('change', (e) => api.debug.fijar({ fallar: e.target.checked }));
-  $('#dbg-premios').addEventListener('change', (e) => { api.debug.fijar({ premiosPorSemana: Number(e.target.value) }); reiniciar(); });
-  $('#dbg-intentos').addEventListener('change', (e) => { api.debug.fijar({ intentosPorSemana: Number(e.target.value) }); reiniciar(); });
-  $('#dbg-semana').addEventListener('click', () => { api.debug.reiniciarSemana(); reiniciar(); });
-  $('#dbg-borrar-api').addEventListener('click', () => { api.debug.borrarTodo(); localStorage.removeItem('cholado-mi-codigo'); location.reload(); });
+  $('#dbg-ilim').addEventListener('change', (e) => api.debug?.fijar({ ilimitado: e.target.checked }));
+  $('#dbg-red').addEventListener('change', (e) => api.debug?.fijar({ fallar: e.target.checked }));
+  $('#dbg-premios').addEventListener('change', (e) => { api.debug?.fijar({ premiosPorSemana: Number(e.target.value) }); reiniciar(); });
+  $('#dbg-intentos').addEventListener('change', (e) => { api.debug?.fijar({ intentosPorSemana: Number(e.target.value) }); reiniciar(); });
+  $('#dbg-semana').addEventListener('click', () => { api.debug?.reiniciarSemana(); reiniciar(); });
+  $('#dbg-borrar-api').addEventListener('click', () => { api.debug?.borrarTodo(); localStorage.removeItem('cholado-mi-codigo'); location.reload(); });
 
   /* Estadísticas */
   function pintarStats() {
@@ -194,10 +197,26 @@ export function iniciarDebug({ cfg, escena, api, hooks, reiniciar, obtenerPartid
     }
     return salida;
   }
+  // Convierte {"velocidad.inicial": 10} en {"velocidad": {"inicial": 10}} (solo las secciones de dificultad)
+  const SECCIONES_DIFICULTAD = ['partida', 'velocidad', 'carriles', 'salto', 'jugador', 'obstaculos', 'frutas', 'controles'];
+  function anidarDificultad(dif) {
+    const salida = {};
+    for (const [ruta, valor] of Object.entries(dif)) {
+      const partes = ruta.split('.');
+      if (!SECCIONES_DIFICULTAD.includes(partes[0])) continue;
+      let o = salida;
+      for (const p of partes.slice(0, -1)) o = o[p] ??= {};
+      o[partes.at(-1)] = valor;
+    }
+    return salida;
+  }
   $('#dbg-copiar').addEventListener('click', async () => {
     const dif = diferencias(cfg, CONFIG);
+    const servidor = anidarDificultad(dif);
     const texto = Object.keys(dif).length
-      ? '// Cambia estos valores en web/js/config.js:\n' + Object.entries(dif).map(([k, v]) => `${k} = ${JSON.stringify(v)}`).join('\n')
+      ? '// 1) Para el SERVIDOR (Supabase → SQL Editor). Cambia la dificultad que ven todos los jugadores:\n' +
+        (Object.keys(servidor).length ? `select app.ajustar_juego('${JSON.stringify(servidor)}'::jsonb);\n` : '-- (nada de dificultad cambió)\n') +
+        '\n// 2) Para config.js (valores de respaldo / API falsa):\n' + Object.entries(dif).map(([k, v]) => `${k} = ${JSON.stringify(v)}`).join('\n')
       : '// No cambiaste nada respecto a config.js';
     $('#dbg-texto').value = texto;
     try {
@@ -224,7 +243,7 @@ export function iniciarDebug({ cfg, escena, api, hooks, reiniciar, obtenerPartid
       desde = ahora;
       const i = escena.info();
       const p = obtenerPartida();
-      mini.textContent = `${fps} fps · ${i.llamadas} llamadas · ${(i.triangulos / 1000).toFixed(1)}k tri\n${i.ancho}×${i.alto} (DPR ${i.dpr.toFixed(2)}) · calidad ${NIVELES[i.calidad]}${p ? `\nt ${p.t.toFixed(1)} s · v ${p.vel.toFixed(1)} · vidas ${p.vidas} · frutas ${p.frutas}/${p.frutasGeneradas} (mín ${cfg.partida.frutasMinimas})` : ''}`;
+      mini.textContent = `API ${api.esFalsa ? 'falsa (local)' : 'REAL (Supabase)'}\n${fps} fps · ${i.llamadas} llamadas · ${(i.triangulos / 1000).toFixed(1)}k tri\n${i.ancho}×${i.alto} (DPR ${i.dpr.toFixed(2)}) · calidad ${NIVELES[i.calidad]}${p ? `\nt ${p.t.toFixed(1)} s · v ${p.vel.toFixed(1)} · vidas ${p.vidas} · frutas ${p.frutas}/${p.frutasGeneradas} (mín ${cfg.partida.frutasMinimas})` : ''}`;
     }
     requestAnimationFrame(medir);
   })(performance.now());

@@ -1,7 +1,7 @@
 # pendientes.md — Cosas por resolver
 
 Lo que **NO** está decidido o falta. Mientras tanto se usan **placeholders visibles** en el código y los textos (no se inventa). Actualizar al resolver cada punto.
-Última actualización: 2026-10-19 (cierre de la Etapa 3).
+Última actualización: 2026-10-19 (cierre de la Etapa 4).
 
 ## Abiertos
 | # | Pendiente | Placeholder actual | Se necesita en | Notas |
@@ -9,11 +9,11 @@ Lo que **NO** está decidido o falta. Mientras tanto se usan **placeholders visi
 | 1 | **Dirección y horario de caja del local** (el usuario no los tiene a mano) | `[DIRECCIÓN DEL LOCAL]`, `[HORARIO DE CAJA]` en `web/js/textos.js` (`LOCAL`) | Antes de lanzar (Etapa 7) | Salen en la pantalla del código |
 | 2 | **Datos personales (Ley 1581)**: responsable (nombre o razón social, cédula/NIT), correo o teléfono de contacto, plazo de conservación, política breve | `[RESPONSABLE DE DATOS]`, `[CORREO DE CONTACTO]` en `textos.js` | Etapa 7 (publicar) | Ver análisis abajo; confirmar con contador/abogado |
 | 3 | **Nombre definitivo del juego** (Atrapa tu cholado / Corre por tu cholado / Cholado Run) | «Corre por tu cholado» provisional (`textos.js`) | Antes de lanzar | Recomendación: «Corre por tu cholado» + «¡Atrapa tu cholado!» como lema |
-| 4 | **Calibrar con gente real**: dificultad, velocidad y **frutas mínimas (25)** | `config.js` | Tras Etapa 4/6 | El bot es pesimista (Normal ~6 %); usar `?debug=1` → estadísticas; ver `documentos/calibrar-dificultad.md`. Si casi nadie gana: bajar `partida.frutasMinimas` o `velocidad.final` |
-| 5 | **Cupo diario** del banco (tráfico esperado desconocido) | desactivado | Etapa 4 | Decidir si se implementa |
-| 6 | **Fechas de la primera campaña** y de lanzamiento | `[FECHA INICIO]`, `[FECHA FIN]` (`reglas.campana`: null = siempre activa) | Etapa 4 | |
-| 7 | Confirmar la regla de vencimiento `expedición + 7 días − 1 min` | propuesta | Etapa 4 | Ya implementada en la API falsa |
-| 8 | **Supabase**: verificar límites vigentes del plan gratis y la pausa por inactividad (idea: llamada periódica desde GitHub Actions) | — | Etapa 4 | |
+| 4 | **Calibrar con gente real**: dificultad, velocidad y **frutas mínimas (25)** | `config.js` y, desde la Etapa 4, **el servidor** (`select app.ajustar_juego(...)`) | Tras Etapa 6 | El bot es pesimista (Normal ~6 %); usar `?debug=1` → estadísticas; ver `documentos/calibrar-dificultad.md` y `supabase/LEEME.md`. Si casi nadie gana: bajar `frutas_minimas` o `velocidad.final` |
+| 5 | **Cupo diario** del banco (tráfico esperado desconocido) | **implementado, apagado** (`cupo_diario = 0`) | cuando se vea el tráfico real | Se activa con `update app.configuracion set cupo_diario = 7 where id = 1;` |
+| 6 | **Fechas de la primera campaña** y de lanzamiento | `campana_inicio` / `campana_fin` = null (siempre activa) en `app.configuracion` | Antes de lanzar | Se fijan con `update app.configuracion set campana_inicio = ..., campana_fin = ...` |
+| 7 | ~~Regla de vencimiento~~ → resuelta: minuto de expedición + 7 días exactos; se muestra «vale hasta» vence − 1 min (ver `CLAUDE.md` §3). Si el usuario prefiere otra, es una línea en `app.vencimiento` | — | — | ✅ pendiente de que el usuario la vea y confirme |
+| 8 | **Evitar la pausa del plan gratis** de Supabase (~1 semana sin actividad): tarea diaria de GitHub Actions que llame a `ping()` | — | Etapa 7 | Límites ya verificados (`CLAUDE.md` §5) |
 | 9 | **Dispositivo del staff** para canjear y quién usa el PIN (PIN compartido, cambiable) | — | Etapa 5 | Cualquiera que atienda |
 | 10 | **Música y sonidos** (salsa caleña, frescura) con **licencia libre** o generados. No estaba en el Prompt 3: decidir si va como mini-etapa o después | sin audio | por decidir | |
 | 11 | **Android de gama baja** para probar (hoy solo iPhone XR) | emulación en DevTools | Etapa 6 | Pedir uno prestado |
@@ -23,6 +23,13 @@ Lo que **NO** está decidido o falta. Mientras tanto se usan **placeholders visi
 | 15 | **Deslizar hacia abajo** (agacharse): probar más adelante | se ignora | futuro | Puede chocar con gestos del navegador de Instagram |
 | 16 | **Mejoras estéticas** (pospuestas a propósito hasta terminar todas las etapas): cholado con frutas «adentro» del vaso; bola de helado «pintada hasta la mitad»; más detalle en La India y el escenario; más elementos de escenario; cartel ¡META! poco legible a distancia; animación de choque simple; posible cambio de colores | — | después de la Etapa 7 | |
 | 17 | En iPhone con **modo de bajo consumo** (30 fps) la imagen no mejora aunque baje la calidad | la calidad adaptativa vuelve atrás | — | Solo informativo |
+| 18 | **Limpiar los datos de prueba antes del lanzamiento**: `supabase/sql/limpiar_pruebas.sql` (hoy hay códigos y partidas de prueba, p. ej. `LAINDIA-QB9A`) | — | Etapa 7 (antes de abrir al público) | Nunca con clientes reales |
+| 19 | **Restaurar la dificultad del servidor** tras la prueba (se dejó `velocidad.inicial = 11` y `frutas_minimas = 24`): `update app.configuracion set juego = '{}'::jsonb, frutas_minimas = 25 where id = 1;` | — | **Ya** | El usuario debe correrlo; Claude lo verifica |
+| 20 | **Limitar partidas por IP** (un script con muchos id de dispositivo podría gastar el banco esperando 45 s por partida). Cuidado con IPs móviles compartidas | — | Etapa 6 | Antifraude bajo aceptado, pero es el hueco conocido |
+| 21 | **Backups**: el plan gratis no hace; exportar CSV de `codigos` de vez en cuando (botón en el panel admin) | — | Etapa 5 | |
+| 22 | **Contraseña de la base de datos de Supabase**: la guarda el usuario en privado; Claude nunca la ve | — | siempre | Si se pierde se puede restablecer desde el panel |
+| 23 | **Regalo elegido al canjear**: la columna `regalo_elegido` ya existe; se llena en la Etapa 5 | NULL | Etapa 5 | |
+| 24 | **Plazo de conservación de datos** (nombre y celular): decidir cuándo borrar/anonimizar (p. ej. al cerrar la campaña) | — | Etapa 7 | Ver Ley 1581 (#2) |
 
 ## Resueltos (para memoria)
 - **Instalar Node.js** (v24.20.0) y política de scripts de PowerShell → ✅ (Etapa 2).
@@ -34,6 +41,7 @@ Lo que **NO** está decidido o falta. Mientras tanto se usan **placeholders visi
 - **Selector «Choladito / La India», «Girar» y «Datos»**: el selector es permanente; «Girar» no está en el juego; «Datos» = mini panel de `?debug=1`.
 - **Celular limitado a 10 dígitos**, **un deslizamiento = un carril**, **cupón único por número** (mensaje, sin revelar el código) → ✅.
 - **Historial protegido** (`!historial/**` en `.gitignore` + aviso del script) → ✅.
+- **Etapa 4 (2026-10-19)**: cuenta y proyecto de Supabase creados; SQL pegado y probado; códigos al reclamar; premio apartado 15 min; dificultad editable desde el servidor; códigos `LAINDIA-XXXX`; cupo diario implementado (apagado); `ping()` listo; regalo elegido al canjear (columna lista).
 - FPS de los previews en el iPhone XR → ✅ ~60 (mínimo 57).
 
 ## Análisis: ¿aplica la Ley 1581 de 2012? (2026-10-19)

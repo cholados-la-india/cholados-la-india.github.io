@@ -58,5 +58,19 @@
       "04-te-faltaron-frutas.jpg",
       "05-este-numero-ya-tiene-cupon.jpg"
     ]
+  },
+  {
+    "id": "05-backend-supabase",
+    "titulo": "Preview 6: el juego conectado a Supabase (Etapa 4)",
+    "descripcion": "Primera version con servidor real: intentos, premios, tope semanal y codigos LAINDIA-XXXX los decide Supabase; el premio se aparta 15 min al ganar; Ver mi codigo con cuenta regresiva; la dificultad se puede cambiar desde el servidor.",
+    "fecha": "2026-10-19",
+    "entrada": "",
+    "capturas": [
+      "01-servidor-real-sin-premios.jpg",
+      "02-ganaste-premio-apartado-15-min.jpg",
+      "03-codigo-real-LAINDIA.jpg",
+      "04-ver-mi-codigo-desde-el-servidor.jpg",
+      "05-inicio-con-datos-reales-49-premios.jpg"
+    ]
   }
 ]

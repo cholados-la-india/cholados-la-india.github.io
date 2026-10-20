@@ -141,7 +141,11 @@ button { font: inherit; color: inherit; cursor: pointer; border: 0; background: 
 
 /* Código */
 .ticket .codigo { align-self: center; font-family: var(--titulos); font-weight: 400; font-size: 52px; line-height: 1; letter-spacing: 0.06em; padding: 12px 18px; border-radius: 18px; color: var(--ciruela); background: #fff; border: 4px dashed var(--magenta); -webkit-user-select: text; user-select: text; }
-.ticket .codigo span { color: var(--magenta); }
+.ticket .codigo small { font-size: 0.42em; letter-spacing: 0.04em; color: var(--magenta); vertical-align: 0.5em; margin-right: 0.08em; }
+.ticket.inactivo .codigo { opacity: 0.55; border-color: #8a7a92; }
+.restante { font-size: 16px; color: #fbeaff; }
+.restante b { color: #ffe86b; font-weight: 600; font-variant-numeric: tabular-nums; }
+.aviso-estado { font-size: 16px; padding: 8px 12px; border-radius: 12px; background: rgba(255, 255, 255, 0.1); color: #fbeaff; }
 .vale { font-size: 17px; color: #fbeaff; }
 .local { font-size: 14px; color: #e9d3f0; }
 .prueba { font-size: 13px; padding: 6px 10px; border-radius: 10px; color: #ffe86b; background: rgba(255, 232, 107, 0.14); }

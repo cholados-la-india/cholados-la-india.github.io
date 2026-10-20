@@ -188,3 +188,63 @@ Dijo: «Todo está perfecto, me encantó todo», y pidió:
 
 ## 8. Estado al cierre de la Etapa 3
 Prototipo jugable completo con API falsa, historial con 4 hitos, documentación al día, previews borrados de `web/` (viven en `historial/01` y `02` y en el commit de la Etapa 2). **Siguiente: Etapa 4 (Supabase / backend)**; el usuario pegará el prompt correspondiente. Ver `CLAUDE.md` §11 («Insumos ya decididos para la Etapa 4»).
+
+---
+
+## 9. Etapa 4 — Backend con Supabase (2026-10-19)
+
+### 9.1 Encargo (Prompt 4) y cómo se resolvieron las contradicciones (gana el chat)
+Backend en Supabase gratis; el usuario no conoce Supabase → guiar paso a paso. Tablas de configuración, partidas y códigos; **toda la lógica en funciones RPC con RLS** (el cliente solo usa la clave pública y esas funciones); reclamo **atómico**; semana desde el lunes 00:00 de Bogotá; reloj del servidor; vigencia exacta de 7 días; un código por celular cada 7 días; intentos por semana ligados a un **id anónimo del dispositivo**; conectar el juego.
+- **Regalo**: el prompt decía que `reclamar` recibe el regalo elegido. Contradice lo decidido (el cliente elige **al canjear en caja**). → la columna `regalo_elegido` existe pero se llena en la Etapa 5; `reclamar_codigo` NO la recibe.
+- **Código**: formato `LAINDIA-7K3Q` (prefijo + 4 caracteres de un alfabeto de 32 sin `0/O/1/I`), único (restricción UNIQUE + reintento). El prototipo mostraba 6 caracteres; se cambió. Prefijo y largo son configurables.
+- **Vigencia («exacta de 7 días»)**: el ejemplo del usuario era «martes 2:51 p. m. vale hasta el martes siguiente 2:50 p. m.». Se resolvió así: `vence_en = date_trunc('minute', expedición) + 7 días exactos` (el código sirve mientras `ahora < vence_en`) y la pantalla muestra «vale hasta» **vence − 1 minuto** (la última hora completa válida). Cumple ambas frases. (Reemplaza mi propuesta anterior `expedición + 7 d − 1 min`; si el usuario prefiere otra cosa, es una línea en `app.vencimiento`.)
+- **7 días por celular**: confirmados por el usuario.
+
+### 9.2 Dudas de diseño que se le preguntaron al usuario y sus respuestas
+1. **¿Cuándo se crea el código?** → **Al reclamar** (recomendado). No hay lista pre-hecha de 50; el tope semanal es un contador de códigos expedidos + premios apartados. Más simple y sin tareas programadas.
+2. **¿Qué pasa con el premio mientras se llena el formulario?** → **Apartarlo 15 min** al ganar (editable: `ventana_reclamo_min`). Evita ganar y que justo se acaben. Si no se reclama, se libera; si la reserva venció pero aún hay cupo, igual puede reclamar (hasta 6 h después).
+3. **¿Dificultad editable desde el servidor?** → **Sí**. Se guarda en `app.configuracion` (columna `juego` jsonb, más columnas propias `duracion_partida_s` y `frutas_minimas` que el servidor también valida). El juego la lee con `estado()` y la mezcla encima de `config.js` (que queda como «valores de fábrica» y para la API falsa). Se cambia desde el SQL Editor con `select app.ajustar_juego('{...}')`; el panel admin (Etapa 5) lo hará con botones.
+
+### 9.3 Arquitectura del servidor (`supabase/migrations/`)
+- **Esquema privado `app`** (no expuesto por la API): tablas `configuracion` (1 fila), `partidas` (su `id` es el token) y `codigos`; vista `v_codigos` con `estado_efectivo`. RLS activado **sin políticas** y permisos revocados a `anon/authenticated`. Defensa doble.
+- **6 funciones `SECURITY DEFINER` en `public`**, las únicas con `EXECUTE` para `anon`: `ping`, `estado`, `iniciar_partida`, `terminar_partida`, `reclamar_codigo`, `mi_codigo`. Utilidades internas en `app.*` (sin permisos para el público).
+- **Atomicidad**: `terminar_partida` (si gana) y `reclamar_codigo` toman el **mismo candado global** `pg_advisory_xact_lock('cholado:premios')`, **siempre antes** del bloqueo de fila (mismo orden → sin interbloqueos). `iniciar_partida` usa un candado por dispositivo (nadie saca un 4.º intento con llamadas simultáneas). La capacidad se comprueba al **apartar** (terminar) y, si la reserva venció, al reclamar.
+- **Cupos**: `restantes = tope − códigos de la semana − reservas vigentes` (y, si `cupo_diario > 0`, también el del día; entonces «reinicia» = mañana 00:00).
+- **Estados de un código**: se guardan `activo | canjeado | desactivado`; **`vencido` se calcula** (`activo` y `now() >= vence_en`), así nunca está desactualizado y no hace falta una tarea programada. Los vencidos **no se reciclan** (quedan en la tabla).
+- **Idempotencia**: repetir `terminar_partida` o `reclamar_codigo` (doble toque, mala señal) devuelve el mismo resultado/código; por eso el cliente puede reintentar.
+- **Privacidad**: si el celular ya reclamó, la respuesta trae `puedeVolverISO` y **no** el código. «Ver mi código» busca por **dispositivo**, no por celular.
+- **Validación del servidor** (no le cree al celular): token existente, tiempo jugado ≥ `min(minimo_jugado_s, 0,75×duración)`, `frutas ≥ frutas_minimas`, nombre 2–60 sin caracteres de control, celular colombiano de 10 dígitos (acepta +57), consentimiento obligatorio.
+- **Hora**: semana y día en `America/Bogota` con funciones puras (`app.inicio_semana`, `app.semana_de`, `app.dia_de`, `app.vencimiento`) probadas con 3 zonas horarias de sesión; no dependen de la zona de la sesión.
+
+### 9.4 Cliente (`web/js/`)
+- `api.js` elige entre `api-supabase.js` (si `supabase-config.js` tiene `url` y `clave`) y `api-falsa.js`; **`?api=falsa`** fuerza la falsa (calibrar sin gastar intentos reales; en `?debug=1` mandan `config.js` y los deslizadores, no la dificultad del servidor).
+- `api-supabase.js` usa solo `fetch` al REST de Supabase (`/rest/v1/rpc/<función>`), sin librerías (carga más liviana), con tiempo máximo de 12 s y reintentos solo en las funciones idempotentes. La clave `sb_publishable_…` va en la cabecera `apikey` (las `eyJ…` también como `Bearer`).
+- `dispositivo.js` (id anónimo en `localStorage`; respaldo en memoria), `reloj.js` (diferencia con la hora del servidor, para las cuentas regresivas), `util.js` (`fusionar`, `formatoRestante`).
+- `main.js`: aplica `estado.juego` y `estado.reglas` sobre `cfg`; «Ver mi código» consulta `mi_codigo` (ya no usa `localStorage`); nuevas pantallas/estados: ticket con cuenta regresiva y estados canjeado/vencido, «¡Llegaste, pero se acabaron!» (ganó pero otra persona tomó el último premio), aviso «tu premio está apartado por 15 minutos».
+- `api.js` documenta el contrato nuevo (`miCodigo`, `ahoraISO`, `reglas`, `juego`, `miCodigoActivo`).
+
+### 9.5 Pruebas
+- `npm run probar-sql` (PGlite = Postgres dentro de Node, `tools/probar-sql.mjs`): **86 comprobaciones** (fechas en 3 zonas horarias, formato de códigos, intentos, validaciones, reservas, cupo semanal y diario, cooldown por celular, `mi_codigo`, campaña, dificultad, permisos de `anon`, idempotencia de las migraciones). No cubre concurrencia real (una sola conexión).
+- `npm run probar-supabase` (`tools/probar-supabase.mjs`): contra el servidor real; concurrencia de verdad (ver `supabase/LEEME.md`). Deja datos de prueba → `supabase/sql/limpiar_pruebas.sql`.
+
+### 9.6 Plan gratis de Supabase (verificado el 2026-10-19)
+2 proyectos activos, 500 MB de base de datos, 5 GB de egress, **sin backups automáticos**; los proyectos **se pausan tras ~1 semana sin actividad** (se reactivan a mano; dos versiones de la documentación dan 90 días o 1 año como plazo de restauración). Fuentes: `supabase.com/pricing` y `supabase.com/docs/guides/platform/free-project-pausing`. Mitigación prevista (Etapa 7): tarea gratis de GitHub Actions que llame a `ping()` cada día. Claves nuevas: `sb_publishable_…` (segura en el navegador) y `sb_secret_…` (nunca); las viejas `anon`/`service_role` se retiran a fines de 2026.
+
+### 9.7 Guía que se le dio al usuario para crear la cuenta (por si hay que repetirla)
+1. `supabase.com` → **Start your project** → **Continue with GitHub** (cuenta `hachescc`). 2. Organización **Cholados La India**, tipo Personal, plan Free. 3. **New project**: nombre `cholado-runner`, **contraseña de la base** generada y guardada en un lugar seguro (**no se comparte ni se pega en archivos**), región **South America (São Paulo)**, plan Free. 4. Esperar ~2 min. 5. Copiar la **Project URL** y la **Publishable key** (Project Settings → API Keys; o la `anon` `eyJ…`) y pasarlas por el chat: son públicas. **Nunca** la secret/`service_role` ni la contraseña de la base. 6. Pegar `0001_tablas.sql` y luego `0002_funciones.sql` en SQL Editor (ver `supabase/LEEME.md`).
+
+### 9.7b Resultados reales (contra el servidor de Supabase del usuario, 2026-10-19)
+- Proyecto: `cholado-runner`, organización «Cholados La India», plan Free, región **East US (North Virginia)**. *(Claude había recomendado São Paulo «por estar más cerca»; se corrigió: desde Colombia el tráfico sale hacia EE. UU., Virginia queda más cerca en latencia y Supabase la marca como recomendada.)* Formulario de creación: Data API **activada**, «Automatically expose new tables» **desmarcada**, «Enable automatic RLS» marcada (inofensiva: nuestras tablas están en `app`).
+- **URL pública** `https://vaphorsfnfuebfjuhmof.supabase.co` (SIN `/rest/v1`: el cliente lo agrega) y **publishable key** `sb_publishable_…` quedaron en `web/js/supabase-config.js`. Funcionan con solo la cabecera `apikey` (no hace falta `Authorization`). Son públicas por diseño.
+- El SQL se pegó en **SQL Editor → «+» → Create a new snippet** (primero `0001`, luego `0002`), sin errores a la primera; comprobación `select public.estado(gen_random_uuid());` devolvió `jugable: true`, 50 premios.
+- **`npm run probar-supabase`: 35/35 ✓.** Seguridad (tablas 404/406, funciones internas inaccesibles), 8 inicios simultáneos de un dispositivo → exactamente 3, victoria falsa a los segundos → rechazada, 3 frutas → rechazada, 5 reclamos con el mismo celular → exactamente 1 código y 4 `ya-tienes-codigo` sin revelar el código, `mi_codigo` con ~7 días, **100 ganadores a la vez con cupo 45 → se apartaron exactamente 45, los otros 55 `sin-premios`, 45 reclamos simultáneos → 45 códigos todos distintos, banco en 0**, reclamo repetido → mismo código. La hora del servidor coincidió con la del computador (0 s).
+- **Partida manual completa** (con el bot jugando en el navegador contra el servidor real, esperando los 45 s reales exigidos): `Quedan 50 premios` → ganó con 57 frutas → pantalla «Tu premio está apartado por 15 minutos» → celular `+57 300 123 4567 99` se limitó a `300 123 4567` → código **`LAINDIA-QB9A`**, «vale hasta el lunes 26 de octubre, 8:50 p. m.» (expedido ~8:51 p. m.), cuenta regresiva «6 d 23 h 59 min» → inicio con «Quedan 49 premios / Te quedan 2 intentos de 3» → «Ver mi código» trajo el ticket desde el servidor.
+- **Sin conexión**: si `fetch` falla, el juego reintenta unos 3 s y muestra «No pudimos conectarnos… Reintentar»; al volver la conexión, el botón recupera.
+- **Dificultad desde el servidor**: el usuario corrió `select app.ajustar_juego('{"velocidad":{"inicial":11},"partida":{"frutasMinimas":24}}')`; `estado.juego` devolvió `{"partida":{"duracionS":60,"frutasMinimas":24},"velocidad":{"inicial":11}}`; el juego con `?debug=1&servidor=1` mostró `velocidad.inicial = 11` (final siguió en 14,5: la mezcla no borra) y la ayuda dijo «al menos 24 frutas»; con `?debug=1` solo, siguió en 9,5 y 25. **Quedó pendiente restaurar** (`update app.configuracion set juego = '{}'::jsonb, frutas_minimas = 25 where id = 1;`).
+- Datos de prueba que quedaron en la base: los de `probar-supabase` (se borraron con `limpiar_pruebas.sql` antes de la partida manual) y el código `LAINDIA-QB9A` + 1 partida de la prueba manual.
+- Nota de pruebas: el servidor real exige tiempo real (45 s) entre `iniciar_partida` y `terminar_partida`; en el navegador de Claude se adelanta el juego con `tick` y luego se espera de verdad (dos llamadas JS de ~30 s).
+
+### 9.8 Riesgos y notas abiertas de esta etapa
+- **Antifraude**: un script con muchos id de dispositivo podría gastar el banco esperando 45 s por partida; limitar partidas por IP (con cuidado: muchas personas comparten IP móvil) queda para la **Etapa 6**. El servidor no puede verificar `frutas` (viene del celular).
+- Tarea diaria `ping()` para que el proyecto gratis no se pause: Etapa 7. Backups: exportar CSV (botón del panel admin, Etapa 5).
+- Si el usuario cambia `config.js` esperando que cambie el juego real: con servidor, **mandan** `duracion_partida_s`, `frutas_minimas` y las reglas de la tabla; `config.js` solo es el respaldo.

@@ -8,9 +8,12 @@
     "dev": "node tools/dev-server.mjs",
     "vendor": "node tools/vendor-three.mjs",
     "hito": "node tools/guardar-hito.mjs",
-    "simular": "node tools/simular.mjs"
+    "simular": "node tools/simular.mjs",
+    "probar-sql": "node tools/probar-sql.mjs",
+    "probar-supabase": "node tools/probar-supabase.mjs"
   },
   "devDependencies": {
+    "@electric-sql/pglite": "0.5.10",
     "esbuild": "0.28.2",
     "three": "0.186.1"
   }

@@ -51,6 +51,7 @@ export const T = {
   ganaste: {
     titulo: '¡Lo lograste!',
     subtitulo: 'Atrapaste tu cholado. Ahora solo falta reclamar tu premio.',
+    ventana: (min) => `Tu premio está apartado por <b>${min} minutos</b>: llena tus datos y ¡listo!`,
     nombre: 'Tu nombre',
     celular: 'Tu celular (10 dígitos)',
     consentimiento: 'Autorizo a Cholados La India a guardar mi nombre y celular para entregarme y controlar mi premio (Ley 1581 de 2012).',
@@ -75,6 +76,11 @@ export const T = {
   codigo: {
     titulo: 'Tu código',
     vale: (fecha) => `Vale hasta el <b>${fecha}</b>`,
+    restante: 'Te quedan',
+    vencido: (fecha) => `Este código <b>venció</b> (valía hasta el ${fecha}). Los códigos vencidos no se reactivan.`,
+    canjeado: (fecha) => `Este código ya fue <b>canjeado</b> el ${fecha}.`,
+    desactivado: 'Este código fue <b>desactivado</b>.',
+    otroCupon: (cuando) => `Podrás reclamar otro cupón a partir del <b>${cuando}</b>.`,
     pasos: (compraMinima) => [
       `Ve al local y muestra este código en caja.`,
       `Compra mínimo <b>${pesos(compraMinima)}</b> en productos (el regalo no cuenta).`,
@@ -114,6 +120,8 @@ export const T = {
   },
 
   sinPremios: {
+    tituloGanaste: '¡Llegaste, pero se acabaron!',
+    mensajeGanaste: (reinicio) => `Otra persona se llevó el último premio justo antes que tú. Vuelve el <b>${reinicio}</b> y atrapa el tuyo.`,
     titulo: '¡Se acabaron los premios!',
     mensaje: (reinicio) => `Esta semana ya se entregaron todos. Vuelve el <b>${reinicio}</b> y atrapa el tuyo.`,
     volver: 'Volver al inicio',

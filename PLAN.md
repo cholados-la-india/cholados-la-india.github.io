@@ -1,7 +1,7 @@
 # PLAN.md — Cholado Runner
 
 Estado por etapas. **Regla:** solo se trabaja en la etapa que el usuario pida; al cerrar cada una se resume (qué se hizo, archivos tocados, frase de commit), se espera el visto bueno y se actualiza este archivo y los demás documentos.
-Última actualización: 2026-10-19 (cierre de la Etapa 3; **siguiente: Etapa 4, a la espera del Prompt 4 del usuario**).
+Última actualización: 2026-10-19 (Etapa 4 hecha; **siguiente: Etapa 5, a la espera del Prompt 5 del usuario**).
 Contexto completo en `CLAUDE.md`; historia detallada en `documentos/bitacora.md`; lo abierto en `pendientes.md`.
 
 | # | Etapa | Estado |
@@ -9,8 +9,8 @@ Contexto completo en `CLAUDE.md`; historia detallada en `documentos/bitacora.md`
 | 1 | Contexto y preguntas (sin código) | ✅ Hecha (2026-10-19) |
 | 2 | Estilo gráfico (previews) | ✅ Hecha (2026-10-19). Elegido: **G = mezcla de D y F** |
 | 3 | Prototipo jugable sin backend | ✅ Hecha y aprobada por el usuario (2026-10-19: «todo bien») |
-| 4 | Backend en Supabase y conexión | ⏳ **Siguiente** — esperando el Prompt 4 |
-| 5 | Página del staff (PIN) y panel admin | ⬜ |
+| 4 | Backend en Supabase y conexión | ✅ Hecha y probada contra el servidor real (2026-10-19); esperando el visto bueno del usuario |
+| 5 | Página del staff (PIN) y panel admin | ⏳ **Siguiente** — esperando el Prompt 5 |
 | 6 | Pruebas, seguridad y compatibilidad | ⬜ |
 | 7 | Publicación, QR y lista de lanzamiento | ⬜ |
 
@@ -41,17 +41,17 @@ Ajustes tras el primer feedback (todos hechos): A1 un gesto = un carril · A2 se
 
 Archivos principales de la etapa: `web/index.html`, `web/css/juego.css`, `web/js/**`, `tools/{simular,guardar-hito}.mjs`, `historial/**`, `documentos/{bitacora,calibrar-dificultad}.md`, y los `.md` de la raíz.
 
-## Etapa 4 — Backend en Supabase ⏳ (esperando el Prompt 4)
-Tareas previstas (originales; el Prompt 4 puede refinarlas — gana lo que diga el usuario):
-- [ ] 4.1 Crear cuenta y proyecto (**guiado**: el usuario no conoce Supabase) y verificar límites del plan gratis y la pausa por inactividad.
-- [ ] 4.2 Tablas y reglas RLS.
-- [ ] 4.3 Funciones SQL: iniciar intento/partida, reclamar premio (**atómico**), estado de la semana.
-- [ ] 4.4 Conectar el cliente: crear `web/js/api-supabase.js` con el mismo contrato y cambiar una línea en `api.js`.
-- [ ] 4.5 Prueba de concurrencia: 100 reclamos simultáneos → **cero códigos duplicados**.
-- Insumos ya decididos (contrato, reglas del servidor, temas a confirmar): **`CLAUDE.md` §11**.
-- Antes de empezar: decir en 3 líneas qué hay hecho (regla del prompt) y confirmar con el usuario las preguntas abiertas de §11.
-
-## Etapa 5 — Staff y admin ⬜
+## Etapa 4 — Backend en Supabase ✅ (hecha el 2026-10-19; esperando el visto bueno del usuario)
+- [x] 4.1 Cuenta y proyecto creados por el usuario (guiado): `cholado-runner`, plan Free, región East US (North Virginia). Límites del plan gratis verificados (ver `CLAUDE.md` §5).
+- [x] 4.2 Tablas en el esquema privado `app` + RLS sin políticas (`supabase/migrations/0001_tablas.sql`).
+- [x] 4.3 Las 6 funciones `SECURITY DEFINER` (`0002_funciones.sql`): `ping`, `estado`, `iniciar_partida`, `terminar_partida`, `reclamar_codigo`, `mi_codigo`. Atómico con candado global; códigos `LAINDIA-XXXX`; vigencia 7 días exactos; un código por celular cada 7 días; premio apartado 15 min; cupo diario opcional.
+- [x] 4.4 Cliente conectado: `api-supabase.js` (solo `fetch`), `reloj.js` (hora del servidor), `dispositivo.js` (id anónimo), `api.js` elige real/falsa, dificultad y reglas desde el servidor, ticket con cuenta regresiva y «Ver mi código» del servidor.
+- [x] 4.5 Pruebas: `npm run probar-sql` (86 ✓), `npm run probar-supabase` (35 ✓ contra el servidor real, incluida la concurrencia: 100 ganadores → exactamente el cupo, códigos todos distintos), partida completa manual, error de conexión, dificultad cambiada desde el servidor y recibida por el juego.
+- [x] 4.6 Documentación: `supabase/LEEME.md`, `documentos/bitacora.md` §9, `CLAUDE.md` §11–12, historial hito 05.
+- [ ] 4.7 Visto bueno del usuario → marcar ✅ definitivo.
+- **Recordatorios antes del lanzamiento:** correr `supabase/sql/limpiar_pruebas.sql` (borra códigos y partidas de prueba) y restaurar la dificultad del servidor si se movió (`update app.configuracion set juego = '{}'::jsonb, frutas_minimas = 25 where id = 1;`).
+- **Decisiones del usuario en esta etapa:** códigos al reclamar · premio apartado 15 min · dificultad editable desde el servidor · 7 días por celular (sin cambio). Contradicciones del prompt resueltas a favor del chat: regalo se elige al canjear; código `LAINDIA-XXXX`.
+## Etapa 5 — Staff y admin ⏳ (insumos ya decididos: `CLAUDE.md` §12)
 - [ ] 5.1 PIN del staff verificado en servidor (PIN compartido, cambiable).
 - [ ] 5.2 Página de canje (~5 s): existe, vigente, no canjeado → marcar canjeado → mostrar regalo.
 - [ ] 5.3 Panel admin con login (Supabase Auth, correo).

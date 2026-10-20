@@ -1,16 +1,22 @@
-// main.js — Orquesta el juego: pantallas, partida, servidor (falso por ahora) y el bucle de cuadros.
+// main.js — Orquesta el juego: pantallas, partida, servidor (Supabase, o la API falsa) y el bucle de cuadros.
 //
 //   ?debug=1  →  panel con FPS, deslizadores de dificultad en vivo, estadísticas y simulador (js/ui/debug.js).
+//   ?api=falsa →  usa la simulación local en vez del servidor real (para calibrar sin gastar intentos).
 import { api } from './api.js';
 import { CONFIG } from './config.js';
 import { crearControles } from './game/controles.js';
 import { crearEscena } from './game/escena.js';
 import { crearPartida, moverCarril, paso, progreso, saltar, tiempoRestante } from './game/logica.js';
+import { reloj } from './reloj.js';
 import { T } from './textos.js';
 import { crearUI } from './ui/ui.js';
-import { almacen } from './util.js';
+import { almacen, fusionar } from './util.js';
 
-const DEBUG = new URLSearchParams(location.search).get('debug') === '1';
+const PARAMS = new URLSearchParams(location.search);
+const DEBUG = PARAMS.get('debug') === '1';
+// La dificultad y las reglas del servidor se aplican siempre, salvo en ?debug=1 (ahí mandan config.js y los deslizadores);
+// con ?debug=1&servidor=1 el modo debug también las aplica (sirve para comprobar lo que cambió el servidor).
+const APLICAR_SERVIDOR = !DEBUG || PARAMS.get('servidor') === '1';
 const cfg = JSON.parse(JSON.stringify(CONFIG)); // config "viva": ?debug=1 la modifica sin tocar config.js
 const raiz = document.getElementById('escena');
 api.configurar?.(cfg);
@@ -37,10 +43,41 @@ let terminada = false;
 let ultimoCodigo = null;
 const hooks = { alTerminar: [] }; // el panel de debug se engancha aquí
 
-const leerCodigoGuardado = () => {
-  const c = almacen.leer('cholado-mi-codigo');
-  return c && Date.parse(c.venceISO) > Date.now() ? c : null;
-};
+/** Lo que manda el servidor (dificultad y reglas) se mezcla encima de config.js; su hora es la que vale para las cuentas regresivas. */
+function aplicarServidor(estado) {
+  if (estado.ahoraISO) reloj.ajustar(estado.ahoraISO);
+  if (!APLICAR_SERVIDOR) return; // con ?debug=1 mandan config.js y los deslizadores
+  if (estado.juego) fusionar(cfg, estado.juego);
+  if (estado.reglas) fusionar(cfg.reglas, estado.reglas);
+}
+
+/** ¿Este dispositivo tiene un código vigente? (lo dice el servidor, no el navegador). */
+const tieneCodigoActivo = () => Boolean(estadoServidor?.miCodigoActivo);
+
+/** Muestra el ticket del último código de este dispositivo (cuenta regresiva y estado, ambos del servidor). */
+async function verMiCodigo() {
+  ui.mostrar('cargando');
+  let m;
+  try {
+    m = await api.miCodigo();
+  } catch {
+    ui.mostrar('error', { mensaje: T.inicio.errorConexion });
+    return;
+  }
+  if (!m.hay) {
+    irInicio(false);
+    return;
+  }
+  ultimoCodigo = m.codigo;
+  ui.mostrar('codigo', {
+    codigo: m.codigo,
+    venceMs: Date.parse(m.venceISO),
+    estado: m.estado,
+    canjeadoMs: m.canjeadoISO ? Date.parse(m.canjeadoISO) : null,
+    puedeVolverMs: m.puedeVolverISO ? Date.parse(m.puedeVolverISO) : null,
+    esDePrueba: m.esDePrueba,
+  });
+}
 
 /* ───────────── Pantallas ───────────── */
 async function irInicio(recargar = true) {
@@ -54,12 +91,13 @@ async function irInicio(recargar = true) {
     ui.mostrar('cargando');
     try {
       estadoServidor = await api.obtenerEstado();
+      aplicarServidor(estadoServidor);
     } catch {
       ui.mostrar('error', { mensaje: T.inicio.errorConexion });
       return;
     }
   }
-  const tieneCodigo = Boolean(leerCodigoGuardado());
+  const tieneCodigo = tieneCodigoActivo();
   if (!estadoServidor.jugable) {
     ui.mostrar(estadoServidor.motivo, { ...estadoServidor, tieneCodigo });
     return;
@@ -133,10 +171,14 @@ function mostrarResultado(resumen, r) {
     return;
   }
   estadoServidor = r.estado;
+  if (estadoServidor) aplicarServidor(estadoServidor);
   if (resumen.gano && r.puedeReclamar) {
     ui.mostrar('ganaste', {});
+  } else if (resumen.gano && r.motivo === 'sin-premios') {
+    // Ganó, pero otra persona se llevó el último premio justo antes (no se alcanzó a apartar el suyo)
+    ui.mostrar('sin-premios', { ...estadoServidor, ganaste: true, tieneCodigo: tieneCodigoActivo() });
   } else if (resumen.gano) {
-    ui.mostrar('error', { mensaje: T.ganaste.errores.partidaInvalida }); // el servidor no validó la victoria (token o tiempo jugado)
+    ui.mostrar('error', { mensaje: T.ganaste.errores.partidaInvalida }); // el servidor no validó la victoria (token, tiempo o frutas)
   } else {
     ui.mostrar('perdiste', {
       progreso: resumen.progreso,
@@ -166,15 +208,21 @@ async function reclamar() {
     return;
   }
   if (r.ok) {
+    if (r.ahoraISO) reloj.ajustar(r.ahoraISO);
     ultimoCodigo = r.codigo;
-    almacen.escribir('cholado-mi-codigo', { codigo: r.codigo, venceISO: r.venceISO, esDePrueba: r.esDePrueba });
     estadoServidor = null; // el banco cambió: se recarga al volver al inicio
-    ui.mostrar('codigo', { codigo: r.codigo, venceMs: Date.parse(r.venceISO), esDePrueba: r.esDePrueba });
+    ui.mostrar('codigo', { codigo: r.codigo, venceMs: Date.parse(r.venceISO), estado: 'activo', esDePrueba: r.esDePrueba });
     return;
   }
   ui.enviando(false);
   if (r.motivo === 'ya-tienes-codigo') {
-    ui.mostrar('ya-tienes-cupon', { puedeVolverMs: Date.parse(r.puedeVolverISO), dias: r.dias, tieneCodigo: Boolean(leerCodigoGuardado()) });
+    let tiene = false;
+    try {
+      tiene = (await api.miCodigo()).estado === 'activo'; // ¿este dispositivo tiene un código vigente de otro número?
+    } catch {
+      /* si falla, simplemente no se ofrece el botón */
+    }
+    ui.mostrar('ya-tienes-cupon', { puedeVolverMs: Date.parse(r.puedeVolverISO), dias: r.dias, tieneCodigo: tiene });
   } else if (r.motivo === 'sin-premios') {
     ui.errorFormulario(T.ganaste.errores.sinPremios);
   } else if (r.motivo === 'partida-invalida') {
@@ -211,14 +259,9 @@ ui.alAccion((accion, el) => {
     case 'politica':
       ui.mostrarModal('politica');
       break;
-    case 'mi-codigo': {
-      const c = leerCodigoGuardado();
-      if (c) {
-        ultimoCodigo = c.codigo;
-        ui.mostrar('codigo', { codigo: c.codigo, venceMs: Date.parse(c.venceISO), esDePrueba: c.esDePrueba });
-      }
+    case 'mi-codigo':
+      verMiCodigo();
       break;
-    }
     case 'copiar':
       ui.copiarCodigo(ultimoCodigo ?? '');
       break;

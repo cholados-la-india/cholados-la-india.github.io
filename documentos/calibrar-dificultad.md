@@ -2,7 +2,17 @@
 
 Meta inicial: que **más o menos 1 de cada 4 o 5 intentos gane** (20–25 %). Con 3 intentos por semana, eso significa que cerca de la mitad de las personas se lleva premio en la semana si insiste.
 
-Toda la dificultad vive en `web/js/config.js` (secciones `partida`, `velocidad`, `salto`, `obstaculos`, `frutas`, `jugador`).
+Toda la dificultad vive en `web/js/config.js` (secciones `partida`, `velocidad`, `salto`, `obstaculos`, `frutas`, `jugador`). Esos son los **valores de fábrica**.
+
+**Desde la Etapa 4 el servidor puede cambiarlos sin tocar el código ni volver a publicar:** el juego los pide al abrir y los mezcla encima de `config.js` (solo pisa lo que el servidor trae). Se cambian en Supabase → SQL Editor, por ejemplo:
+
+```sql
+select app.ajustar_juego('{"velocidad":{"inicial":10,"final":15}}');   -- cambia solo esas dos cosas
+update app.configuracion set frutas_minimas = 22 where id = 1;          -- frutas mínimas para ganar
+update app.configuracion set juego = '{}'::jsonb, frutas_minimas = 25 where id = 1;  -- volver a la fábrica
+```
+
+En `?debug=1` el juego **ignora** la dificultad del servidor (para que los deslizadores y el simulador midan `config.js`); para ver lo que de verdad llega a los jugadores usa `?debug=1&servidor=1`. Más detalle en `supabase/LEEME.md`.
 
 ## Los tres mandos principales
 
@@ -42,7 +52,7 @@ Desde el 2026-10-19 para ganar hay que **llegar a la meta Y recoger un mínimo d
 2. Juega, o pasa el celular a amigos y familia. El panel **Debug → "Tus partidas"** cuenta partidas y victorias **con la configuración actual** y calcula "1 de cada N".
 3. Con 30 o más partidas de personas distintas ya se ve una tendencia; con 100 es bastante fiable.
 4. Mira también: *"Al perder llegas en promedio al X %"*. Si casi todos pierden al 15 %, el arranque es muy duro; si pierden al 90 %, el final es muy duro.
-5. Ajusta con los deslizadores (se aplican **en vivo**, sin recargar). Cuando te guste, pulsa **Copiar config** y pega los valores en `web/js/config.js`.
+5. Ajusta con los deslizadores (se aplican **en vivo**, sin recargar). Cuando te guste, pulsa **Copiar config**: copia los valores para `web/js/config.js` y, al final, la línea `select app.ajustar_juego(...)` lista para pegar en Supabase (mejor opción: no hay que publicar de nuevo).
 
 ## Qué mirar al juzgar
 

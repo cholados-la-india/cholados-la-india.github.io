@@ -2,7 +2,8 @@
 //
 // Las pantallas se pintan con plantillas; los botones llevan `data-accion="..."` y main.js decide qué hace cada acción.
 import { LOCAL, T, pesos } from '../textos.js';
-import { fechaCortaBogota, fechaHoraBogota } from '../util.js';
+import { reloj } from '../reloj.js';
+import { fechaCortaBogota, fechaHoraBogota, formatoRestante } from '../util.js';
 
 /* ───────────── Iconos (SVG en línea, sin imágenes) ───────────── */
 const SVG_VASO = '<svg viewBox="0 0 24 32" aria-hidden="true"><path class="s-pit" d="M15 9 L20.5 1.5"/><path class="s-vaso" d="M3.5 13h17l-2.6 17.2a1.6 1.6 0 0 1-1.6 1.3H7.7a1.6 1.6 0 0 1-1.6-1.3z"/><path class="s-baja" d="M5.2 21h13.6l-.9 6.8a1 1 0 0 1-1 .9H7.1a1 1 0 0 1-1-.9z"/><circle class="s-bola" cx="12" cy="10.5" r="7.2"/></svg>';
@@ -161,6 +162,7 @@ export function crearUI(raiz, cfg) {
       <section class="pantalla centro fondo scroll"><form class="panel ganaste" data-accion="reclamar" novalidate>
         <h2 class="grande-titulo">${T.ganaste.titulo}</h2>
         <p class="mensaje">${T.ganaste.subtitulo}</p>
+        <p class="nota">${T.ganaste.ventana(cfg.reglas.ventanaReclamoMin)}</p>
         <label class="campo"><span>${T.ganaste.nombre}</span>
           <input name="nombre" type="text" autocomplete="name" maxlength="60" autocapitalize="words" required></label>
         <label class="campo"><span>${T.ganaste.celular}</span>
@@ -178,18 +180,32 @@ export function crearUI(raiz, cfg) {
         <button type="button" class="boton" data-accion="cerrar-politica">${T.ayuda.cerrar}</button>
       </div></section>`,
 
-    codigo: ({ codigo, venceMs, esDePrueba, sinVolver }) => `
-      <section class="pantalla centro fondo scroll"><div class="panel ticket">
+    // El ticket del premio. `estado`: activo | vencido | canjeado | desactivado. La cuenta regresiva se calcula con la hora del servidor.
+    codigo: ({ codigo, venceMs, estado = 'activo', canjeadoMs, esDePrueba, puedeVolverMs }) => {
+      const [prefijo, resto] = String(codigo).split(/-(.*)/s); // LAINDIA-7K3Q → "LAINDIA" y "7K3Q"
+      const ultimoMinuto = venceMs - 60000; // "vale hasta las 2:50" (el código sirve hasta antes de las 2:51:00)
+      const estados = {
+        activo: `<p class="vale">${T.codigo.vale(esc(fechaHoraBogota(ultimoMinuto)))}</p>
+                 <p class="restante">${T.codigo.restante} <b id="cuenta-regresiva" data-vence="${venceMs}"></b></p>`,
+        vencido: `<p class="aviso-estado">${T.codigo.vencido(esc(fechaHoraBogota(ultimoMinuto)))}</p>`,
+        canjeado: `<p class="aviso-estado">${T.codigo.canjeado(esc(canjeadoMs ? fechaHoraBogota(canjeadoMs) : '—'))}</p>`,
+        desactivado: `<p class="aviso-estado">${T.codigo.desactivado}</p>`,
+      };
+      const puedeMas = estado !== 'activo' && puedeVolverMs
+        ? `<p class="nota">${T.codigo.otroCupon(esc(fechaCortaBogota(puedeVolverMs)))}</p>` : '';
+      return `
+      <section class="pantalla centro fondo scroll"><div class="panel ticket ${estado !== 'activo' ? 'inactivo' : ''}">
         <h2>${T.codigo.titulo}</h2>
-        <div class="codigo" id="codigo-texto">${esc(codigo.slice(0, 3))}<span>-</span>${esc(codigo.slice(3))}</div>
-        <p class="vale">${T.codigo.vale(esc(fechaHoraBogota(venceMs)))}</p>
-        <ol class="pasos">${T.codigo.pasos(cfg.reglas.compraMinima).map((p) => `<li>${p}</li>`).join('')}</ol>
-        <p class="local"><b>${esc(LOCAL.direccion)}</b><br>${esc(LOCAL.horario)}</p>
+        <div class="codigo" id="codigo-texto"><small>${esc(prefijo)}-</small>${esc(resto ?? '')}</div>
+        ${estados[estado] ?? estados.activo}
+        ${estado === 'activo' ? `<ol class="pasos">${T.codigo.pasos(cfg.reglas.compraMinima).map((p) => `<li>${p}</li>`).join('')}</ol>
+        <p class="local"><b>${esc(LOCAL.direccion)}</b><br>${esc(LOCAL.horario)}</p>` : puedeMas}
         ${esDePrueba ? `<p class="prueba">${T.codigo.prueba}</p>` : ''}
-        <p class="nota">${T.codigo.consejo}</p>
-        <button type="button" class="boton" data-accion="copiar" id="btn-copiar">${T.codigo.copiar}</button>
-        ${sinVolver ? '' : `<button type="button" class="boton secundario" data-accion="salir">${T.codigo.volver}</button>`}
-      </div></section>`,
+        ${estado === 'activo' ? `<p class="nota">${T.codigo.consejo}</p>
+        <button type="button" class="boton" data-accion="copiar" id="btn-copiar">${T.codigo.copiar}</button>` : ''}
+        <button type="button" class="boton secundario" data-accion="salir">${T.codigo.volver}</button>
+      </div></section>`;
+    },
 
     perdiste: ({ progreso, frutas, frutasMinimas, motivo, intentosRestantes }) => `
       <section class="pantalla centro fondo"><div class="panel">
@@ -221,10 +237,11 @@ export function crearUI(raiz, cfg) {
         <button type="button" class="enlace" data-accion="ayuda">${T.inicio.comoSeJuega}</button>
       </div></section>`,
 
-    'sin-premios': ({ reiniciaEnISO, tieneCodigo }) => `
-      <section class="pantalla centro"><div class="panel">
-        <h2>${T.sinPremios.titulo}</h2>
-        <p class="mensaje">${T.sinPremios.mensaje(esc(fechaCortaBogota(Date.parse(reiniciaEnISO))))}</p>
+    // `ganaste`: ganó, pero otra persona se llevó el último premio justo antes (se avisa distinto, sin culpa).
+    'sin-premios': ({ reiniciaEnISO, tieneCodigo, ganaste }) => `
+      <section class="pantalla centro ${ganaste ? 'fondo' : ''}"><div class="panel">
+        <h2>${ganaste ? T.sinPremios.tituloGanaste : T.sinPremios.titulo}</h2>
+        <p class="mensaje">${(ganaste ? T.sinPremios.mensajeGanaste : T.sinPremios.mensaje)(esc(fechaCortaBogota(Date.parse(reiniciaEnISO))))}</p>
         ${tieneCodigo ? `<button type="button" class="boton" data-accion="mi-codigo">${T.inicio.miCodigo}</button>` : ''}
         <button type="button" class="enlace" data-accion="ayuda">${T.inicio.comoSeJuega}</button>
       </div></section>`,
@@ -237,6 +254,26 @@ export function crearUI(raiz, cfg) {
       </div></section>`,
   };
 
+  // Cuenta regresiva del código (con la hora del SERVIDOR, no la del celular)
+  let temporizador = null;
+  function detenerCuentaRegresiva() {
+    clearInterval(temporizador);
+    temporizador = null;
+  }
+  function iniciarCuentaRegresiva() {
+    detenerCuentaRegresiva();
+    const el = contenedor.querySelector('#cuenta-regresiva');
+    if (!el) return;
+    const vence = Number(el.dataset.vence);
+    const pintar = () => {
+      const falta = vence - reloj.ahora();
+      el.textContent = formatoRestante(falta);
+      if (falta <= 0) detenerCuentaRegresiva();
+    };
+    pintar();
+    temporizador = setInterval(pintar, 1000);
+  }
+
   function mostrar(nombre, datos = {}) {
     pantallaActual = nombre;
     contenedor.innerHTML = plantillas[nombre](datos);
@@ -244,9 +281,11 @@ export function crearUI(raiz, cfg) {
     contenedor.scrollTop = 0;
     const primero = contenedor.querySelector('.scroll');
     if (primero) primero.scrollTop = 0;
+    iniciarCuentaRegresiva();
   }
   function ocultar() {
     pantallaActual = null;
+    detenerCuentaRegresiva();
     contenedor.hidden = true;
     contenedor.innerHTML = '';
   }

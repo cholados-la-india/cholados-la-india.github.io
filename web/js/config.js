@@ -82,14 +82,18 @@ export const CONFIG = {
     toqueMaxMs: 280, // duración máxima de un "toque"
   },
 
-  /* ───────────── Reglas del negocio (las decide el servidor real; la API falsa las imita) ───────────── */
+  /* ───────────── Reglas del negocio ─────────────
+     OJO (desde la Etapa 4): con el servidor real (Supabase) estas reglas, la duración de la partida y las frutas mínimas
+     las manda EL SERVIDOR (tabla app.configuracion) y pisan lo que diga este archivo. Aquí quedan como valores de
+     respaldo para la API falsa (?api=falsa) y para calibrar. Para cambiarlas en serio: ver supabase/LEEME.md. */
   reglas: {
     intentosPorSemana: 3,
     premiosPorSemana: 50,
     vigenciaDias: 7, // el código vale 7 días desde su hora de expedición, menos 1 minuto
     compraMinima: 30000, // pesos colombianos
     minimoJugadoParaGanarS: 45, // el servidor no acepta un premio si la partida duró menos que esto (frena scripts)
-    diasEntreCodigosPorCelular: 7,
+    diasEntreCodigosPorCelular: 7, // confirmado por el usuario (2026-10-19)
+    ventanaReclamoMin: 15, // minutos que se aparta el premio mientras la persona llena el formulario
     regalos: ['Un raspao personal', 'Un cholado de 10 oz'],
     campana: { inicioISO: null, finISO: null }, // [FECHA INICIO] [FECHA FIN] — aún sin definir (null = siempre activa)
   },

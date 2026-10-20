@@ -63,5 +63,27 @@ export const almacen = {
   },
 };
 
+/** Mezcla profunda: pone en `destino` lo que diga `origen` sin borrar lo demás (para aplicar la dificultad del servidor). */
+export function fusionar(destino, origen) {
+  for (const [k, v] of Object.entries(origen ?? {})) {
+    if (v && typeof v === 'object' && !Array.isArray(v) && destino[k] && typeof destino[k] === 'object') fusionar(destino[k], v);
+    else destino[k] = v;
+  }
+  return destino;
+}
+
+/** "6 d 23 h 41 min" · "5 h 12 min 09 s" · "12 min 09 s" · "Venció". */
+export function formatoRestante(ms) {
+  if (ms <= 0) return 'Venció';
+  const s = Math.floor(ms / 1000);
+  const d = Math.floor(s / 86400);
+  const h = Math.floor((s % 86400) / 3600);
+  const m = Math.floor((s % 3600) / 60);
+  const seg = String(s % 60).padStart(2, '0');
+  if (d > 0) return `${d} d ${h} h ${m} min`;
+  if (h > 0) return `${h} h ${m} min ${seg} s`;
+  return `${m} min ${seg} s`;
+}
+
 export const esperar = (ms) => new Promise((r) => setTimeout(r, ms));
 export const aleatorioEntre = (a, b) => a + Math.random() * (b - a);
