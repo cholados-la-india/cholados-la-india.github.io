@@ -9,6 +9,13 @@
 ✅ **El juego ya está publicado** y responde: <https://cholados-la-india.github.io/> (también el panel `/admin/`, la caja `/canje/` y la página de «no existe»; lo comprobé desde aquí).
 ⏳ **Pero todavía NO está abierto al público.** Falta probarlo bien, borrar los datos de prueba, imprimir los QR y avisar en Instagram/Facebook. **No imprimas ni anuncies nada hasta terminar los pasos de abajo.**
 
+## Cómo vamos (actualizado 2026-10-20, noche)
+
+✅ **Pasos 1 a 5 hechos y el 7 verificado (los QR escanean bien):** SQL nuevo pegado y verificado · aviso diario probado (verde) · PIN definitivo puesto y probado · pruebas como cliente (iPhone, otros dispositivos, canje en la caja, enlaces de Instagram y Facebook) · textos leídos y aprobados por tu mamá.
+📌 **Decidido:** el **cupo diario sigue apagado** por ahora (se enciende en el panel cuando lo decidan) y la **campaña queda sin fechas**.
+📅 **Apertura prevista: mediados de noviembre de 2026.** Hasta entonces el juego está publicado pero sin anunciar; sus familiares pueden seguir probando.
+⏳ **Faltan 6 (limpiar), la impresión de los QR y 8 (abrir)**, y van **justo antes de abrir** (la limpieza del paso 6 tiene que ser lo último, porque cada prueba nueva deja datos).
+
 ## Qué hacer ahora (en este orden)
 
 Cada paso dice dónde está el detalle. Si algo no sale como aquí, **para y pregúntale a Claude** (con lo que viste en pantalla).
@@ -24,7 +31,7 @@ Cada paso dice dónde está el detalle. Si algo no sale como aquí, **para y pre
 5. **Que tu mamá lea `06-textos-legales.md`** (las condiciones y la política de datos, tal como las ve la gente) y **decidan el cupo diario** (0 = apagado; con 50 premios por semana, 8 por día es un buen comienzo). Si cambian algo de los textos, díselo a Claude.
 6. **Borra TODOS los datos de prueba** — solo cuando ya terminaste TODAS las pruebas, porque cada prueba deja datos. Está en `04-guia-rapida.md`, sección **5.1** (es una sola línea que se pega en Supabase). Después el panel debe decir 0 partidas y 0 códigos.
 7. **Prueba los QR antes de imprimir:** haz doble clic en `QR-para-imprimir/imprimir.html`, imprímela al 100 % y escanéala con 2 celulares distintos (uno viejo). Si abre el juego, mándale a la imprenta los archivos `.svg` de esa carpeta (mostrador y vasos). En los vasos, mínimo 3 cm y con borde blanco.
-8. **Abre al público:** pon el enlace de instagram en la biografía de @cholados.laindia, el de facebook en la página, y pega los QR en el mostrador y los vasos. Explícale a quien atiende cómo usar la caja (`04-guia-rapida.md` sección 7).
+8. **Abre al público:** pon los enlaces de `07-enlaces-para-redes.md` en cada red (el de instagram en la biografía de @cholados.laindia, el de facebook en la página, los de anuncios en el Administrador de anuncios) y pega los QR en el mostrador y los vasos. Explícale a quien atiende cómo usar la caja (`04-guia-rapida.md` sección 7).
 
 ## Los primeros días
 
@@ -45,6 +52,7 @@ Cada paso dice dónde está el detalle. Si algo no sale como aquí, **para y pre
 | `04-guia-rapida.md` | Todos los comandos, todo el SQL listo para pegar, el panel, la caja, las reglas | Necesites un comando o un SQL concreto |
 | `05-publicacion.md` | Cómo funciona GitHub Pages y el aviso diario; los enlaces con etiquetas y los QR | Publicar algo nuevo o si falla la publicación (es larga: léela solo cuando la necesites) |
 | `06-textos-legales.md` | Todo lo que el juego dice sobre premio, datos y local | Quieras revisar o cambiar un texto |
+| `07-enlaces-para-redes.md` | **Los enlaces listos para copiar** en Instagram, Facebook, anuncios, WhatsApp… y cómo hacer uno nuevo | Vayas a poner el juego en una red o a lanzar una campaña |
 | `QR-para-imprimir/` | Los QR (mostrador y vasos), la hoja para probarlos y los 4 enlaces | Imprimas, o quieras el enlace de Instagram/Facebook |
 
 ## Las reglas de oro

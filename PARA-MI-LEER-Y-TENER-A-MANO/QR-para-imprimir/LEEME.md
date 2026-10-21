@@ -25,6 +25,6 @@ Las etiquetas (`utm_source`, `utm_medium`, `utm_campaign`) las lee el juego al a
 
 ## Instagram y Facebook
 
-- **Instagram:** pon el enlace de `instagram` en la biografía (el único enlace clicable que deja). En las historias puedes usar la pegatina «Enlace» con el mismo.
+- **Instagram:** pon el enlace de `instagram` en la biografía (la bio de Instagram acepta enlaces; este es el del juego). En las historias puedes usar la pegatina «Enlace» con el mismo.
 - **Facebook:** botón de la página («Más información» o «Jugar») y publicaciones con el enlace de `facebook`. Si pagas anuncios, pega ese mismo enlace como destino.
 - Los dos abren el juego dentro del navegador de la app; las etiquetas viajan igual.

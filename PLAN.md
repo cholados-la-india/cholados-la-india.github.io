@@ -110,7 +110,7 @@ Pidió al empezar: canje **todos los días** 2–9 p. m. ✅, **dirección y hor
 - [x] 7.5 **Textos legales** definitivos (sin «provisional») y `PARA-MI-LEER-Y-TENER-A-MANO/06-textos-legales.md` para revisarlos.
 - [x] 7.6b **Carpeta del dueño** `PARA-MI-LEER-Y-TENER-A-MANO/` (2026-10-20): las guías que el usuario debe leer se movieron ahí, numeradas, con `00-EMPIEZA-AQUI.md` (qué hacer ahora). Se actualizaron las referencias, `probar-sql` (280 ✓) y los generadores (`npm run qr`, `npm run textos-legales`).
 - [x] 7.6 **Documentos**: `PARA-MI-LEER-Y-TENER-A-MANO/02-operacion-corta.md` (config, PIN, canjes, cerrar temporada, borrar datos), `PARA-MI-LEER-Y-TENER-A-MANO/05-publicacion.md`, `PARA-MI-LEER-Y-TENER-A-MANO/01-lista-de-lanzamiento.md` (ordenada, 29 pasos), `PARA-MI-LEER-Y-TENER-A-MANO/03-guia-del-administrador.md` y `PARA-MI-LEER-Y-TENER-A-MANO/04-guia-rapida.md` al día.
-- [ ] 7.7 **Visto bueno del usuario** y hito `historial/10-etapa-7-publicacion/` (el usuario ya publicó el sitio el 2026-10-20; falta que confirme que quedó bien).
+- [ ] 7.7 **Visto bueno del usuario** (avance 2026-10-20 noche: pasos 1–5 de `PARA-MI-LEER-Y-TENER-A-MANO/00-EMPIEZA-AQUI.md` hechos; apertura prevista para mediados de noviembre) y hito `historial/10-etapa-7-publicacion/` (el usuario ya publicó el sitio el 2026-10-20; falta que confirme que quedó bien).
 - [ ] 7.8 **Lo que hace el usuario** (`PARA-MI-LEER-Y-TENER-A-MANO/00-EMPIEZA-AQUI.md`): ✅ commit, push y Pages activado (publicado) → pegar `todo-junto.sql` (comprobar en el panel) → probar con el juego publicado → limpiar datos de prueba → probar e imprimir QR → abrir.
 
 ## Después de la Etapa 7

@@ -50,6 +50,7 @@ Luego **borra los datos de prueba** (`03-guia-del-administrador.md` §1.1 o `04-
 | **«Comprobar que lo mínimo está en web/»** en rojo | Falta un archivo importante dentro de `web/` | Dile a Claude qué archivo dice |
 | **«Preparar GitHub Pages»** o **«Publicar»** en rojo, con un mensaje como «Get Pages site failed», «Pages is not enabled» o «environment» | Falta el paso 4 (Source = **GitHub Actions**) o el entorno `github-pages` tiene una regla de ramas | Repite el paso 4 y vuelve a correr el workflow (Re-run all jobs). Si sigue: Settings → Environments → `github-pages` → «Deployment branches» = `main` |
 | La página sale 404 en `https://cholados-la-india.github.io/` | Aún no termina de publicarse, o el repo no se llama exactamente `cholados-la-india.github.io` | Espera 2 min; revisa el nombre del repo (Settings → General → Repository name) |
+| **Aviso amarillo** abajo de una ejecución verde: «Node.js 20 is deprecated…» (y uno azul sobre «Ubuntu 26») | GitHub avisa que las acciones oficiales que usa el proyecto son de una versión que se va a retirar. **Hoy no rompe nada** (la ejecución sale ✓ verde) | Nada por ahora. Está anotado en `pendientes.md` (#42) para subir las versiones con calma después de abrir |
 | Publicó, pero ves la versión vieja | Caché del navegador | Recarga con `Ctrl + F5` (PC) o ábrelo en una ventana privada. En celular: cierra y vuelve a abrir. En Instagram/WhatsApp la vista previa vieja puede quedar guardada un tiempo |
 
 ---
