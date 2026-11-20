@@ -64,9 +64,9 @@ Siempre se escriben en la terminal, **dentro de la carpeta del proyecto**. Prime
 | `npm run probar-mutaciones` | Rompe el SQL a propósito y comprueba que las pruebas lo notan (≈ 2 min). | No |
 | `npm run revisar-secretos` | Busca claves, contraseñas y PIN en el repo **y en su historial** (≈ 1 s). | No |
 | `npm run probar-seguridad` | Comprueba en tu servidor real que lo del administrador está cerrado y que el registro de usuarios está apagado (≈ 3 s). | No |
-| `npm run probar-ataques` | Te portas como atacante contra el servidor real (≈ 5 s). Con `-- --completo` (≈ 1 min) hace trampas que exigen esperar. | Solo con `--completo` |
-| `npm run probar-supabase` | Prueba pesada de concurrencia contra el servidor real (≈ 2 min). **Gasta el banco de premios.** | **Sí → luego limpiar (5.1)** |
-| `npm run probar-canje` | 25 cajeros simultáneos contra un mismo código (te pide el PIN **en tu terminal**). Antes: limpiar (5.1). | **Sí → luego limpiar (5.1)** |
+| `npm run probar-ataques` | Te portas como atacante contra el servidor real (≈ 5 s). Con `-- --completo --gasta-premios-reales` (≈ 1 min) hace trampas que exigen esperar. | Solo con `--completo` |
+| `npm run probar-supabase` | Prueba pesada de concurrencia contra el servidor real (≈ 2 min). **Gasta el banco de premios.** Pide permiso: `npm run probar-supabase -- --gasta-premios-reales`. | **Sí → luego limpiar (5.1b; o 5.1 si aún no has abierto)** |
+| `npm run probar-canje` | 25 cajeros simultáneos contra un mismo código (te pide el PIN **en tu terminal**). Pide permiso: `npm run probar-canje -- --gasta-premios-reales`. | **Sí → luego limpiar (5.1b)** |
 | `npm run simular` | Un bot juega miles de partidas y dice qué tan difícil está el juego. Acepta cambios: `npm run simular -- 2000 velocidad.final=14` | No |
 | `npm run hito -- "nombre" "Título" "Descripción" "ruta/"` | Guarda una copia congelada del proyecto en `historial/` (Claude la usa al cerrar cada etapa). | No |
 | `npm run qr` | Genera los **QR** (mostrador y vasos) y los **4 enlaces con etiquetas** (mostrador, vasos, instagram, facebook) en la carpeta `QR-para-imprimir/`. `-- --campana=nombre` cambia la campaña. **No imprimas hasta que la dirección funcione.** | No |
@@ -86,6 +86,25 @@ Borra TODOS los códigos y partidas y los contadores por red; **no** toca la con
 ```sql
 truncate app.codigos, app.partidas, app.limites_red restart identity cascade;
 ```
+
+### 5.1b Limpiar SOLO lo que dejan las pruebas (sirve aunque ya haya clientes)
+Borra únicamente los códigos cuyo nombre empieza por `PRUEBA-` (así se llaman todos los que crean `probar-supabase`, `probar-canje` y `probar-ataques`) con sus partidas, y los contadores por red. **No toca los códigos de los clientes.** Es el mismo contenido de `supabase/sql/limpiar_solo_pruebas.sql`.
+
+```sql
+do $$
+declare
+  ids uuid[];
+begin
+  with borrados as (
+    delete from app.codigos where nombre like 'PRUEBA-%' returning partida_id
+  )
+  select array_agg(partida_id) into ids from borrados;
+  delete from app.partidas where id = any (coalesce(ids, '{}'));
+end $$;
+truncate app.limites_red;
+```
+
+> **Las pruebas que escriben en el servidor real ahora piden permiso.** `probar-supabase`, `probar-canje` y `probar-ataques -- --completo` no arrancan si no les agregas `--gasta-premios-reales` (te explican por qué y salen). Es un seguro: con el juego abierto, `probar-supabase` dejaría a los clientes sin premios un rato. Con clientes reales, mejor **no las corras**; `npm run probar-sql` prueba lo mismo en tu computador sin tocar nada.
 
 ### 5.2 Empezar de cero del todo: reglas de fábrica
 Devuelve **todas las reglas** a sus valores de fábrica (los de la sección 8). No borra códigos ni toca el PIN.
@@ -228,7 +247,7 @@ select pin_hash is not null as pin_configurado, pin_cambiado_en at time zone 'Am
        fallos, bloqueos, bloqueado_hasta at time zone 'America/Bogota' as bloqueado_hasta_bogota from app.staff;
 ```
 
-La caja está bloqueada (muchos PIN malos): desbloquear. (También se hace con un botón: panel → Cuenta → «Desbloquear ahora».)
+La caja está bloqueada (muchos PIN malos): desbloquear. (También se hace con un botón: panel → Cuenta → «Desbloquear la caja».)
 
 ```sql
 update app.staff set fallos = 0, bloqueos = 0, ultimo_fallo = null, bloqueado_hasta = null where id = 1;
@@ -290,8 +309,8 @@ Entra con tu correo y contraseña (no marques «mantener sesión» en un disposi
 | **Cuenta** | PIN de la caja (poner, cambiar, desbloquear), descargar **todos** los códigos en CSV (tu respaldo) y cerrar sesión. |
 
 **Tareas de todos los días:**
-- **Cambiar el PIN:** Cuenta → «PIN nuevo» y «Repite el PIN» → Cambiar PIN. 4 a 8 números (mejor 6; no `1234` ni repetidos). El anterior deja de servir al instante.
-- **La caja se bloqueó:** Cuenta → **Desbloquear ahora**; mientras tanto canjea tú desde la pestaña **Canjear**.
+- **Cambiar el PIN:** Cuenta → «PIN nuevo» y «Repite el PIN» → Cambiar PIN. 6 a 8 números (no `123456` ni repetidos). El anterior deja de servir al instante.
+- **La caja se bloqueó:** Cuenta → **Desbloquear la caja** (el botón está siempre ahí); mientras tanto canjea tú desde la pestaña **Canjear**.
 - **Subir los premios de la semana:** Configuración → «Premios por semana».
 - **Activar o apagar el cupo diario:** Configuración → «Cupo diario (opcional)»: marca «Activar el cupo diario» y escribe cuántos premios por día (con 50 por semana, 8 al día es un buen comienzo). Apagado = solo manda el tope de la semana. Con el cupo activo, cuando se reparten los del día el juego dice «vuelve mañana».
 - **Poner fechas a la campaña:** Configuración → «Campaña (temporada)». Vacías = siempre activa.
@@ -357,7 +376,7 @@ Claude **nunca** hace commit ni push: lo haces tú. Las carpetas `node_modules/`
 |---|---|
 | «No pudimos conectarnos» en el juego | ¿Hay internet? ¿El proyecto de Supabase está pausado (sección 9)? Mira Logs. |
 | La caja dice «FALTA EL PIN» | Aún no hay PIN: panel → Cuenta → ponlo. |
-| «DEMASIADOS INTENTOS» en la caja | Panel → Cuenta → Desbloquear ahora (o 5.7). |
+| «DEMASIADOS INTENTOS» en la caja | Panel → Cuenta → Desbloquear la caja (o 5.7). |
 | El panel dice «Esta cuenta no es de administrador» | Falta anotar tu correo: 5.7 «Agregar a otro administrador» con tu correo. |
 | El panel dice «faltan las funciones» | No se pegó el SQL: 5.9. |
 | Nadie puede jugar por premio y quedan premios | Mira Resumen: ¿manda el cupo del día? ¿la campaña está fuera de fechas? ¿es lunes y se acabó la semana? |

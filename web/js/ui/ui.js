@@ -185,6 +185,7 @@ export function crearUI(raiz, cfg) {
         <p class="nota chico">${T.ganaste.resumen(cfg.reglas)} <button type="button" class="enlace corto" data-accion="condiciones">${T.ganaste.verCondiciones}</button></p>
         <p class="error" id="error-form" role="alert">${error ? esc(error) : ''}</p>
         <button type="submit" class="boton grande" id="btn-reclamar">${T.ganaste.boton}</button>
+        <button type="button" class="enlace" data-accion="ahora-no">${T.premioPendiente.luego}</button>
       </form></section>`,
 
     // Ganó hace poco y no alcanzó a reclamar (cerró o recargó la página): se le ofrece volver al formulario.
@@ -279,7 +280,8 @@ export function crearUI(raiz, cfg) {
         <h2>${ganaste ? T.sinPremios.tituloGanaste : limitadoPor === 'dia' ? T.sinPremios.tituloDia : T.sinPremios.titulo}</h2>
         <p class="mensaje">${(ganaste ? T.sinPremios.mensajeGanaste : limitadoPor === 'dia' ? T.sinPremios.mensajeDia : T.sinPremios.mensaje)(esc(fechaCortaBogota(Date.parse(reiniciaEnISO))))}</p>
         ${tieneCodigo ? `<button type="button" class="boton" data-accion="mi-codigo">${T.inicio.miCodigo}</button>` : ''}
-        <button type="button" class="enlace" data-accion="ayuda">${T.inicio.comoSeJuega}</button>
+        ${ganaste ? `<button type="button" class="enlace" data-accion="salir">${T.sinPremios.volver}</button>`
+          : `<button type="button" class="enlace" data-accion="ayuda">${T.inicio.comoSeJuega}</button>`}
       </div></section>`,
 
     'campana-inactiva': ({ tieneCodigo }) => {

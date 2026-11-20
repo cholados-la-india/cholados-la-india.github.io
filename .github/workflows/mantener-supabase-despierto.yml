@@ -8,16 +8,19 @@
 # Cómo ver que corre: pestaña Actions → «Mantener Supabase despierto» → debe haber una fila verde por día. Para probarla ya mismo:
 #           Run workflow (botón a la derecha). Detalle en PARA-MI-LEER-Y-TENER-A-MANO/05-publicacion.md.
 # ⚠️ Límite de GitHub: en repositorios públicos, las tareas programadas se APAGAN solas si pasan 60 días sin ninguna actividad
-#    (ningún commit). Si un día ves el aviso «scheduled workflows disabled», entra a Actions y pulsa «Enable workflow».
+#    (ningún commit). Para que no pase, el último paso de esta tarea se «vuelve a encender» a sí misma cada día (es lo mismo
+#    que pulsar «Enable workflow»; GitHub no lo documenta como garantía, así que conviene mirar Actions de vez en cuando).
+#    Si un día ves el aviso «scheduled workflows disabled», entra a Actions y pulsa «Enable workflow».
 name: Mantener Supabase despierto
 
 on:
   schedule:
-    - cron: '23 10 * * *'   # todos los días a las 10:23 UTC (5:23 a. m. en Colombia); una hora «rara» para no coincidir con la fila de GitHub
+    - cron: '23 10 * * *'   # una vez al día (pedida a las 10:23 UTC; GitHub suele correrla varias horas después: es normal)
   workflow_dispatch:
 
 permissions:
   contents: read
+  actions: write   # solo para el paso «Seguir encendida» (reactivar ESTA tarea); no da acceso al código ni a nada más
 
 jobs:
   ping:
@@ -53,3 +56,15 @@ jobs:
             echo "### Supabase respondió bien"
             echo "Hora de Colombia: $(TZ=America/Bogota date '+%Y-%m-%d %H:%M')"
           } >> "$GITHUB_STEP_SUMMARY"
+
+      # GitHub apaga las tareas programadas tras 60 días sin commits. Reactivarla cada día reinicia esa cuenta.
+      # Si este paso falla NO pone la tarea en rojo (lo importante, que Supabase respondió, ya se comprobó arriba).
+      - name: Seguir encendida
+        if: always()
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh api -X PUT "repos/${{ github.repository }}/actions/workflows/mantener-supabase-despierto.yml/enable" \
+            && echo "La tarea diaria sigue encendida." >> "$GITHUB_STEP_SUMMARY" \
+            || echo "⚠️ No pude reactivar la tarea diaria: revisa en Actions que siga encendida (botón «Enable workflow»)." >> "$GITHUB_STEP_SUMMARY"

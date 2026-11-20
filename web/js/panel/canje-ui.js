@@ -71,13 +71,32 @@ export function crearCanje({ conPin, consultar, confirmar, alTerminar }) {
     return panel('error', '✖', 'ALGO SALIÓ MAL', detalle('Intenta de nuevo. Si sigue pasando, avísale al dueño.'));
   }
 
+  /** « (hace 2 min)»: con la hora del SERVIDOR, para distinguir un canje de ahorita (p. ej. tras un corte de internet) de uno viejo. */
+  function haceCuanto(r) {
+    const seg = (Date.parse(r.ahoraISO) - Date.parse(r.canjeadoISO)) / 1000;
+    if (!Number.isFinite(seg) || seg < 0) return '';
+    if (seg < 90) return ' (hace un momento)';
+    if (seg < 3600) return ` (hace ${Math.round(seg / 60)} min)`;
+    if (seg < 86400) return ` (hace ${Math.round(seg / 3600)} h)`;
+    return '';
+  }
+
+  // Se cayó el internet justo al confirmar: el canje pudo haber quedado hecho o no. Se dice claro y se ofrece comprobarlo,
+  // para que nadie le niegue el regalo a un cliente porque después sale «YA FUE CANJEADO».
+  function panelDuda() {
+    return panel('aviso-naranja', '!', 'NO SABEMOS SI QUEDÓ CANJEADO',
+      detalle('Se cayó la conexión justo al canjear. Toca «Verificar otra vez».'),
+      detalle('Si sale YA FUE CANJEADO «hace un momento», sí quedó: entrega el regalo. Si sale CÓDIGO VÁLIDO, canjéalo de nuevo.'),
+      el('button', { type: 'button', class: 'boton grande', onclick: () => verificar() }, 'Verificar otra vez'));
+  }
+
   function pintar(r, contexto) {
     switch (r.resultado) {
       case 'valido':
         return mostrar(panelValido(r, contexto));
       case 'canjeado':
         return mostrar(panel('aviso-naranja', '!', 'YA FUE CANJEADO', r.codigo && el('p', { class: 'codigo-grande' }, r.codigo), cliente(r),
-          detalle(`Canjeado el ${fechaLarga(r.canjeadoISO)}`), r.regaloElegido && detalle(`Se entregó: ${r.regaloElegido}`)));
+          detalle(`Canjeado el ${fechaLarga(r.canjeadoISO)}${haceCuanto(r)}`), r.regaloElegido && detalle(`Se entregó: ${r.regaloElegido}`)));
       case 'vencido':
         return mostrar(panel('error', '✖', 'VENCIDO', r.codigo && el('p', { class: 'codigo-grande' }, r.codigo), cliente(r),
           detalle(`Era válido hasta el ${valeHasta(r.venceISO)}`)));
@@ -132,7 +151,7 @@ export function crearCanje({ conPin, consultar, confirmar, alTerminar }) {
           pintar(c, contexto); // por ejemplo: otra persona lo canjeó justo antes ("ya canjeado")
         }
       } catch (err) {
-        mostrar(panelError(err));
+        mostrar(err instanceof ErrorServidor && err.tipo === 'red' ? panelDuda() : panelError(err));
       } finally {
         ocupado = false;
       }

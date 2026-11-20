@@ -142,7 +142,6 @@ function colisiones(p) {
   const tol = cfg.partida.toleranciaColision;
   const rx = cfg.jugador.radioX * (1 - tol);
   const rz = cfg.jugador.radioFondo * (1 - tol);
-  const protegido = p.invencible || p.t < p.invulHasta;
   for (const o of p.obstaculos) {
     if (o.golpeado) continue;
     if (o.d > p.D + 3) break; // están ordenados por distancia
@@ -151,7 +150,9 @@ function colisiones(p) {
     const ox = o.carril < 0 ? 0 : (o.carril - 1) * cfg.carriles.ancho;
     if (Math.abs(p.x - ox) > (o.ancho / 2) * (1 - tol) + rx) continue;
     if (p.y >= o.alto * (1 - tol)) continue; // lo está saltando
-    if (protegido) continue;
+    // Se mira en cada obstáculo (no una vez por cuadro): así, al pasar entre dos cajas pegadas de una fila doble,
+    // el primer golpe ya protege del segundo y un solo choque no quita dos vidas.
+    if (p.invencible || p.t < p.invulHasta) continue;
     o.golpeado = true;
     p.vidas -= 1;
     p.choques += 1;

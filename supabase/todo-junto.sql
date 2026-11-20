@@ -226,6 +226,16 @@ begin
   if v is null or length(v) > 64 then
     return null;
   end if;
+  -- IPv6: una sola persona suele tener un bloque /64 ENTERO (millones de direcciones) y puede salir por una distinta en
+  -- cada llamada. Si se contara por dirección, los límites por red no frenarían nada: se cuenta por el bloque /64.
+  -- (Las IPv4 escritas como IPv6, «::ffff:1.2.3.4», se dejan tal cual: comparten el mismo /64 y quedarían todas juntas.)
+  begin
+    if family(v::inet) = 6 and v !~* '^::ffff:' then
+      v := host(network(set_masklen(v::inet, 64)));
+    end if;
+  exception when others then
+    null;   -- no es una dirección que se entienda: se usa el texto tal cual
+  end;
   return v;
 end $$;
 
@@ -504,7 +514,19 @@ begin
   elsif v_elapsed < v_min or coalesce(p_frutas, 0) < c.frutas_minimas or coalesce(p_frutas, 0) > 1000 then
     v_res := 'gano_rechazado';
     v_motivo := 'partida-invalida';
+  elsif v_elapsed > c.duracion_partida_s + 7500 then
+    -- Una victoria que llega más de ~2 h después de empezar la partida no vale. (El juego guarda una victoria sin
+    -- confirmar máximo 2 h; el margen cubre la partida y una pausa.) Sin esto, alguien podía guardar tokens durante días
+    -- y usarlos de golpe para apartar todos los premios, o sacar un código después de cerrada la temporada.
+    v_res := 'gano_rechazado';
+    v_motivo := 'partida-invalida';
   elsif (select restantes from app.cupos(pa.id)) <= 0 then
+    v_res := 'gano_sin_cupo';
+    v_motivo := 'sin-premios';
+  elsif not app.limitar('reservas', app.inicio_dia(v_now), c.limite_codigos_ip_dia * 3) then
+    -- Tope de premios APARTADOS por red y por día (3 veces el de códigos; 0 = apagado, igual que ese). Apartar no pedía
+    -- celular ni tenía límite: un programa podía apartar los 50 cada 15 min y dejar a todos en «se acabaron los premios»
+    -- sin reclamar ni uno.
     v_res := 'gano_sin_cupo';
     v_motivo := 'sin-premios';
   else
@@ -1120,11 +1142,13 @@ exception
     return jsonb_build_object('ok', false, 'motivo', 'datos', 'mensaje', 'Algún valor está fuera del rango permitido.');
 end $$;
 
--- Cambia el PIN del staff (4 a 8 números, no demasiado obvio) y borra los bloqueos.
+-- Cambia el PIN del staff (6 a 8 números, no demasiado obvio) y borra los bloqueos.
+-- Mínimo 6: con 4 dígitos solo hay ~10.000 PIN posibles y, repartiendo los intentos entre muchas redes, se adivina en días.
+-- (Un PIN de 4 o 5 dígitos puesto ANTES de este cambio sigue sirviendo hasta que se cambie.)
 create or replace function app.cambiar_pin(p_pin text) returns jsonb language plpgsql volatile as $$
 begin
-  if p_pin is null or p_pin !~ '^[0-9]{4,8}$' then
-    return jsonb_build_object('ok', false, 'motivo', 'pin-invalido', 'mensaje', 'El PIN debe tener entre 4 y 8 números (recomendado: 6).');
+  if p_pin is null or p_pin !~ '^[0-9]{6,8}$' then
+    return jsonb_build_object('ok', false, 'motivo', 'pin-invalido', 'mensaje', 'El PIN debe tener entre 6 y 8 números.');
   end if;
   if p_pin ~ '^(.)\1*$' or p_pin in ('1234', '12345', '123456', '1234567', '12345678', '4321', '54321', '654321', '7654321', '87654321',
                                       '0123', '01234', '012345', '0123456', '01234567') then
@@ -1134,8 +1158,33 @@ begin
      set pin_hash = extensions.crypt(p_pin, extensions.gen_salt('bf', 10)), pin_cambiado_en = now(),
          fallos = 0, bloqueos = 0, ultimo_fallo = null, bloqueado_hasta = null
    where id = 1;
-  delete from app.limites_red where clave like 'pin:%';
+  delete from app.limites_red where clave like 'pin:%' or clave like 'canje-inex:%';
   return jsonb_build_object('ok', true);
+end $$;
+
+-- Freno para quien, CON el PIN, se ponga a probar códigos al azar hasta dar con uno ajeno (hay ~1 millón de combinaciones):
+-- cada red puede consultar hasta 20 códigos que NO existen por ventana de 15 min; después queda bloqueada hasta que termine
+-- la ventana. Quien atiende de verdad casi nunca escribe 20 códigos inexistentes en 15 min. Sin IP conocida no se aplica.
+--   · app.canje_frenado()  → null si puede seguir, o el JSON de «bloqueado»
+--   · app.canje_anotar(r)  → cuenta la consulta si el código no existía; devuelve la misma respuesta
+create or replace function app.canje_frenado() returns jsonb language plpgsql stable as $$
+declare
+  v_now timestamptz := clock_timestamp();
+  v_ventana timestamptz := to_timestamp(floor(extract(epoch from v_now) / 900) * 900);
+begin
+  if coalesce(app.contar_red('canje-inex', v_ventana), 0) >= 20 then
+    return jsonb_build_object('ok', false, 'resultado', 'bloqueado', 'hastaISO', app.iso(v_ventana + interval '15 minutes'),
+                              'segundos', ceil(extract(epoch from (v_ventana + interval '15 minutes' - v_now)))::int);
+  end if;
+  return null;
+end $$;
+
+create or replace function app.canje_anotar(p_respuesta jsonb) returns jsonb language plpgsql volatile as $$
+begin
+  if p_respuesta ->> 'resultado' = 'inexistente' then
+    perform app.sumar_red('canje-inex', to_timestamp(floor(extract(epoch from clock_timestamp()) / 900) * 900));
+  end if;
+  return p_respuesta;
 end $$;
 
 -- ───────────────────────────────── funciones públicas: STAFF (la caja; con la clave pública + PIN) ─────────────────────────────────
@@ -1148,7 +1197,11 @@ begin
   if v is not null then
     return v;
   end if;
-  return app.consultar_codigo(p_codigo, false);
+  v := app.canje_frenado();
+  if v is not null then
+    return v;
+  end if;
+  return app.canje_anotar(app.consultar_codigo(p_codigo, false));
 end $$;
 
 create or replace function public.canje_confirmar(p_pin text, p_codigo text, p_regalo text default null) returns jsonb
@@ -1159,7 +1212,11 @@ begin
   if v is not null then
     return v;
   end if;
-  return app.canjear(p_codigo, p_regalo, 'staff');
+  v := app.canje_frenado();
+  if v is not null then
+    return v;
+  end if;
+  return app.canje_anotar(app.canjear(p_codigo, p_regalo, 'staff'));
 end $$;
 
 -- ───────────────────────────────── funciones públicas: ADMIN (solo con sesión de Supabase Auth + estar en app.admins) ─────────────────────────────────
@@ -1349,7 +1406,7 @@ begin
     return jsonb_build_object('ok', false, 'motivo', 'no-autorizado');
   end if;
   update app.staff set fallos = 0, bloqueos = 0, ultimo_fallo = null, bloqueado_hasta = null where id = 1;
-  delete from app.limites_red where clave like 'pin:%';   -- también los intentos de cada red
+  delete from app.limites_red where clave like 'pin:%' or clave like 'canje-inex:%';   -- también los intentos de cada red
   return jsonb_build_object('ok', true);
 end $$;
 

@@ -74,20 +74,31 @@ const CLAVE_VICTORIA = 'cholado-victoria-pendiente' + (api.esFalsa ? '-falsa' : 
 const VICTORIA_MAX_MS = 2 * 3600e3; // (el servidor aguanta hasta 6 h, pero el aviso no se queda tanto)
 const VICTORIA_MAX_AVISOS = 3;
 let pendienteDescartado = false; // «Ahora no»: no se vuelve a ofrecer hasta recargar la página
-const guardarVictoria = (v) => almacen.escribir(CLAVE_VICTORIA, { ...v, guardadoMs: Date.now() });
+let avisoContado = false; // el aviso se cuenta UNA vez por visita (volver a verlo tras «Reintentar» no gasta otro)
+const guardarVictoria = (v) => {
+  pendienteDescartado = false; // una victoria nueva siempre se ofrece, aunque antes haya dicho «Ahora no» a otra
+  avisoContado = false;
+  almacen.escribir(CLAVE_VICTORIA, { ...v, guardadoMs: Date.now() });
+};
 const olvidarVictoria = () => almacen.borrar(CLAVE_VICTORIA);
 const marcarVictoria = (parche) => {
   const v = almacen.leer(CLAVE_VICTORIA);
   if (v) almacen.escribir(CLAVE_VICTORIA, { ...v, ...parche });
 };
-function victoriaPendiente() {
+/**
+ * La victoria anotada, si todavía vale. `paraAviso`: se pregunta para MOSTRAR el aviso (ahí sí cuenta el tope de avisos).
+ * OJO: el tope de avisos solo decide si se vuelve a ofrecer; nunca borra la victoria ni impide reclamarla
+ * (antes, al tercer aviso, el botón «Activar mi código» la borraba en vez de reclamarla).
+ */
+function victoriaPendiente(paraAviso = false) {
   const v = almacen.leer(CLAVE_VICTORIA);
   if (!v) return null;
   const edad = Date.now() - v.guardadoMs;
-  if (typeof v.token !== 'string' || v.yaTiene || (v.avisos ?? 0) >= VICTORIA_MAX_AVISOS || !(edad >= -60000 && edad <= VICTORIA_MAX_MS)) {
+  if (typeof v.token !== 'string' || v.yaTiene || !(edad >= -60000 && edad <= VICTORIA_MAX_MS)) {
     olvidarVictoria();
     return null;
   }
+  if (paraAviso && !avisoContado && (v.avisos ?? 0) >= VICTORIA_MAX_AVISOS) return null; // ya se le avisó en 3 visitas: no se insiste
   return v;
 }
 
@@ -107,14 +118,16 @@ const tieneCodigoActivo = () => Boolean(estadoServidor?.miCodigoActivo);
 
 /** Muestra el ticket del último código de este dispositivo (cuenta regresiva y estado, ambos del servidor). */
 async function verMiCodigo() {
+  const n = ++navegacion;
   ui.mostrar('cargando');
   let m;
   try {
     m = await api.miCodigo();
   } catch {
-    ui.mostrar('error', { mensaje: T.inicio.errorConexion });
+    if (n === navegacion) ui.mostrar('error', { mensaje: T.inicio.errorConexion });
     return;
   }
+  if (n !== navegacion) return; // mientras esperaba, la persona se fue a otra pantalla: esta respuesta ya no pinta nada
   if (!m.hay) {
     irInicio(false);
     return;
@@ -131,7 +144,11 @@ async function verMiCodigo() {
 }
 
 /* ───────────── Pantallas ───────────── */
+// Cada cambio de pantalla que espera al servidor toma un número; si al volver la respuesta el número ya es otro,
+// la persona se fue a otra parte y esa respuesta vieja no debe pintar nada encima.
+let navegacion = 0;
 async function irInicio(recargar = true) {
+  const n = ++navegacion;
   partida = null;
   token = null;
   pausado = false;
@@ -142,17 +159,22 @@ async function irInicio(recargar = true) {
   if (recargar || !estadoServidor) {
     ui.mostrar('cargando');
     try {
-      estadoServidor = await api.obtenerEstado();
+      const estado = await api.obtenerEstado();
+      if (n !== navegacion) return;
+      estadoServidor = estado;
       aplicarServidor(estadoServidor);
     } catch {
-      ui.mostrar('error', { mensaje: T.inicio.errorConexion });
+      if (n === navegacion) ui.mostrar('error', { mensaje: T.inicio.errorConexion });
       return;
     }
   }
   const tieneCodigo = tieneCodigoActivo();
-  const pendiente = recargar && !pendienteDescartado ? victoriaPendiente() : null;
+  const pendiente = recargar && !pendienteDescartado ? victoriaPendiente(true) : null;
   if (pendiente) {
-    marcarVictoria({ avisos: (pendiente.avisos ?? 0) + 1 }); // cuenta las veces que se le avisa (máximo 3)
+    if (!avisoContado) {
+      avisoContado = true;
+      marcarVictoria({ avisos: (pendiente.avisos ?? 0) + 1 }); // cuenta en cuántas visitas se le avisó (máximo 3)
+    }
     ui.mostrar('premio-pendiente', {});
     return;
   }
@@ -164,13 +186,27 @@ async function irInicio(recargar = true) {
   ui.mostrar('inicio', { estado: estadoServidor, personaje: escena.personaje, mostrarSelector: true, tieneCodigo });
 }
 
-async function iniciarJuego() {
+async function iniciarJuego(boton) {
   if (iniciando) return;
-  iniciando = true;
+  iniciando = true; // mientras espera al servidor, los demás botones no hacen nada (ver alAccion): el intento ya se está gastando
+  const n = ++navegacion; // y una respuesta vieja de «inicio» o «ver mi código» ya no puede pintarse encima de la partida
+  const textoBoton = boton?.textContent;
+  if (boton) {
+    boton.disabled = true;
+    boton.textContent = T.inicio.cargando;
+  }
+  const soltarBoton = () => {
+    if (boton?.isConnected) {
+      boton.disabled = false;
+      boton.textContent = textoBoton;
+    }
+  };
   try {
     const r = await api.iniciarPartida();
+    if (n !== navegacion) return;
     if (!r.ok && r.motivo === 'limite-red') {
       ui.toast(T.limiteRed.partidas); // demasiadas partidas desde esta red: no se gastó ningún intento
+      soltarBoton();
       return;
     }
     if (!r.ok) {
@@ -193,6 +229,7 @@ async function iniciarJuego() {
     audio.cuenta();
   } catch {
     ui.toast(T.inicio.errorConexion);
+    soltarBoton();
   } finally {
     iniciando = false;
   }
@@ -308,7 +345,9 @@ async function recuperarVictoria() {
   try {
     r = await api.terminarPartida({ token: v.token, gano: true, progreso: v.progreso, frutas: v.frutas }); // repetirla no cambia nada
   } catch (error) {
-    r = error?.http && error.http < 500 ? { ok: false, motivo: 'partida-invalida' } : { error }; // 4xx: el servidor la rechaza, no es mala señal
+    // Solo un 400/404/422 quiere decir «esa partida no vale». Un 429, 401 o 403 (límites o bloqueos de la red) se trata
+    // como mala señal: la victoria se conserva y se puede reintentar.
+    r = [400, 404, 422].includes(error?.http) ? { ok: false, motivo: 'partida-invalida' } : { error };
   }
   if (r && !r.error && r.estado && !r.puedeReclamar && !r.motivo && r.estado.miCodigoActivo) {
     // el servidor dice que esa victoria ya se reclamó (la respuesta se perdió por mala señal): se le muestra el código que ya tiene
@@ -345,7 +384,6 @@ async function reclamar() {
     ui.mostrar('codigo', { codigo: r.codigo, venceMs: Date.parse(r.venceISO), estado: 'activo', esDePrueba: r.esDePrueba });
     return;
   }
-  ui.enviando(false);
   if (r.motivo === 'ya-tienes-codigo') {
     let tiene = false;
     try {
@@ -355,25 +393,37 @@ async function reclamar() {
     }
     marcarVictoria({ yaTiene: true }); // ese celular no puede reclamar: si cierra aquí, no se le vuelve a ofrecer
     ui.mostrar('ya-tienes-cupon', { puedeVolverMs: Date.parse(r.puedeVolverISO), dias: r.dias, tieneCodigo: tiene });
-  } else if (r.motivo === 'limite-red') {
-    ui.errorFormulario(T.limiteRed.codigos);
   } else if (r.motivo === 'sin-premios') {
+    // Ya no hay premio para esta victoria: se le explica en su propia pantalla (antes quedaba atrapada en el formulario,
+    // con un botón que volvía a fallar).
     olvidarVictoria();
-    ui.errorFormulario(T.ganaste.errores.sinPremios);
+    ui.mostrar('cargando');
+    try {
+      estadoServidor = await api.obtenerEstado();
+      aplicarServidor(estadoServidor);
+      ui.mostrar('sin-premios', { ...estadoServidor, ganaste: true, tieneCodigo: tieneCodigoActivo() });
+    } catch {
+      estadoServidor = null;
+      ui.mostrar('error', { mensaje: T.ganaste.errores.sinPremios });
+    }
   } else if (r.motivo === 'partida-invalida') {
     olvidarVictoria();
-    ui.errorFormulario(T.ganaste.errores.partidaInvalida);
-  } else if (r.motivo === 'consentimiento') {
-    ui.errorFormulario(T.ganaste.errores.consentimiento);
-  } else if (r.motivo === 'datos') {
-    ui.errorFormulario(T.ganaste.errores.datos); // el servidor no dice cuál campo falló
+    ui.mostrar('error', { mensaje: T.ganaste.errores.partidaInvalida }); // no hay nada que corregir en el formulario
   } else {
-    ui.errorFormulario(T.ganaste.errores.generico);
+    // Se queda en el formulario: se puede corregir y volver a intentar
+    ui.enviando(false);
+    if (r.motivo === 'limite-red') ui.errorFormulario(T.limiteRed.codigos);
+    else if (r.motivo === 'consentimiento') ui.errorFormulario(T.ganaste.errores.consentimiento);
+    else if (r.motivo === 'datos') ui.errorFormulario(T.ganaste.errores.datos); // el servidor no dice cuál campo falló
+    else ui.errorFormulario(T.ganaste.errores.generico);
   }
 }
 
 /* ───────────── Acciones de los botones ───────────── */
 ui.alAccion((accion, el) => {
+  // Mientras «¡A correr!» espera al servidor solo responde el botón de sonido: así nadie termina con una partida
+  // corriendo debajo de otra pantalla (y un intento gastado sin jugar).
+  if (iniciando && accion !== 'sonido') return;
   if (accion !== 'sonido' && accion !== 'pausa') audio.click();
   if (accion.startsWith('personaje:')) {
     const p = accion.split(':')[1];
@@ -384,7 +434,7 @@ ui.alAccion((accion, el) => {
   }
   switch (accion) {
     case 'jugar':
-      iniciarJuego();
+      iniciarJuego(el);
       break;
     case 'ayuda':
       ui.mostrarModal('ayuda');

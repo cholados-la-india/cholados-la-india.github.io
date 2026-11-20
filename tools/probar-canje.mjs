@@ -9,6 +9,12 @@
 import readline from 'node:readline';
 import { randomUUID } from 'node:crypto';
 import { SUPABASE } from '../web/js/supabase-config.js';
+import { exigirPermiso } from './seguro-servidor-real.mjs';
+
+exigirPermiso('npm run probar-canje', [
+  'gasta 1 premio de esta semana: crea un código a nombre de «PRUEBA-CANJE-DOBLE» y lo deja canjeado',
+  'si escribes mal el PIN, cuenta como intento fallido de tu red (5 → bloqueo de 15 min)',
+]);
 
 const cab = { 'Content-Type': 'application/json', apikey: SUPABASE.clave, ...(SUPABASE.clave.startsWith('eyJ') ? { Authorization: `Bearer ${SUPABASE.clave}` } : {}) };
 const esperar = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -97,5 +103,5 @@ const despues = await rpc('canje_consultar', { p_pin: PIN, p_codigo: rec.codigo 
 ok('al consultar de nuevo, el código figura «canjeado»', despues.resultado === 'canjeado' && despues.regaloElegido === regalo, JSON.stringify(despues));
 
 console.log(`\n${fallos === 0 ? '✅ TODO BIEN' : '❌ HAY FALLOS'} — ${total - fallos} de ${total} comprobaciones correctas.`);
-console.log('Quedó 1 código de prueba canjeado: límpialo con supabase/sql/limpiar_pruebas.sql antes del lanzamiento.\n');
+console.log('Quedó 1 código de prueba canjeado: bórralo con supabase/sql/limpiar_solo_pruebas.sql (no toca los códigos de los clientes).\n');
 process.exit(fallos === 0 ? 0 : 1);

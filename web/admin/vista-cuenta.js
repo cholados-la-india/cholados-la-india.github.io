@@ -14,14 +14,20 @@ export function vistaCuenta(ctx) {
     const estado = !pin.configurado
       ? el('p', { class: 'resultado error' }, 'Todavía NO hay PIN: la caja no puede canjear. Pon uno abajo.')
       : el('p', { class: 'nota' }, `PIN configurado${pin.cambiadoISO ? ` (último cambio: ${fechaLarga(pin.cambiadoISO)})` : ''}. Está guardado cifrado: nadie puede verlo, solo cambiarlo.`);
-    const bloqueo = pin.bloqueadoHastaISO && el('div', { class: 'resultado aviso-naranja' },
-      el('p', {}, `Por demasiados PIN malos, la caja está bloqueada (hasta el ${fechaLarga(pin.bloqueadoHastaISO)}).`),
-      el('button', { type: 'button', class: 'boton chico', onclick: desbloquear }, 'Desbloquear ahora'));
+    // Hay dos bloqueos: el general (el panel sabe cuándo termina) y el de UNA red —el más común: quien atiende se equivoca
+    // 5 veces—, que el panel no ve. Por eso el botón de desbloquear está SIEMPRE: borra los dos.
+    const bloqueo = !pin.configurado ? null : pin.bloqueadoHastaISO
+      ? el('div', { class: 'resultado aviso-naranja' },
+        el('p', {}, `Por demasiados PIN malos, la caja está bloqueada (hasta el ${fechaLarga(pin.bloqueadoHastaISO)}).`),
+        el('button', { type: 'button', class: 'boton chico', onclick: desbloquear }, 'Desbloquear ahora'))
+      : el('div', { class: 'config-seccion' },
+        el('p', { class: 'nota' }, '¿La caja dice «DEMASIADOS INTENTOS»? Desbloquéala aquí (el PIN sigue siendo el mismo).'),
+        el('button', { type: 'button', class: 'boton chico secundario', onclick: desbloquear }, 'Desbloquear la caja'));
     return el('section', { class: 'tarjeta' },
       el('h2', {}, 'PIN de la caja'), estado, bloqueo,
       el('form', { class: 'config-seccion', novalidate: true, onsubmit: guardarPin },
         el('div', { class: 'rejilla' },
-          el('label', { class: 'campo' }, el('span', {}, pin.configurado ? 'PIN nuevo' : 'PIN'), campoPin, el('span', { class: 'ayuda' }, '4 a 8 números (recomendado: 6). No uses 1234 ni números repetidos.')),
+          el('label', { class: 'campo' }, el('span', {}, pin.configurado ? 'PIN nuevo' : 'PIN'), campoPin, el('span', { class: 'ayuda' }, '6 a 8 números. No uses 123456 ni números repetidos.')),
           el('label', { class: 'campo' }, el('span', {}, 'Repite el PIN'), campoPin2)),
         el('button', { type: 'submit', class: 'boton' }, pin.configurado ? 'Cambiar PIN' : 'Guardar PIN'),
         el('p', { class: 'nota' }, 'Entrégaselo al personal en persona; no lo mandes por chat. Si lo cambias, el anterior deja de servir al instante.')));
@@ -42,13 +48,16 @@ export function vistaCuenta(ctx) {
     }
   }
 
-  async function desbloquear() {
+  async function desbloquear(e) {
+    const boton = e?.currentTarget;
+    if (boton) boton.disabled = true;
     try {
       await ctx.llamar('admin_desbloquear_pin');
       ctx.aviso('La caja quedó desbloqueada.');
       await ctx.cargar(contenedor, cargar);
     } catch (err) {
       ctx.errorDeCarga(err);
+      if (boton) boton.disabled = false;
     }
   }
 

@@ -8,7 +8,7 @@
 // pestaña); si marcas "mantener sesión iniciada", van a localStorage de ESE dispositivo.
 // Quién es administrador lo decide el SERVIDOR (tabla app.admins): un usuario cualquiera no puede hacer nada aunque entre.
 import { SUPABASE } from '../supabase-config.js';
-import { DEMO } from './rpc.js';
+import { DEMO, ErrorServidor } from './rpc.js';
 
 const LLAVE = 'cholado-admin-sesion';
 let sesion = null;
@@ -105,7 +105,10 @@ export async function iniciarSesion(correo, clave, recordar) {
   return sesion;
 }
 
-/** El token de acceso vigente (lo renueva si le quedan menos de 60 s o si `forzar`). null = ya no hay sesión. */
+/**
+ * El token de acceso vigente (lo renueva si le quedan menos de 60 s o si `forzar`). null = ya no hay sesión.
+ * Lanza ErrorServidor('red' | 'servidor') si no se pudo renovar por una falla pasajera (la sesión se conserva).
+ */
 export async function tokenFresco(forzar = false) {
   const s = sesionGuardada();
   if (!s) return null;
@@ -115,17 +118,28 @@ export async function tokenFresco(forzar = false) {
     borrar();
     return null;
   }
+  // OJO: la sesión solo se da por perdida cuando el servidor la RECHAZA (400/401/403). Una falla de internet o un error
+  // pasajero del servidor (429, 5xx) NO la borra: se avisa y se puede reintentar (antes sacaba al dueño del panel y le
+  // borraba el «mantener sesión» solo porque el wifi todavía no había conectado).
   renovando ??= (async () => {
     try {
-      const { res, datos } = await pedir('token?grant_type=refresh_token', { refresh_token: s.refresh_token });
-      if (!res.ok) {
+      let respuesta;
+      try {
+        respuesta = await pedir('token?grant_type=refresh_token', { refresh_token: s.refresh_token });
+      } catch {
+        if (!forzar && s.expira > Date.now()) return s.access_token; // sin internet: se sigue con el token actual mientras valga
+        throw new ErrorServidor('red', 'No hay conexión con el servidor.');
+      }
+      const { res, datos } = respuesta;
+      if (res.ok) {
+        guardar(deRespuesta(datos, s.recordar, s.correo));
+        return sesion.access_token;
+      }
+      if ([400, 401, 403].includes(res.status)) {
         borrar();
         return null;
       }
-      guardar(deRespuesta(datos, s.recordar, s.correo));
-      return sesion.access_token;
-    } catch {
-      return forzar || s.expira <= Date.now() ? null : s.access_token; // sin internet: se sigue con el token actual mientras valga
+      throw new ErrorServidor('servidor', `El servidor tuvo un problema al renovar la sesión (error ${res.status}). Espera un momento e intenta otra vez.`, res.status);
     } finally {
       renovando = null;
     }

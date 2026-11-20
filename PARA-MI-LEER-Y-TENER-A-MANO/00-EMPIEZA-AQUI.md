@@ -2,7 +2,16 @@
 
 **Esta carpeta es tuya.** Todo lo que hay aquí está escrito para ti (no para programadores): qué hacer, en qué orden y qué hacer si algo sale mal. Lo demás del proyecto (código, SQL, pruebas) lo maneja Claude; **tú no tienes que entenderlo**.
 
-Última actualización: 2026-10-20, noche.
+Última actualización: 2026-11-19.
+
+## 🆕 Revisión de noviembre (2026-11-19): falta solo tu commit
+
+Claude revisó todo el proyecto de punta a punta y arregló 12 cosas de robustez y seguridad (el detalle está en `documentos/auditoria-2026-11.md`).
+
+- **A. Hacer el commit y el push** con GitHub Desktop (con eso se publican los arreglos del juego, la caja y el panel).
+- ✅ **B. El servidor ya está actualizado** (Claude lo aplicó el 2026-11-19 con tu visto bueno; la revisión de permisos dio «✅ Todo en orden»). No tienes que pegar nada.
+
+**Qué cambia para ti:** el PIN de la caja ahora debe tener **6 a 8 números** al cambiarlo (el que ya tienes sigue sirviendo) · en el panel → Cuenta el botón **«Desbloquear la caja»** está siempre · las pruebas que gastan premios reales ahora piden permiso (`04-guia-rapida.md`, sección 5.1b).
 
 ## Dónde estás ahora
 
@@ -68,7 +77,7 @@ Cada paso dice dónde está el detalle. Si algo no sale como aquí, **para y pre
 | Pasa esto | Haz esto |
 |---|---|
 | El juego dice «No pudimos conectarnos» a todo el mundo | Probablemente Supabase se pausó: supabase.com → tu proyecto → **Resume project**. (`03-guia-del-administrador.md` sección 5) |
-| La caja dice «DEMASIADOS INTENTOS» | Panel → Cuenta → **Desbloquear ahora** (mientras tanto, canjea tú desde el panel → pestaña Canjear) |
+| La caja dice «DEMASIADOS INTENTOS» | Panel → Cuenta → **Desbloquear la caja** (el botón está siempre ahí) (mientras tanto, canjea tú desde el panel → pestaña Canjear) |
 | Un cliente perdió su código | Panel → Códigos → búscalo por su celular (`03-guia-del-administrador.md` sección 2.2) |
 | Se acabaron los premios y quieres más | Panel → Configuración → «Premios por semana» |
 | Quieres pausar el juego | `03-guia-del-administrador.md` sección 3.4 |

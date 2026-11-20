@@ -17,7 +17,7 @@ Panel → **Configuración** → cambia lo que quieras → **Guardar cambios** (
 | Poner fechas a la campaña | «Campaña (temporada)» |
 
 ## 2. Cambiar el PIN de la caja
-Panel → **Cuenta** → «PIN nuevo» y «Repite el PIN» → **Cambiar PIN**. 4 a 8 números (mejor 6; no `1234` ni repetidos). El PIN anterior deja de servir al instante. Díselo **solo** a quien atiende; **nunca** lo escribas en el chat con Claude ni en un archivo. Si la caja se bloqueó por PIN malos: Cuenta → **Desbloquear ahora**.
+Panel → **Cuenta** → «PIN nuevo» y «Repite el PIN» → **Cambiar PIN**. 6 a 8 números (no `123456` ni repetidos). El PIN anterior deja de servir al instante. Díselo **solo** a quien atiende; **nunca** lo escribas en el chat con Claude ni en un archivo. Si la caja se bloqueó por PIN malos: Cuenta → **Desbloquear la caja** (el botón está siempre ahí).
 
 ## 3. Ver los canjes
 - **Resumen:** «Canjes en caja esta semana» y el embudo («Del juego a la caja»).

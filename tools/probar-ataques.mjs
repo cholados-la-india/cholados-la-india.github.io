@@ -13,8 +13,15 @@
 // El modo --completo deja 1 o 2 códigos de prueba: corre después supabase/sql/limpiar_pruebas.sql (solo antes del lanzamiento).
 import { randomUUID } from 'node:crypto';
 import { SUPABASE } from '../web/js/supabase-config.js';
+import { exigirPermiso } from './seguro-servidor-real.mjs';
 
 const COMPLETO = process.argv.includes('--completo');
+if (COMPLETO) {
+  exigirPermiso('npm run probar-ataques -- --completo', [
+    'gasta 1 o 2 premios de esta semana: crea códigos a nombre de «PRUEBA-…»',
+    'gasta parte de los límites por red de tu conexión hasta mañana',
+  ]);
+}
 const esperar = (ms) => new Promise((r) => setTimeout(r, ms));
 let fallos = 0;
 let total = 0;
@@ -137,7 +144,7 @@ if (COMPLETO) {
     await esperar(47000);
     const trampa = await llamar('terminar_partida', { p_token: perdida, p_gano: true, p_progreso: 1, p_frutas: 60 });
     ok('perder y luego «ganar» con el MISMO token no sirve (sigue perdida)', trampa.json?.puedeReclamar === false, trampa.texto);
-    const reclamoPerdida = await llamar('reclamar_codigo', { p_token: perdida, p_nombre: 'Tramposo', p_celular: celular(), p_consentimiento: true });
+    const reclamoPerdida = await llamar('reclamar_codigo', { p_token: perdida, p_nombre: 'PRUEBA-TRAMPOSO', p_celular: celular(), p_consentimiento: true });
     ok('…y tampoco se puede reclamar con ese token', reclamoPerdida.json?.ok === false && reclamoPerdida.json?.motivo === 'partida-invalida', reclamoPerdida.texto);
 
     const v = await llamar('terminar_partida', { p_token: buena, p_gano: true, p_progreso: 1, p_frutas: 40 });
@@ -146,7 +153,7 @@ if (COMPLETO) {
     if (quedaba) {
       const v2 = await llamar('terminar_partida', { p_token: buena, p_gano: false, p_progreso: 0, p_frutas: 0 });
       ok('repetir terminar_partida con «perdí» NO le quita el premio apartado (idempotente)', v2.json?.puedeReclamar === true, v2.texto);
-      const nombreRaro = "Robert'); DROP TABLE app.codigos;--<b>x</b>";   // (≤ 60 letras: el servidor rechaza nombres más largos)
+      const nombreRaro = "PRUEBA-'); DROP TABLE app.codigos;--<b>x</b>";   // (≤ 60 letras: el servidor rechaza nombres más largos)
       const cel = celular();
       const r = await llamar('reclamar_codigo', { p_token: buena, p_nombre: nombreRaro, p_celular: cel, p_consentimiento: true });
       ok('un nombre con comillas, SQL y HTML se guarda como texto y el reclamo funciona', r.json?.ok === true && /^[A-Z0-9]+-[A-Z2-9]+$/.test(r.json?.codigo ?? ''), r.texto);
@@ -157,7 +164,7 @@ if (COMPLETO) {
       const v3 = await llamar('terminar_partida', { p_token: otra, p_gano: true, p_progreso: 1, p_frutas: 40 });
       if (v3.json?.puedeReclamar === true) {
         const respuestas = [];
-        for (let i = 0; i < 6; i++) respuestas.push((await llamar('reclamar_codigo', { p_token: otra, p_nombre: 'Curioso', p_celular: cel, p_consentimiento: true })).json?.motivo);
+        for (let i = 0; i < 6; i++) respuestas.push((await llamar('reclamar_codigo', { p_token: otra, p_nombre: 'PRUEBA-CURIOSO', p_celular: cel, p_consentimiento: true })).json?.motivo);
         const reveloCodigo = JSON.stringify(respuestas).includes(r.json.codigo);
         ok('con otro token ganador, preguntar si ese celular ya ganó solo funciona 5 veces; la 6.ª ya no responde nada útil', respuestas.slice(0, 5).every((m) => m === 'ya-tienes-codigo') && respuestas[5] === 'partida-invalida', JSON.stringify(respuestas));
         ok('…y en ningún caso se revela el código de ese número', !reveloCodigo);
@@ -171,5 +178,5 @@ if (COMPLETO) {
 }
 
 console.log(`\n${fallos === 0 ? '✅ TODO BIEN' : '❌ HAY FALLOS'} — ${total - fallos} de ${total} comprobaciones correctas.\n`);
-if (COMPLETO) console.log('Limpieza: corre supabase/sql/limpiar_pruebas.sql en el SQL Editor antes del lanzamiento (borra partidas y códigos de prueba).\n');
+if (COMPLETO) console.log('Limpieza: en el SQL Editor corre supabase/sql/limpiar_solo_pruebas.sql (borra SOLO los códigos «PRUEBA-…»; no toca los de los clientes).\n');
 process.exit(fallos === 0 ? 0 : 1);

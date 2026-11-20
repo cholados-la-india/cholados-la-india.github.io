@@ -197,8 +197,8 @@ Panel → Configuración → «Regalos» y «Compra mínima». Los textos del ju
 | Situación | Qué hacer |
 |---|---|
 | **«FALTA EL PIN»** | Todavía no hay uno: panel → **Cuenta** → ponlo. |
-| **«DEMASIADOS INTENTOS»** (alguien se equivocó varias veces) | Panel → Cuenta → **Desbloquear ahora**. Mientras tanto, canjea tú desde el panel → pestaña **Canjear** (es la misma pantalla, sin PIN). |
-| **Se fue un empleado** o crees que alguien supo el PIN | Panel → Cuenta → PIN nuevo (4 a 8 números, mejor 6) → **Cambiar PIN**. El anterior deja de servir al instante. |
+| **«DEMASIADOS INTENTOS»** (alguien se equivocó varias veces) | Panel → Cuenta → **Desbloquear la caja** (el botón está siempre ahí). Mientras tanto, canjea tú desde el panel → pestaña **Canjear** (es la misma pantalla, sin PIN). |
+| **Se fue un empleado** o crees que alguien supo el PIN | Panel → Cuenta → PIN nuevo (6 a 8 números) → **Cambiar PIN**. El anterior deja de servir al instante. |
 | **Olvidé el PIN** | No se puede ver (está cifrado). Pon uno nuevo en el panel → Cuenta. Si el panel no abre: guía rápida 5.7 («Quitar el PIN»). |
 | **El cajero dice «NO EXISTE»** | Probablemente lo escribió mal (los códigos no llevan 0, O, 1 ni I). Que lo reescriba o dicte el código completo. |
 | **«VENCIDO»** pero el cliente reclama | Mira la fecha que dice la caja; si quieres hacer una excepción: receta 2.5. |

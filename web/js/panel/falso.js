@@ -248,7 +248,7 @@ function guardarConfig(p) {
 }
 
 function cambiarPin(p) {
-  if (!/^[0-9]{4,8}$/.test(String(p ?? ''))) return { ok: false, motivo: 'pin-invalido', mensaje: 'El PIN debe tener entre 4 y 8 números (recomendado: 6).' };
+  if (!/^[0-9]{6,8}$/.test(String(p ?? ''))) return { ok: false, motivo: 'pin-invalido', mensaje: 'El PIN debe tener entre 6 y 8 números.' };
   if (/^(.)\1*$/.test(p) || ['1234', '12345', '123456', '1234567', '12345678', '4321', '54321', '654321'].includes(p)) {
     return { ok: false, motivo: 'pin-facil', mensaje: 'Ese PIN es muy fácil de adivinar. Elige otro.' };
   }

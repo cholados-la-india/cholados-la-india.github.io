@@ -364,10 +364,11 @@ await reiniciarStaff();
   ok('admin_yo reconoce al administrador', (await admin('admin_yo')).esAdmin === true);
   ok('PIN con letras → rechazado', (await admin('admin_cambiar_pin', '12ab')).motivo === 'pin-invalido');
   ok('PIN de 3 números → rechazado', (await admin('admin_cambiar_pin', '123')).motivo === 'pin-invalido');
+  ok('PIN de 4 o 5 números → rechazado (mínimo 6: con 4 se adivina en días)', (await admin('admin_cambiar_pin', '4829')).motivo === 'pin-invalido' && (await admin('admin_cambiar_pin', '48291')).motivo === 'pin-invalido');
   ok('PIN de 9 números → rechazado', (await admin('admin_cambiar_pin', '123456789')).motivo === 'pin-invalido');
   const obvios = [];
-  for (const p of ['1234', '654321', '000000', '777777']) obvios.push((await admin('admin_cambiar_pin', p)).motivo);
-  ok('PIN obvio (1234, 654321, 000000, 777777) → pin-facil', obvios.every((m) => m === 'pin-facil'), JSON.stringify(obvios));
+  for (const p of ['123456', '654321', '000000', '777777', '012345']) obvios.push((await admin('admin_cambiar_pin', p)).motivo);
+  ok('PIN obvio (123456, 654321, 000000, 777777, 012345) → pin-facil', obvios.every((m) => m === 'pin-facil'), JSON.stringify(obvios));
   ok('seguía sin PIN después de tantos rechazos', (await uno('select pin_hash is null from app.staff')) === true);
   ok('un PIN bueno se guarda', (await admin('admin_cambiar_pin', PIN)).ok === true);
   const h = await uno('select pin_hash from app.staff where id = 1');
@@ -861,7 +862,19 @@ await sql(`truncate app.limites_red`);
   await reiniciarConfig5();
 }
 
-seccion('21b. Limpieza de datos de prueba (supabase/sql/limpiar_pruebas.sql)');
+seccion('21b. Limpieza de datos de prueba (supabase/sql/limpiar_solo_pruebas.sql y limpiar_pruebas.sql)');
+{
+  // La limpieza SELECTIVA (para cuando ya hay clientes): solo se van los códigos «PRUEBA-…»
+  await reiniciarDatos();
+  const deCliente = await nuevoCodigo(41, 'Clienta De Verdad');
+  await nuevoCodigo(42, 'PRUEBA-AUTOMATICA');
+  await nuevoCodigo(43, 'PRUEBA-CANJE-DOBLE');
+  await sql(`insert into app.limites_red (clave, ventana, cuenta) values ('prueba:y', now(), 1) on conflict do nothing`);
+  await db.exec(await readFile(new URL('../supabase/sql/limpiar_solo_pruebas.sql', import.meta.url), 'utf8'));
+  const quedan = (await sql('select codigo, nombre from app.codigos')).map((x) => x.codigo);
+  ok('limpiar_solo_pruebas: borra los códigos «PRUEBA-…» y deja el de la clienta', quedan.length === 1 && quedan[0] === deCliente, JSON.stringify(quedan));
+  ok('…borra también las partidas de esos códigos (queda solo la de la clienta) y los contadores por red', Number(await uno('select count(*) from app.partidas')) === 1 && Number(await uno('select count(*) from app.limites_red')) === 0);
+}
 {
   await sql(`insert into app.limites_red (clave, ventana, cuenta) values ('prueba:x', now(), 1) on conflict do nothing`);
   await db.exec(await readFile(new URL('../supabase/sql/limpiar_pruebas.sql', import.meta.url), 'utf8'));
@@ -1070,6 +1083,68 @@ seccion('25. Etapa 7 — Canales (UTM): ¿de dónde vienen los jugadores?');
   ok('la clave pública NO puede llamar admin_canales', denegado);
   ok('registrar_canal sí está abierta para la clave pública (la usa el juego)', (await sql("select has_function_privilege('anon', 'public.registrar_canal(uuid,text,text,text)', 'execute') a"))[0].a === true);
   await reiniciarDatos();
+}
+
+// ════════════════════════════════════ REVISIÓN DE NOVIEMBRE (bloque A) ════════════════════════════════════
+seccion('26. Revisión de noviembre — premios apartados, IPv6, PIN de 6 y freno a quien pruebe códigos con el PIN');
+await reiniciarDatos();
+await reiniciarConfig5();
+await reiniciarStaff();
+await sql(`truncate app.limites_red`);
+{
+  // Victorias viejas: un token no sirve para ganar horas o días después
+  const reciente = await ganar(randomUUID(), { segundos: 7000 });
+  ok('una victoria que llega ~2 h después de empezar todavía vale (la «victoria pendiente» del juego dura 2 h)', reciente.fin.puedeReclamar === true, JSON.stringify(reciente.fin));
+  const vieja = await ganar(randomUUID(), { segundos: 8000 });
+  ok('una victoria con un token de hace más de ~2 h se rechaza (no se pueden guardar tokens para después)', vieja.fin.puedeReclamar === false && vieja.fin.motivo === 'partida-invalida', JSON.stringify(vieja.fin));
+  ok('…y no apartó ningún premio', Number(await uno(`select count(*) from app.partidas where resultado = 'gano_validado'`)) === 1);
+
+  // Tope de premios apartados por red y por día (3 × el de códigos)
+  await reiniciarDatos();
+  await sql(`truncate app.limites_red`);
+  await sql(`update app.configuracion set limite_codigos_ip_dia = 2 where id = 1`);
+  const apartados = [];
+  await conRed(red(RED_A), async () => { for (let i = 0; i < 7; i++) apartados.push((await ganar(randomUUID())).fin); });
+  ok('una misma red aparta máximo 6 premios al día (3 × 2); el 7.º ya no se aparta', apartados.slice(0, 6).every((f) => f.puedeReclamar === true) && apartados[6].puedeReclamar === false && apartados[6].motivo === 'sin-premios', JSON.stringify(apartados.map((f) => f.puedeReclamar)));
+  ok('…así una sola red no puede dejar el juego en «sin premios» (quedan 44 de 50)', (await rpc('estado', randomUUID())).premiosRestantes === 44);
+  ok('otra red sí puede seguir ganando', (await conRed(red(RED_B), () => ganar(randomUUID()))).fin.puedeReclamar === true);
+  await sql(`update app.configuracion set limite_codigos_ip_dia = 0 where id = 1`);
+  await sql(`truncate app.limites_red`);
+  const sinTope = [];
+  await conRed(red(RED_A), async () => { for (let i = 0; i < 8; i++) sinTope.push((await ganar(randomUUID())).fin.puedeReclamar); });
+  ok('con el límite de códigos por red en 0, el de apartados también queda apagado', sinTope.every(Boolean));
+
+  // IPv6: se cuenta por bloque /64, no por dirección
+  await reiniciarDatos();
+  await reiniciarConfig5();
+  await sql(`truncate app.limites_red`);
+  await sql(`update app.configuracion set limite_partidas_ip_hora = 2 where id = 1`);
+  const v6 = [];
+  for (const ip of ['2001:db8:1:2::1', '2001:db8:1:2:aaaa:bbbb:cccc:dddd', '2001:db8:1:2:ffff::9']) v6.push(await conRed(red(ip), () => rpc('iniciar_partida', randomUUID())));
+  ok('tres direcciones IPv6 del MISMO bloque /64 cuentan como una sola red (la 3.ª → limite-red)', v6[0].ok && v6[1].ok && v6[2].ok === false && v6[2].motivo === 'limite-red', JSON.stringify(v6.map((x) => x.motivo ?? x.ok)));
+  ok('otro bloque /64 es otra red', (await conRed(red('2001:db8:1:3::1'), () => rpc('iniciar_partida', randomUUID()))).ok === true);
+  const mapeadas = [];
+  for (const ip of ['::ffff:203.0.113.1', '::ffff:203.0.113.2', '::ffff:203.0.113.3']) mapeadas.push((await conRed(red(ip), () => rpc('iniciar_partida', randomUUID()))).ok);
+  ok('las IPv4 escritas como IPv6 (::ffff:…) NO se juntan todas en una sola red', mapeadas.every(Boolean), JSON.stringify(mapeadas));
+  ok('un encabezado que no es una dirección no rompe nada (se usa tal cual)', (await conRed(red('no-es-una-ip'), () => rpc('iniciar_partida', randomUUID()))).ok === true);
+  await reiniciarConfig5();
+
+  // Con el PIN correcto no se puede probar códigos al azar sin freno
+  await reiniciarDatos();
+  await sql(`truncate app.limites_red`);
+  await admin('admin_cambiar_pin', PIN);
+  const bueno = await nuevoCodigo(60);
+  const azar = [];
+  await conRed(red(RED_A), async () => { for (let i = 0; i < 21; i++) azar.push((await caja('canje_consultar', PIN, 'ZZZ' + i)).resultado); });
+  ok('con el PIN correcto, una red puede consultar 20 códigos que no existen; a la 21.ª queda bloqueada', azar.slice(0, 20).every((r) => r === 'inexistente') && azar[20] === 'bloqueado', JSON.stringify(azar.slice(18)));
+  ok('…bloqueada también para consultar o canjear un código que SÍ existe', (await conRed(red(RED_A), () => caja('canje_consultar', PIN, bueno))).resultado === 'bloqueado' && (await conRed(red(RED_A), () => caja('canje_confirmar', PIN, bueno, 'Un raspao personal'))).resultado === 'bloqueado');
+  ok('la caja de verdad (otra red) sigue funcionando', (await conRed(red(RED_B), () => caja('canje_consultar', PIN, bueno))).resultado === 'valido');
+  ok('consultar códigos que SÍ existen no gasta ese contador', (await conRed(red(RED_B), async () => { let u; for (let i = 0; i < 25; i++) u = await caja('canje_consultar', PIN, bueno); return u; })).resultado === 'valido');
+  ok('el dueño desbloquea desde el panel y la red A vuelve a poder', (await admin('admin_desbloquear_pin')).ok === true && (await conRed(red(RED_A), () => caja('canje_consultar', PIN, bueno))).resultado === 'valido');
+  ok('sin IP conocida ese freno no se aplica', (await (async () => { let u; for (let i = 0; i < 22; i++) u = await caja('canje_consultar', PIN, 'YYY' + i); return u; })()).resultado === 'inexistente');
+  await reiniciarDatos();
+  await reiniciarStaff();
+  await sql(`truncate app.limites_red`);
 }
 
 console.log(`\n${fallos === 0 ? '✅ TODO BIEN' : '❌ HAY FALLOS'} — ${total - fallos} de ${total} comprobaciones correctas.\n`);

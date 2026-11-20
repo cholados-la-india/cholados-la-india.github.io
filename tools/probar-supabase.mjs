@@ -19,6 +19,7 @@
 //   F. Ver mi código: cuenta regresiva de ~7 días, con la hora del servidor.
 //   G. (Etapa 5) Que las 11 funciones del administrador NO se pueden llamar con la clave pública ni con un token falso.
 import { SUPABASE } from '../web/js/supabase-config.js';
+import { exigirPermiso } from './seguro-servidor-real.mjs';
 
 if (!SUPABASE.url || !SUPABASE.clave) {
   console.log('Falta rellenar web/js/supabase-config.js (url y clave). Mira supabase/LEEME.md.');
@@ -148,6 +149,13 @@ ${fallos === 0 ? '✅ TODO BIEN' : '❌ HAY FALLOS'} — ${total - fallos} de ${
   process.exit(fallos === 0 ? 0 : 1);
 }
 
+// De aquí en adelante la prueba ESCRIBE en el servidor real y gasta los premios de la semana: pide permiso explícito.
+exigirPermiso('npm run probar-supabase', [
+  'lanza más de 100 partidas de mentira y APARTA todos los premios que queden esta semana (el juego queda en «se acabaron» un rato)',
+  'crea decenas de códigos a nombre de «PRUEBA-AUTOMATICA»',
+  'gasta los límites por red de tu conexión hasta mañana',
+]);
+
 // ─────────────────────────────────────────────────────────────────────────────
 seccion('B. Intentos por dispositivo (8 llamadas a la vez)');
 let inicioEstado;
@@ -262,5 +270,6 @@ seccion(`E. Tope semanal: ${N_TOPE} ganadores a la vez`);
 }
 
 console.log(`\n${fallos === 0 ? '✅ TODO BIEN' : '❌ HAY FALLOS'} — ${total - fallos} de ${total} comprobaciones correctas.`);
-console.log('\nLimpieza: corre supabase/sql/limpiar_pruebas.sql en el SQL Editor antes del lanzamiento (borra partidas y códigos de prueba).\n');
+console.log('\nLimpieza: en el SQL Editor corre supabase/sql/limpiar_solo_pruebas.sql (borra SOLO los códigos «PRUEBA-…»; sirve aunque ya haya clientes).');
+console.log('          Si todavía NO has abierto al público y quieres dejar todo en cero: supabase/sql/limpiar_pruebas.sql (borra TODO).\n');
 process.exit(fallos === 0 ? 0 : 1);

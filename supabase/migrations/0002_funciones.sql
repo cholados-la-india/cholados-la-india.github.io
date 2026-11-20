@@ -74,6 +74,16 @@ begin
   if v is null or length(v) > 64 then
     return null;
   end if;
+  -- IPv6: una sola persona suele tener un bloque /64 ENTERO (millones de direcciones) y puede salir por una distinta en
+  -- cada llamada. Si se contara por dirección, los límites por red no frenarían nada: se cuenta por el bloque /64.
+  -- (Las IPv4 escritas como IPv6, «::ffff:1.2.3.4», se dejan tal cual: comparten el mismo /64 y quedarían todas juntas.)
+  begin
+    if family(v::inet) = 6 and v !~* '^::ffff:' then
+      v := host(network(set_masklen(v::inet, 64)));
+    end if;
+  exception when others then
+    null;   -- no es una dirección que se entienda: se usa el texto tal cual
+  end;
   return v;
 end $$;
 
@@ -352,7 +362,19 @@ begin
   elsif v_elapsed < v_min or coalesce(p_frutas, 0) < c.frutas_minimas or coalesce(p_frutas, 0) > 1000 then
     v_res := 'gano_rechazado';
     v_motivo := 'partida-invalida';
+  elsif v_elapsed > c.duracion_partida_s + 7500 then
+    -- Una victoria que llega más de ~2 h después de empezar la partida no vale. (El juego guarda una victoria sin
+    -- confirmar máximo 2 h; el margen cubre la partida y una pausa.) Sin esto, alguien podía guardar tokens durante días
+    -- y usarlos de golpe para apartar todos los premios, o sacar un código después de cerrada la temporada.
+    v_res := 'gano_rechazado';
+    v_motivo := 'partida-invalida';
   elsif (select restantes from app.cupos(pa.id)) <= 0 then
+    v_res := 'gano_sin_cupo';
+    v_motivo := 'sin-premios';
+  elsif not app.limitar('reservas', app.inicio_dia(v_now), c.limite_codigos_ip_dia * 3) then
+    -- Tope de premios APARTADOS por red y por día (3 veces el de códigos; 0 = apagado, igual que ese). Apartar no pedía
+    -- celular ni tenía límite: un programa podía apartar los 50 cada 15 min y dejar a todos en «se acabaron los premios»
+    -- sin reclamar ni uno.
     v_res := 'gano_sin_cupo';
     v_motivo := 'sin-premios';
   else

@@ -37,11 +37,11 @@ Minijuego web de **Cholados La India** (Cali, Colombia): un runner vertical para
 | `npm run probar-sql` | Prueba todo el SQL del servidor en tu computador (sin Supabase) |
 | `npm run sql` | Genera `supabase/todo-junto.sql`: todo el SQL del servidor en un archivo, para pegarlo de una vez en Supabase |
 | `npm run probar-ataques` | Te portas como atacante contra el servidor real (rápido; con `-- --completo`, ~1 min) |
-| `npm run probar-canje` | 25 cajeros simultáneos intentan canjear el mismo código (te pide el PIN en tu terminal) |
+| `npm run probar-canje -- --gasta-premios-reales` | 25 cajeros simultáneos intentan canjear el mismo código (te pide el PIN en tu terminal) |
 | `npm run revisar-secretos` | Busca secretos, claves y PIN en el repo y en su historial de git |
 | `npm run probar-mutaciones` | Rompe el SQL a propósito y comprueba que `probar-sql` lo detecta |
 | `npm run probar-seguridad` | Comprueba en 3 s, contra el servidor real, que lo del administrador está cerrado para el público (no deja datos) |
-| `npm run probar-supabase` | Prueba el servidor REAL (seguridad y concurrencia). Deja datos de prueba: luego `supabase/sql/limpiar_pruebas.sql` |
+| `npm run probar-supabase -- --gasta-premios-reales` | Prueba el servidor REAL (concurrencia). **Gasta los premios de la semana**: no correr con el juego abierto. Luego `supabase/sql/limpiar_solo_pruebas.sql` |
 | `npm run qr` | Genera los QR (mostrador, vasos) y los 4 enlaces con etiquetas UTM en `PARA-MI-LEER-Y-TENER-A-MANO/QR-para-imprimir/` |
 | `npm run probar-canal` | Prueba cómo el juego lee las etiquetas UTM de los enlaces |
 | `npm run textos-legales` | Escribe `PARA-MI-LEER-Y-TENER-A-MANO/06-textos-legales.md` (lo que el juego dice sobre premio, datos y local) para revisarlo |
