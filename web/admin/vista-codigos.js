@@ -2,6 +2,9 @@
 // desactivar/reactivar a mano y exportar a CSV. Nombres y celulares los escriben los jugadores: aquí solo entran como texto.
 import { el, reemplazar, retrasar } from '../js/panel/dom.js';
 import { ESTADOS, celular, fechaCorta } from '../js/panel/formato.js';
+
+/** «vale hasta»: un minuto antes del vencimiento exacto (igual que el ticket del juego). */
+const valeHastaCorto = (venceISO) => fechaCorta(new Date(Date.parse(venceISO) - 60_000).toISOString());
 import { exportarCsv } from './exportar.js';
 
 const FILTROS = [['todos', 'Todos'], ['activo', 'Activos'], ['canjeado', 'Canjeados'], ['vencido', 'Vencidos'], ['desactivado', 'Desactivados']];
@@ -20,7 +23,7 @@ export function vistaCodigos(ctx) {
   const botonCsv = el('button', { type: 'button', class: 'boton secundario', onclick: exportar }, 'Exportar CSV');
   const cuenta = el('p', { class: 'nota', 'aria-live': 'polite' });
   const lista = el('div', { class: 'lista' });
-  const masBoton = el('button', { type: 'button', class: 'boton secundario', onclick: () => cargarPagina(true) }, 'Mostrar más');
+  const masBoton = el('button', { type: 'button', class: 'boton secundario', hidden: true, onclick: () => cargarPagina(true) }, 'Mostrar más');
 
   buscador.addEventListener('input', retrasar(() => {
     texto = buscador.value.trim();
@@ -45,7 +48,7 @@ export function vistaCodigos(ctx) {
     } else if (f.estado === 'desactivado') {
       botones.push(el('button', { type: 'button', class: 'boton secundario chico', onclick: () => cambiarEstado(f, 'activo') }, 'Reactivar'));
     }
-    const fechas = [`Expedido ${fechaCorta(f.emitidoISO)}`, `vale hasta ${fechaCorta(new Date(Date.parse(f.venceISO) - 60_000).toISOString())}`];
+    const fechas = [`Expedido ${fechaCorta(f.emitidoISO)}`, `vale hasta ${valeHastaCorto(f.venceISO)}`];
     if (f.canjeadoISO) fechas.push(`canjeado ${fechaCorta(f.canjeadoISO)} (${f.canjeadoPor === 'admin' ? 'administrador' : 'caja'})${f.regalo ? ` · ${f.regalo}` : ''}`);
     return el('article', { class: 'fila-codigo' },
       el('div', { class: 'arriba' }, el('span', { class: 'cod' }, f.codigo), el('span', { class: `pildora ${f.estado}` }, ESTADOS[f.estado] ?? f.estado)),
@@ -62,14 +65,26 @@ export function vistaCodigos(ctx) {
   async function cargarPagina(siguiente) {
     const mio = ++pedido;
     const desde = siguiente ? filas.length : 0;
+    if (!siguiente && !filas.length) reemplazar(lista, el('p', { class: 'vacio' }, el('span', { class: 'punto' }), 'Cargando…'));
+    masBoton.disabled = true;
     try {
       const r = await ctx.llamar('admin_codigos', { p_estado: estado, p_buscar: texto || null, p_desde: desde, p_limite: POR_PAGINA });
       if (mio !== pedido) return;
-      filas = siguiente ? filas.concat(r.filas) : r.filas;
+      // Si entró un código nuevo entre una página y otra, la lista se corre: se evita repetir filas
+      const vistos = new Set(siguiente ? filas.map((f) => f.codigo) : []);
+      filas = siguiente ? filas.concat(r.filas.filter((f) => !vistos.has(f.codigo))) : r.filas;
       total = r.total;
       pintarLista();
     } catch (e) {
-      if (mio === pedido) ctx.errorDeCarga(e);
+      if (mio !== pedido) return;
+      if (!filas.length) {
+        reemplazar(lista, el('div', { class: 'tarjeta' }, el('p', {}, 'No se pudo cargar la lista.'),
+          el('button', { type: 'button', class: 'boton', onclick: () => cargarPagina(false) }, 'Reintentar')));
+        masBoton.hidden = true;
+      }
+      ctx.errorDeCarga(e);
+    } finally {
+      masBoton.disabled = false;
     }
   }
 
@@ -84,6 +99,11 @@ export function vistaCodigos(ctx) {
         ctx.aviso(r.motivo === 'canjeado' ? 'Ese código ya fue canjeado: no se puede cambiar.' : 'No se pudo cambiar el código.', 'error');
       } else {
         ctx.aviso(nuevo === 'desactivado' ? `Código ${f.codigo} desactivado.` : `Código ${f.codigo} reactivado.`);
+        if (estado === 'todos') {
+          f.estado = nuevo;
+          pintarLista();
+          return;
+        }
       }
       await cargarPagina(false);
     } catch (e) {

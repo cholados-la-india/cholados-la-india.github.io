@@ -2,15 +2,20 @@
 
 Cada red tiene **su propio enlace**. Todos abren el mismo juego (`https://cholados-la-india.github.io/`), pero llevan una etiqueta que le dice al panel de dónde llegó cada jugador: panel → **Resumen** → «¿De dónde vienen los jugadores?». **Usa siempre el enlace de su red tal cual**, sin acortarlo ni quitarle lo que va después del `?`.
 
-Última actualización: 2026-10-20, noche.
+Última actualización: 2026-11-19 (se agregaron el enlace aparte para historias y el de «Reta a un amigo»).
 
 ---
 
 ## 1. Los 4 principales
 
-**Instagram: biografía de @cholados.laindia** (en la bio de Instagram usa este; si pones varios enlaces, que el del juego sea este), y también para la pegatina «Enlace» de las historias:
+**Instagram: biografía de @cholados.laindia** (en la bio de Instagram usa este; si pones varios enlaces, que el del juego sea este):
 ```text
 https://cholados-la-india.github.io/?utm_source=instagram&utm_medium=social&utm_campaign=lanzamiento
+```
+
+**Instagram: historias** (la pegatina «Enlace»). Es aparte de la bio para que el panel te diga cuál de las dos trae más gente:
+```text
+https://cholados-la-india.github.io/?utm_source=instagram&utm_medium=social&utm_campaign=historias
 ```
 
 **Facebook: página «Cholados La India»** (botón de la página, campo «Sitio web» y publicaciones normales):
@@ -26,6 +31,11 @@ https://cholados-la-india.github.io/?utm_source=mostrador&utm_medium=qr&utm_camp
 **Vasos** (el que lleva el QR de los vasos, en `QR-para-imprimir/qr-vasos.svg`):
 ```text
 https://cholados-la-india.github.io/?utm_source=vasos&utm_medium=qr&utm_campaign=lanzamiento
+```
+
+**«Reta a un amigo»** (no lo tienes que poner en ningún lado: es el que manda el propio juego cuando alguien toca ese botón). En el panel sale como **amigo**:
+```text
+https://cholados-la-india.github.io/?utm_source=amigo&utm_medium=compartir&utm_campaign=lanzamiento
 ```
 
 ---

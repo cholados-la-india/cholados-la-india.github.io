@@ -30,10 +30,14 @@ export function fechaHoraBogota(ms) {
   return `${DIAS[b.getUTCDay()]} ${b.getUTCDate()} de ${MESES[b.getUTCMonth()]}, ${horaBogota(ms)}`;
 }
 
-/** "lunes 26 de octubre a las 12:00 a. m." */
+/**
+ * "martes 27 de octubre a las 2:51 p. m." · a la medianoche solo el día: "lunes 26 de octubre"
+ * (antes decía «el lunes a las 12:00 a. m.», que mucha gente lee como la noche del lunes).
+ */
 export function fechaCortaBogota(ms) {
   const b = enBogota(ms);
-  return `${DIAS[b.getUTCDay()]} ${b.getUTCDate()} de ${MESES[b.getUTCMonth()]} a las ${horaBogota(ms)}`;
+  const dia = `${DIAS[b.getUTCDay()]} ${b.getUTCDate()} de ${MESES[b.getUTCMonth()]}`;
+  return b.getUTCHours() === 0 && b.getUTCMinutes() === 0 ? dia : `${dia} a las ${horaBogota(ms)}`;
 }
 
 /** "26 de octubre" (solo el día, en hora de Bogotá) */

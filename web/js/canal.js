@@ -13,6 +13,7 @@
 import { almacen } from './util.js';
 
 const CLAVE = 'cholado-canal';
+let enMemoria = null; // respaldo SOLO si el navegador no deja guardar (algunos navegadores internos): así la partida de esta visita igual cuenta
 const VIGENCIA_MS = 30 * 24 * 3600 * 1000;
 
 /** Deja una etiqueta limpia o null. */
@@ -33,14 +34,20 @@ export function leerEtiquetas(search) {
 export function sinEtiquetas(href) {
   const u = new URL(href);
   for (const k of [...u.searchParams.keys()]) if (k.startsWith('utm_')) u.searchParams.delete(k);
-  return u.pathname + (u.searchParams.size ? `?${u.searchParams}` : '') + u.hash;
+  const q = u.searchParams.toString(); // (searchParams.size no existe en iPhone con iOS 15–16)
+  return u.pathname + (q ? `?${q}` : '') + u.hash;
 }
 
 /** Al abrir el juego: si el enlace trae etiquetas, las recuerda y las quita de la barra. Devuelve las etiquetas vigentes (o null). */
 export function iniciarCanal(ventana = window, ahora = Date.now()) {
   const nuevas = leerEtiquetas(ventana.location.search);
+  const hayUtm = /[?&]utm_/.test(ventana.location.search);
   if (nuevas) {
-    almacen.escribir(CLAVE, { ...nuevas, hasta: ahora + VIGENCIA_MS });
+    const g = { ...nuevas, hasta: ahora + VIGENCIA_MS };
+    enMemoria = almacen.escribir(CLAVE, g) ? null : g;
+  }
+  if (hayUtm) {
+    // (también se quitan si vienen mal escritas: así no se comparten de rebote)
     try {
       ventana.history.replaceState(ventana.history.state, '', sinEtiquetas(ventana.location.href));
     } catch {
@@ -52,7 +59,7 @@ export function iniciarCanal(ventana = window, ahora = Date.now()) {
 
 /** Las etiquetas vigentes de este navegador, o null (no hay, o ya pasaron 30 días). */
 export function canalActual(ahora = Date.now()) {
-  const g = almacen.leer(CLAVE);
+  const g = enMemoria ?? almacen.leer(CLAVE);
   if (!g || typeof g.fuente !== 'string' || !(g.hasta > ahora)) return null;
   const fuente = limpiar(g.fuente, 30);
   return fuente ? { fuente, medio: limpiar(g.medio, 30), campana: limpiar(g.campana, 40) } : null;

@@ -35,7 +35,7 @@ Sigue los pasos **en este orden** y marca cada casilla. No saltes la **limpieza 
 
 ## E. Limpieza (la última antes de abrir)
 
-- [ ] **15. Borrar TODOS los datos de prueba:** `04-guia-rapida.md` **5.1** (`truncate app.codigos, app.partidas, app.limites_red restart identity cascade;`). **Solo antes de abrir al público**; con clientes reales se borraría lo suyo. Si alguna regla quedó movida por las pruebas: 5.2.
+- [ ] **15. Borrar TODOS los datos de prueba:** `04-guia-rapida.md` **5.1** (`truncate app.codigos, app.partidas, app.limites_red restart identity;`). **Solo antes de abrir al público**; con clientes reales se borraría lo suyo. Si alguna regla quedó movida por las pruebas: 5.2.
 - [ ] **16. Comprobar que quedó en cero:** panel → Resumen: 0 partidas, 0 códigos y los premios de la semana completos. (O el SQL de `03-guia-del-administrador.md` §1.2, punto 7.)
 
 ## F. Imprimir

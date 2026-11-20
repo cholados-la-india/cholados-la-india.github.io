@@ -13,7 +13,9 @@ const SVG_PAUSA = '<svg viewBox="0 0 18 18" aria-hidden="true"><rect x="3" y="2"
 
 const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const vasos = (activos, total) => Array.from({ length: total }, (_, i) => `<span class="vida${i < activos ? '' : ' perdida'}">${SVG_VASO}</span>`).join('');
-const elegir = (lista) => lista[Math.floor(Math.random() * lista.length)];
+// Botón a Instagram (las pantallas finales no ofrecían nada para volver) y «Reta a un amigo» (compartir)
+const botonInstagram = () => `<a class="boton secundario" href="https://www.instagram.com/${esc(LOCAL.instagram)}/" target="_blank" rel="noopener">${esc(T.redes.instagram())}</a>`;
+const botonRetar = (progreso = null) => `<button type="button" class="boton secundario" data-accion="retar" data-progreso="${progreso ?? ''}">${T.redes.retar}</button>`;
 
 /** Deja solo dígitos y máximo 10 (si pegan "+57 312...", se quita el 57). */
 export function soloDigitosCelular(texto) {
@@ -47,14 +49,14 @@ export function crearUI(raiz, cfg) {
   /* ───────────── HUD ───────────── */
   hud.innerHTML = `
     <div class="hud-arriba">
-      <div class="vidas" id="hud-vidas" aria-label="Vidas"></div>
+      <div class="vidas" id="hud-vidas" role="img" aria-label="Vidas"></div>
       <div class="reloj">
         <div class="reloj-num" id="hud-reloj">1:00</div>
         <div class="progreso"><i class="progreso-barra" id="hud-barra"></i><span class="progreso-meta">${SVG_VASO}</span></div>
       </div>
-      <button class="pausa" id="hud-pausa" type="button" data-accion="pausa" aria-label="Pausa">${SVG_PAUSA}</button>
+      <button class="pausa" id="hud-pausa" type="button" data-accion="pausa" aria-label="${T.juego.pausa}">${SVG_PAUSA}</button>
     </div>
-    <div class="frutas" id="hud-frutas-caja">${SVG_FRESA}<b id="hud-frutas">0</b></div>`;
+    <div class="frutas" id="hud-frutas-caja" aria-label="Frutas recogidas">${SVG_FRESA}<b id="hud-frutas">0</b></div>`;
   const elVidas = $('#hud-vidas');
   const elReloj = $('#hud-reloj');
   const elBarra = $('#hud-barra');
@@ -134,9 +136,10 @@ export function crearUI(raiz, cfg) {
           </div>` : ''}
         </header>
         <div class="panel panel-inicio">
+          <p class="gancho">${T.inicio.gancho(cfg.reglas.regalos)}<small>${T.inicio.ganchoCompra(cfg.reglas.compraMinima)}</small></p>
           <div class="pastilla lima">${T.inicio.premios(estado.premiosRestantes, estado.limitadoPor === 'dia')}</div>
           ${campana() ? `<p class="campana">${campana()}</p>` : ''}
-          <div class="intentos"><span class="vasos">${vasos(estado.intentosRestantes, estado.intentosPorSemana)}</span><span>${T.inicio.intentos(estado.intentosRestantes, estado.intentosPorSemana)}</span></div>
+          <div class="intentos"><span class="vasos">${vasos(estado.intentosRestantes, estado.intentosPorSemana)}</span><span>${T.inicio.intentos(estado.intentosRestantes)}</span></div>
           <button type="button" class="boton grande" data-accion="jugar">${T.inicio.jugar}</button>
           <div class="enlaces">
             <button type="button" class="enlace" data-accion="ayuda">${T.inicio.comoSeJuega}</button>
@@ -147,12 +150,12 @@ export function crearUI(raiz, cfg) {
       </section>`;
     },
 
-    cargando: () => `<section class="pantalla centro"><div class="panel"><p class="mensaje">${T.inicio.cargando}</p></div></section>`,
+    cargando: () => `<section class="pantalla centro"><div class="panel"><p class="mensaje" role="status">${T.inicio.cargando}</p></div></section>`,
 
-    error: ({ mensaje }) => `
+    error: ({ mensaje, boton }) => `
       <section class="pantalla centro"><div class="panel">
-        <p class="mensaje">${esc(mensaje || T.inicio.errorConexion)}</p>
-        <button type="button" class="boton" data-accion="reintentar">${T.inicio.reintentar}</button>
+        <p class="mensaje" role="alert">${esc(mensaje || T.inicio.errorConexion)}</p>
+        <button type="button" class="boton" data-accion="reintentar">${boton ?? T.inicio.reintentar}</button>
       </div></section>`,
 
     ayuda: () => `
@@ -169,6 +172,7 @@ export function crearUI(raiz, cfg) {
         <button type="button" class="boton grande" data-accion="continuar">${T.juego.continuar}</button>
         <button type="button" class="boton secundario" data-accion="sonido" data-sonido-texto>${sonidoActivo ? T.juego.sonidoSi : T.juego.sonidoNo}</button>
         <button type="button" class="boton secundario" data-accion="salir">${T.juego.salir}</button>
+        <p class="nota">${T.juego.salirAviso}</p>
       </div></section>`,
 
     ganaste: ({ error }) => `
@@ -181,7 +185,8 @@ export function crearUI(raiz, cfg) {
         <label class="campo"><span>${T.ganaste.celular}</span>
           <input name="celular" type="tel" inputmode="numeric" autocomplete="tel-national" maxlength="24" placeholder="3XX XXX XXXX" required></label>
         <label class="consentimiento"><input name="consentimiento" type="checkbox">
-          <span>${T.ganaste.consentimiento} <button type="button" class="enlace corto" data-accion="politica">${T.ganaste.verPolitica}</button></span></label>
+          <span>${T.ganaste.consentimiento}</span></label>
+        <button type="button" class="enlace chico" data-accion="politica">${T.ganaste.verPolitica}</button>
         <p class="nota chico">${T.ganaste.resumen(cfg.reglas)} <button type="button" class="enlace corto" data-accion="condiciones">${T.ganaste.verCondiciones}</button></p>
         <p class="error" id="error-form" role="alert">${error ? esc(error) : ''}</p>
         <button type="submit" class="boton grande" id="btn-reclamar">${T.ganaste.boton}</button>
@@ -223,37 +228,47 @@ export function crearUI(raiz, cfg) {
         desactivado: `<p class="aviso-estado">${T.codigo.desactivado}</p>`,
       };
       const puedeMas = estado !== 'activo' && puedeVolverMs
-        ? `<p class="nota">${T.codigo.otroCupon(esc(fechaCortaBogota(puedeVolverMs)))}</p>` : '';
+        ? `<p class="nota">${T.codigo.otroCodigo(esc(fechaCortaBogota(puedeVolverMs)))}</p>` : '';
+      // Orden pensado para la captura de pantalla: lo primero que se ve es el código, hasta cuándo vale y DÓNDE canjearlo
+      const local = `<div class="local">
+          <span class="local-titulo">${T.codigo.canjeaAqui}</span>
+          <b class="local-direccion">${esc(LOCAL.direccion)}</b>
+          <span class="local-dias">${esc(LOCAL.dias)}</span>
+          <b class="local-horas">${esc(LOCAL.horas)}</b>
+          ${LOCAL.mapa ? `<a class="enlace chico" href="${esc(LOCAL.mapa)}" target="_blank" rel="noopener">${T.codigo.comoLlegar}</a>` : ''}
+        </div>`;
       return `
       <section class="pantalla centro fondo scroll"><div class="panel ticket ${estado !== 'activo' ? 'inactivo' : ''}">
         <h2>${T.codigo.titulo}</h2>
         <div class="codigo" id="codigo-texto"><small>${esc(prefijo)}-</small>${esc(resto ?? '')}</div>
         ${estados[estado] ?? estados.activo}
-        ${estado === 'activo' ? `<ol class="pasos">${T.codigo.pasos(cfg.reglas.compraMinima, cfg.reglas.regalos).map((p) => `<li>${p}</li>`).join('')}</ol>
-        <div class="local">
-          <span class="local-titulo">${T.codigo.canjeaAqui}</span>
-          <b class="local-direccion">${esc(LOCAL.direccion)}</b>
-          <span class="local-dias">${esc(LOCAL.dias)}</span>
-          <b class="local-horas">${esc(LOCAL.horas)}</b>
-        </div>
+        ${estado === 'activo' ? `${local}
+        <p class="consejo">${T.codigo.consejo}</p>
+        <ol class="pasos">${T.codigo.pasos(cfg.reglas.compraMinima, cfg.reglas.regalos).map((p) => `<li>${p}</li>`).join('')}</ol>
+        <p class="nota">${T.codigo.noAcumulable(cfg.reglas.compraMinima)}</p>
         <button type="button" class="enlace" data-accion="condiciones">${T.codigo.condiciones}</button>` : puedeMas}
         ${esDePrueba ? `<p class="prueba">${T.codigo.prueba}</p>` : ''}
-        ${estado === 'activo' ? `<p class="nota">${T.codigo.consejo}</p>
-        <button type="button" class="boton" data-accion="copiar" id="btn-copiar">${T.codigo.copiar}</button>` : ''}
+        ${estado === 'activo' ? `<button type="button" class="boton" data-accion="copiar" id="btn-copiar">${T.codigo.copiar}</button>
+        ${botonRetar()}
+        <p class="nota">${T.codigo.siCierras}</p>` : botonInstagram()}
         <button type="button" class="boton secundario" data-accion="salir">${T.codigo.volver}</button>
       </div></section>`;
     },
 
-    perdiste: ({ progreso, frutas, frutasMinimas, motivo, intentosRestantes }) => `
+    perdiste: ({ progreso, frutas, frutasMinimas, motivo, intentosRestantes, premiosRestantes }) => `
       <section class="pantalla centro fondo"><div class="panel">
-        <h2 class="grande-titulo">${esc(motivo === 'frutas' ? T.perdiste.tituloFrutas : elegir(T.perdiste.titulos))}</h2>
+        <h2 class="grande-titulo">${esc(motivo === 'frutas' ? T.perdiste.tituloFrutas : T.perdiste.titulo(progreso))}</h2>
         <p class="mensaje">${motivo === 'frutas' ? T.perdiste.mensajeFrutas(frutas, frutasMinimas) : T.perdiste.mensaje(Math.round(progreso * 100))}</p>
-        <div class="chips"><span class="chip">${SVG_FRESA}${esc(T.perdiste.frutas(frutas))}</span></div>
+        ${motivo === 'frutas' ? '' : `<div class="chips"><span class="chip">${SVG_FRESA}${esc(frutasMinimas > 0 ? T.perdiste.frutasDe(frutas, frutasMinimas) : T.perdiste.frutas(frutas))}</span></div>`}
         <p class="mensaje">${T.perdiste.intentos(intentosRestantes)}</p>
+        ${intentosRestantes > 0 && premiosRestantes > 0 ? `<p class="nota">${T.perdiste.quedanPremios(premiosRestantes)}</p>` : ''}
         ${intentosRestantes > 0
           ? `<button type="button" class="boton grande" data-accion="jugar">${T.perdiste.otraVez}</button>
+             ${botonRetar(Math.round(progreso * 100))}
              <button type="button" class="boton secundario" data-accion="salir">${T.perdiste.salir}</button>`
-          : `<button type="button" class="boton grande" data-accion="salir">${T.perdiste.salir}</button>`}
+          : `<button type="button" class="boton grande" data-accion="salir">${T.perdiste.salir}</button>
+             ${botonRetar(Math.round(progreso * 100))}
+             ${botonInstagram()}`}
       </div></section>`,
 
     // El celular ya reclamó un cupón: se dice cuándo podrá reclamar otro (sin mostrar el código de ese número).
@@ -271,6 +286,8 @@ export function crearUI(raiz, cfg) {
         <h2>${T.sinIntentos.titulo}</h2>
         <p class="mensaje">${T.sinIntentos.mensaje(esc(fechaCortaBogota(Date.parse(reiniciaEnISO))))}</p>
         ${tieneCodigo ? `<button type="button" class="boton" data-accion="mi-codigo">${T.inicio.miCodigo}</button>` : ''}
+        ${botonRetar()}
+        ${botonInstagram()}
         <button type="button" class="enlace" data-accion="ayuda">${T.inicio.comoSeJuega}</button>
       </div></section>`,
 
@@ -280,6 +297,7 @@ export function crearUI(raiz, cfg) {
         <h2>${ganaste ? T.sinPremios.tituloGanaste : limitadoPor === 'dia' ? T.sinPremios.tituloDia : T.sinPremios.titulo}</h2>
         <p class="mensaje">${(ganaste ? T.sinPremios.mensajeGanaste : limitadoPor === 'dia' ? T.sinPremios.mensajeDia : T.sinPremios.mensaje)(esc(fechaCortaBogota(Date.parse(reiniciaEnISO))))}</p>
         ${tieneCodigo ? `<button type="button" class="boton" data-accion="mi-codigo">${T.inicio.miCodigo}</button>` : ''}
+        ${botonInstagram()}
         ${ganaste ? `<button type="button" class="enlace" data-accion="salir">${T.sinPremios.volver}</button>`
           : `<button type="button" class="enlace" data-accion="ayuda">${T.inicio.comoSeJuega}</button>`}
       </div></section>`,
@@ -294,6 +312,7 @@ export function crearUI(raiz, cfg) {
         <h2>${T.campanaInactiva.titulo}</h2>
         ${cuando ? `<p class="mensaje">${cuando}</p>` : ''}
         <p class="mensaje">${T.campanaInactiva.mensaje}</p>
+        ${botonInstagram()}
         ${tieneCodigo ? `<button type="button" class="boton" data-accion="mi-codigo">${T.inicio.miCodigo}</button>` : ''}
       </div></section>`;
     },
@@ -312,14 +331,27 @@ export function crearUI(raiz, cfg) {
     const vence = Number(el.dataset.vence);
     const pintar = () => {
       const falta = vence - reloj.ahora();
+      if (falta <= 0) {
+        const p = el.closest('.restante');
+        if (p) {
+          p.className = 'aviso-estado';
+          p.innerHTML = T.codigo.vencioAhora;
+        }
+        detenerCuentaRegresiva();
+        return;
+      }
       el.textContent = formatoRestante(falta);
-      if (falta <= 0) detenerCuentaRegresiva();
     };
     pintar();
     temporizador = setInterval(pintar, 1000);
   }
 
   function mostrar(nombre, datos = {}) {
+    if (!plantillas[nombre]) {
+      console.warn('Pantalla desconocida:', nombre);
+      nombre = 'error';
+      datos = {};
+    }
     pantallaActual = nombre;
     contenedor.innerHTML = plantillas[nombre](datos);
     contenedor.hidden = false;
@@ -339,6 +371,8 @@ export function crearUI(raiz, cfg) {
     cerrarModal();
     const m = document.createElement('div');
     m.className = 'modal';
+    m.setAttribute('role', 'dialog');
+    m.setAttribute('aria-modal', 'true');
     m.innerHTML = plantillas[nombre](datos);
     contenedor.hidden = false;
     contenedor.appendChild(m);
@@ -399,7 +433,8 @@ export function crearUI(raiz, cfg) {
       try {
         const t = document.createElement('textarea');
         t.value = texto;
-        t.style.cssText = 'position:fixed;opacity:0';
+        t.setAttribute('readonly', '');
+        t.style.cssText = 'position:fixed;opacity:0;-webkit-user-select:text;user-select:text'; // (el body tiene user-select:none: en iPhone impedía seleccionar)
         document.body.appendChild(t);
         t.select();
         ok = document.execCommand('copy');
@@ -408,11 +443,25 @@ export function crearUI(raiz, cfg) {
         /* sin portapapeles: queda la captura de pantalla */
       }
     }
-    if (b && ok) {
+    if (!ok) {
+      toast('No se pudo copiar: tómale captura a tu código.');
+      return false;
+    }
+    if (b) {
       b.textContent = T.codigo.copiado;
       setTimeout(() => {
         if (b.isConnected) b.textContent = T.codigo.copiar;
       }, 1800);
+    }
+    return true;
+  }
+  /** Copia un texto cualquiera al portapapeles (para compartir donde no hay «Compartir»). */
+  async function copiarTexto(texto) {
+    try {
+      await navigator.clipboard.writeText(texto);
+      return true;
+    } catch {
+      return false;
     }
   }
   /** Pone los botones de sonido en «sí» o «no» (el del inicio y el de la pausa). */
@@ -427,9 +476,10 @@ export function crearUI(raiz, cfg) {
   function toast(texto) {
     const t = document.createElement('div');
     t.className = 'toast';
+    t.setAttribute('role', 'status');
     t.textContent = texto;
     raiz.appendChild(t);
-    setTimeout(() => t.remove(), 3200);
+    setTimeout(() => t.remove(), 5000); // 5 s: algunos avisos son de dos renglones
   }
 
   return {
@@ -448,6 +498,7 @@ export function crearUI(raiz, cfg) {
     errorFormulario,
     enviando,
     copiarCodigo,
+    copiarTexto,
     marcarSonido,
     toast,
     alAccion(fn) {

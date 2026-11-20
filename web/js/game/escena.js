@@ -3,19 +3,19 @@
 //
 // Rendimiento (heredado de los previews): una malla fusionada por personaje/objeto, InstancedMesh para lo repetido,
 // sombras falsas, cielo en CSS, sin luces (matcap). Además hay "calidad adaptativa": si el celular no sostiene los
-// FPS, baja la resolución y por último quita el contorno (nunca vuelve a subir en la misma sesión).
+// FPS, baja la resolución y por último quita el contorno (si un escalón no mejora nada, vuelve atrás y deja de intentar).
 import * as THREE from '../../vendor/three/three.min.js';
 import { crearContorno, crearMaterialEstiloG, CONTORNO_ESTILO_G } from './materiales.js';
 import { crearModelos, css, fusionar, limitar, modulo, pieza, RAD, suave } from './modelos.js';
 import { crearArcoMeta, crearBarraBaja, crearCartelMeta, crearPilaAlta } from './modelos-nivel.js';
 import { paletaJugosa as pal } from './paleta.js';
+import { TIPOS_FRUTA } from './nivel.js'; // las frutas que tienen modelo (nivel.js ignora un tipo que no esté aquí)
 
 const LARGO = 80; // vuelta completa del decorado lejano
 const Z_LEJOS = -78;
 const CAMARA_INICIO = { pos: [0, 2.1, 4.6], mira: [0, 0.55, 0] };
 const COLORES_CONFETI = [0xd8287f, 0xb6e80a, 0x66c3e0, 0xffe86b, 0xff8a1f, 0xffffff];
 const MAX = { cajaBaja: 26, pilaAlta: 18, barraBaja: 6, fruta: 30 };
-const TIPOS_FRUTA = ['fresa', 'mango', 'lulo', 'pinita', 'papaya', 'manzana'];
 // Colores de las chispas al recoger cada fruta
 const COLORES_FRUTA = { fresa: [0xe5233e, 0xff8fa8], mango: [0xffb21a, 0xff6b3a], lulo: [0xffa21f, 0xffd27a], pinita: [0xf2a31b, 0x4caf3d], papaya: [0xff8a3c, 0xffb36a], manzana: [0xe5233e, 0xffd0d8] };
 // Festejo al llegar a la meta: [segundos desde que ganó, x, y] de cada nueva ola de confeti (además del primer chorro)
@@ -177,6 +177,9 @@ export function crearEscena(canvas, contenedor, cfg, tema = {}) {
   });
   escena.add(pMesh);
   const _col = new THREE.Color();
+  // Hay alguna viva (o una que se acaba de apagar y hay que dejar en tamaño 0). Arranca en true: el primer cuadro deja las
+  // 220 en tamaño 0 (las instancias nacen con tamaño 1 y se veían como un cubo blanco a los pies del personaje).
+  let particulasActivas = true;
   function emitir(n, x, y, z, colores, { vel = 3, tam = 0.12, vida = 0.7, gravedad = 9, arriba = 2 } = {}) {
     let creadas = 0;
     for (let i = 0; i < NP && creadas < n; i++) {
@@ -198,6 +201,7 @@ export function crearEscena(canvas, contenedor, cfg, tema = {}) {
       creadas++;
     }
     if (pMesh.instanceColor) pMesh.instanceColor.needsUpdate = true;
+    if (creadas) particulasActivas = true;
   }
 
   /* ───────────── Utilidades de cuadro ───────────── */
@@ -228,6 +232,8 @@ export function crearEscena(canvas, contenedor, cfg, tema = {}) {
   let emaAntes = 0;
   let revisando = false; // acabamos de bajar la calidad y falta ver si sirvió
   let calidadBloqueada = false;
+  let calidadAntesDeProbar = 0; // el escalón en que estaba antes del intento (para volver si no sirvió)
+  let probandoSinContorno = false; // ya se intentó quitar el contorno después de que bajar la resolución no sirvió
   let camaraManual = null; // { pos: [x, y, z], mira: [x, y, z] } o null
   let dprBase = Math.min(window.devicePixelRatio || 1, cfg.rendimiento.pixelRatioMax);
   renderer.setPixelRatio(dprBase);
@@ -245,7 +251,7 @@ export function crearEscena(canvas, contenedor, cfg, tema = {}) {
   new ResizeObserver(ajustar).observe(contenedor);
   ajustar();
 
-  /** Baja un escalón de calidad si el celular no sostiene los FPS. Nunca vuelve a subir. */
+  /** Escalones de calidad: el sistema adaptativo baja si el celular no sostiene los FPS (y vuelve atrás si bajar no sirvió). */
   const NIVELES = [
     { dpr: 1.5, contorno: true },
     { dpr: 1.25, contorno: true },
@@ -260,7 +266,22 @@ export function crearEscena(canvas, contenedor, cfg, tema = {}) {
     for (const o of contornos) o.visible = nv.contorno;
     ajustar();
   }
+  /** Lo que de verdad cambia un escalón en ESTE aparato: [resolución efectiva, contorno]. */
+  const efecto = (n) => [Math.min(dprBase, NIVELES[n].dpr), NIVELES[n].contorno];
+  const igual = (a, b) => a[0] === b[0] && a[1] === b[1];
+  /** El siguiente escalón que de verdad cambia algo (en una pantalla de baja densidad, 1,5 → 1,25 no cambia nada). null = no hay. */
+  function siguienteNivel(desde) {
+    for (let n = desde + 1; n < NIVELES.length; n++) if (!igual(efecto(n), efecto(desde))) return n;
+    return null;
+  }
+  const NIVEL_SIN_CONTORNO = NIVELES.findIndex((nv) => !nv.contorno);
   if (gamaBaja) aplicarCalidad(2); // arranca en 1,0 de resolución (con contorno); el sistema adaptativo puede seguir bajando
+
+  // Lo que se reutiliza en cada cuadro (crear arreglos u objetos nuevos 60 veces por segundo pone a trabajar al recolector
+  // de basura, y en gama baja eso se nota como tirones)
+  const nCaja = [0, 0, 0];
+  const nFruta = Object.fromEntries(TIPOS_FRUTA.map((k) => [k, 0]));
+  const mallasQueSeMueven = [...iCajas, iPilas, iBarras, ...Object.values(iFrutas), iPalmas, iSombrillas, iPinas, iRayas, sombras, iGente, iPuestos, iCuerdas, iNubes];
 
   /* ───────────── El cuadro ───────────── */
   /**
@@ -290,10 +311,10 @@ export function crearEscena(canvas, contenedor, cfg, tema = {}) {
     }
 
     // --- Obstáculos, frutas, meta
-    const nCaja = [0, 0, 0];
+    nCaja.fill(0); // contadores reutilizados (no se crean objetos nuevos en cada cuadro: menos pausas del recolector en gama baja)
     let nPila = 0;
     let nBarra = 0;
-    const nFruta = Object.fromEntries(TIPOS_FRUTA.map((k) => [k, 0]));
+    for (const k of TIPOS_FRUTA) nFruta[k] = 0;
     let nSombra = 1;
     const horizonte = cfg.obstaculos.horizonte;
     if (p) {
@@ -369,7 +390,9 @@ export function crearEscena(canvas, contenedor, cfg, tema = {}) {
     } else {
       ondaMeta = 0;
     }
-    for (let i = 0; i < NP; i++) {
+    // Si no hay ninguna partícula viva (casi siempre) no se recorren las 220 ni se sube el búfer a la tarjeta gráfica
+    let vivas = 0;
+    for (let i = 0; particulasActivas && i < NP; i++) {
       const q = particulas[i];
       if (q.vida > 0) {
         q.vida -= dt;
@@ -379,14 +402,18 @@ export function crearEscena(canvas, contenedor, cfg, tema = {}) {
         q.z += (q.vz + vel) * dt;
         if (q.z > 3.2) q.vida -= dt * 6; // el que pasa muy cerca de la cámara se desvanece rápido
       }
-      const s = q.vida > 0 ? q.s * Math.min(1, q.vida / q.vidaMax * 2) : 0;
+      if (q.vida > 0) vivas++;
+      const s = q.vida > 0 ? q.s * Math.min(1, q.vida / q.vidaMax * 2) : 0; // la que se acaba de apagar queda en tamaño 0
       d.position.set(q.x, q.y, q.z);
       d.rotation.set(q.giro + q.vida * 5, q.giro, 0);
       d.scale.setScalar(s);
       d.updateMatrix();
       pMesh.setMatrixAt(i, d.matrix);
     }
-    pMesh.instanceMatrix.needsUpdate = true; // sin esto las partículas (polvo, chispas, confeti) nunca llegaban a la pantalla
+    if (particulasActivas) {
+      pMesh.instanceMatrix.needsUpdate = true; // sin esto las partículas (polvo, chispas, confeti) nunca llegaban a la pantalla
+      particulasActivas = vivas > 0; // en este cuadro las que se apagaron ya quedaron en tamaño 0
+    }
 
     // --- Restos del choque (la caja que salió volando)
     let nResto = 0;
@@ -452,7 +479,7 @@ export function crearEscena(canvas, contenedor, cfg, tema = {}) {
     pj.g.visible = !(p && estado === 'jugando' && p.t < p.invulHasta && Math.floor(p.t * 14) % 2 === 0); // parpadea tras un choque
 
     poner(sombras, 0, px, 0.02, 0, 1.2 - Math.abs(s) * 0.1 - py * 0.35);
-    for (const m of [...iCajas, iPilas, iBarras, ...Object.values(iFrutas), iPalmas, iSombrillas, iPinas, iRayas, sombras, iGente, iPuestos, iCuerdas, iNubes]) m.instanceMatrix.needsUpdate = true;
+    for (const m of mallasQueSeMueven) m.instanceMatrix.needsUpdate = true;
 
     // --- Cámara
     const objetivoModo = jugando ? 1 : 0;
@@ -492,13 +519,26 @@ export function crearEscena(canvas, contenedor, cfg, tema = {}) {
         if (revisando) {
           revisando = false;
           if (ema > emaAntes * 0.9) {
-            aplicarCalidad(calidad - 1); // no ayudó: se deja como estaba y se deja de intentar
-            calidadBloqueada = true;
+            // No ayudó. Si solo se había bajado la resolución, se prueba UNA vez quitar el contorno (lo que más alivia
+            // cuando el cuello de botella no es la resolución); si tampoco sirve, se vuelve como estaba y no se insiste.
+            if (!probandoSinContorno && NIVELES[calidad].contorno && NIVEL_SIN_CONTORNO > calidad) {
+              probandoSinContorno = true;
+              revisando = true;
+              aplicarCalidad(NIVEL_SIN_CONTORNO);
+            } else {
+              aplicarCalidad(calidadAntesDeProbar);
+              calidadBloqueada = true;
+            }
           }
-        } else if (!calidadBloqueada && ema > 1 / cfg.rendimiento.fpsMinimo && calidad < NIVELES.length - 1) {
-          emaAntes = ema;
-          revisando = true;
-          aplicarCalidad(calidad + 1);
+        } else if (!calidadBloqueada && ema > 1 / cfg.rendimiento.fpsMinimo) {
+          const n = siguienteNivel(calidad);
+          if (n != null) {
+            emaAntes = ema;
+            calidadAntesDeProbar = calidad;
+            probandoSinContorno = false;
+            revisando = true;
+            aplicarCalidad(n);
+          }
         }
       }
     }

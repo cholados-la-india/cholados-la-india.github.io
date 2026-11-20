@@ -27,7 +27,7 @@ let bEfectos = null;
 let ruidoBuf = null;
 let encendido = almacen.leer(CLAVE, true) !== false; // la persona puede apagar todo el sonido
 let sonando = false; // el programador de la música está corriendo
-let quiereMusica = true; // la música debe sonar apenas el audio quede desbloqueado
+let callado = false; // el juego pidió silencio (pausa): ningún toque lo vuelve a prender hasta reanudar()
 let modo = 'menu'; // 'menu' (suave) | 'juego' (completa, con metales)
 let proximo = 0;
 let paso = 0;
@@ -68,6 +68,8 @@ function crear(forzado) {
   bMusica.gain.value = VOL_MUSICA.menu;
   bMusica.connect(maestro);
   try {
+    // La «sala» (reverberación) es lo más pesado de toda la música: en celulares de poca memoria se omite (suena más seca).
+    if ((navigator.deviceMemory ?? 8) <= 2) throw new Error('celular de gama baja');
     const conv = ctx.createConvolver();
     conv.buffer = respuestaSala();
     const mojado = ctx.createGain();
@@ -199,35 +201,60 @@ const bajo = (t, midi, dur, vol) => {
   o.stop(t + dur + 0.04);
   tono({ t, f, dur, vol: vol * 0.7, destino: bMusica });
 };
-/** Piano: la nota y sus armónicos (los agudos se apagan primero) + el golpe del martillo. */
+/** Los armónicos 2.º a 5.º del piano en UNA sola onda (antes eran 4 osciladores por nota: el guajeo en octavas creaba ~10 por golpe). */
+let ondaPiano = null;
+const armonicosPiano = () => {
+  if (!ondaPiano) {
+    const real = new Float32Array([0, 0, 0.5, 0.26, 0.14, 0.07]);
+    ondaPiano = ctx.createPeriodicWave(real.map(() => 0), real, { disableNormalization: true });
+  }
+  return ondaPiano;
+};
+/** Piano: la nota + sus armónicos (que se apagan antes) + el golpe del martillo. */
 const piano = (t, midi, vol = 0.14, dur = 0.3) => {
   const f = nota(midi);
-  [[1, 1], [2, 0.5], [3, 0.26], [4, 0.14], [5, 0.07]].forEach(([k, a], i) => tono({ t, f: f * k, dur: dur / (1 + i * 0.6), vol: vol * a, ataque: 0.002, destino: bMusica }));
+  tono({ t, f, dur, vol, ataque: 0.002, destino: bMusica });
+  const o = ctx.createOscillator();
+  const g = ctx.createGain();
+  o.setPeriodicWave(armonicosPiano());
+  o.frequency.setValueAtTime(f, t);
+  const durA = dur / 1.8; // en promedio, los armónicos duraban ~la mitad de la nota
+  g.gain.setValueAtTime(0.0001, t);
+  g.gain.linearRampToValueAtTime(vol, t + 0.002);
+  g.gain.exponentialRampToValueAtTime(0.0001, t + durA);
+  o.connect(g);
+  g.connect(bMusica);
+  o.start(t);
+  o.stop(t + durA + 0.03);
   ruido({ t, dur: 0.02, vol: 0.04, f: 2600, q: 0.7, tipo: 'highpass', destino: bMusica });
 };
-/** Metales: tres sierras desafinadas por nota, con un filtro que se abre al atacar (el «¡bláaa!» de la trompeta). */
+/**
+ * Metales: tres sierras desafinadas por nota, con un filtro que se abre al atacar (el «¡bláaa!» de la trompeta).
+ * Las tres sierras de una nota comparten UN filtro y UNA ganancia (antes cada una tenía los suyos): suena igual y crea
+ * la mitad de piezas, que es lo que más pesa en un celular de gama baja.
+ */
 const metales = (t, midis, dur, vol) => {
   for (const midi of midis) {
     const f = nota(midi);
+    const fl = ctx.createBiquadFilter();
+    fl.type = 'lowpass';
+    fl.Q.value = 1.2;
+    fl.frequency.setValueAtTime(700, t);
+    fl.frequency.linearRampToValueAtTime(3300, t + 0.04);
+    fl.frequency.exponentialRampToValueAtTime(1500, t + Math.max(0.1, dur));
+    const g = ctx.createGain();
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.linearRampToValueAtTime(vol, t + 0.014);
+    g.gain.setValueAtTime(vol, t + dur * 0.65);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + dur + 0.05);
+    fl.connect(g);
+    g.connect(bMusica);
     for (const det of [-7, 0, 7]) {
       const o = ctx.createOscillator();
       o.type = 'sawtooth';
       o.frequency.setValueAtTime(f, t);
       o.detune.value = det;
-      const fl = ctx.createBiquadFilter();
-      fl.type = 'lowpass';
-      fl.Q.value = 1.2;
-      fl.frequency.setValueAtTime(700, t);
-      fl.frequency.linearRampToValueAtTime(3300, t + 0.04);
-      fl.frequency.exponentialRampToValueAtTime(1500, t + Math.max(0.1, dur));
-      const g = ctx.createGain();
-      g.gain.setValueAtTime(0.0001, t);
-      g.gain.linearRampToValueAtTime(vol, t + 0.014);
-      g.gain.setValueAtTime(vol, t + dur * 0.65);
-      g.gain.exponentialRampToValueAtTime(0.0001, t + dur + 0.05);
       o.connect(fl);
-      fl.connect(g);
-      g.connect(bMusica);
       o.start(t);
       o.stop(t + dur + 0.08);
     }
@@ -236,7 +263,7 @@ const metales = (t, midis, dur, vol) => {
 
 /* ───────────── La canción: 8 compases (128 semicorcheas) ─────────────
    Parte A (compases 1-4): clave, cascarilla, marcha de congas, martillo del bongó, güiro, bajo tumbao y guajeo de piano.
-   Parte B (compases 5-8): la cascarilla pasa a la campana, entran los metales con riffs de mambo y los gritos del coro (solo en «juego»).
+   Parte B (compases 5-8): la cascarilla pasa a la campana y entran los metales con riffs de mambo (solo en «juego»).
    Armonía: Re menor 7 → Sol 7 → Do mayor 7 → La 7 (el giro típico), dos veces.
    Lo que cada instrumento toca sale de las descripciones de documentos/salsa-referencia.md. */
 const ACORDES = [
@@ -291,7 +318,7 @@ function paso_(t, s) {
       piano(t, ac.notas[idx] + 12, 0.08, 0.2);
     }
   }
-  // metales (solo parte B del juego): riff de mambo, trompetas arriba y trombón abajo; coro; platillazo y redoble de cierre
+  // metales (solo parte B del juego): riff de mambo, trompetas arriba y trombón abajo; platillazo y redoble de cierre
   if (B && juego) {
     for (const [p0, largo] of RIFFS[compas - 4]) {
       if (p0 === pos) {
@@ -316,7 +343,7 @@ function programar() {
 }
 
 function iniciarMusica() {
-  if (!ctx || sonando || !quiereMusica) return;
+  if (!ctx || sonando) return;
   sonando = true;
   paso = 0;
   proximo = ctx.currentTime + 0.1;
@@ -331,7 +358,8 @@ export const audio = {
   activar() {
     crear();
     if (!ctx) return;
-    if (ctx.state !== 'running' && !document.hidden) {
+    // En pausa NO se vuelve a prender con cualquier toque (antes, tocar el botón de sonido en la pausa reanudaba la música)
+    if (ctx.state !== 'running' && !document.hidden && !callado) {
       try {
         ctx.resume?.()?.catch?.(() => {});
         // truco de iPhone: reproducir un instante de silencio DENTRO del toque termina de desbloquear el audio
@@ -353,12 +381,6 @@ export const audio = {
   get estado() {
     return ctx ? ctx.state : 'sin-contexto';
   },
-  get musicaSonando() {
-    return sonando;
-  },
-  get modoMusica() {
-    return modo;
-  },
   /** Prende o apaga todo el sonido; devuelve el nuevo estado. */
   alternar() {
     encendido = !encendido;
@@ -371,12 +393,12 @@ export const audio = {
   /** La música cambia de intensidad sin cortarse: 'menu' (suave) o 'juego' (completa, con metales). */
   musica(nuevoModo) {
     modo = nuevoModo === 'juego' ? 'juego' : 'menu';
-    quiereMusica = true;
     if (ctx && bMusica) bMusica.gain.setTargetAtTime(VOL_MUSICA[modo], ctx.currentTime, 0.4);
     if (ctx && !sonando) iniciarMusica();
   },
   /** Pausa todo el audio (pausa del juego, o pantalla apagada / otra app). */
   pausar() {
+    callado = true;
     try {
       if (ctx && ctx.state === 'running') ctx.suspend?.()?.catch?.(() => {});
     } catch {
@@ -384,6 +406,7 @@ export const audio = {
     }
   },
   reanudar() {
+    callado = false;
     try {
       if (ctx && ctx.state !== 'running' && !document.hidden) ctx.resume?.()?.catch?.(() => {});
     } catch {

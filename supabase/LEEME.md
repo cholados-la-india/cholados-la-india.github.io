@@ -1,5 +1,7 @@
 # supabase/ — El servidor de Cholado Runner
 
+> **Al día (2026-11-19):** hoy son **5 migraciones** (0001–0005) y **22 funciones públicas** (10 abiertas a la clave pública + 12 `admin_*`); `probar-sql` da 310 ✓. Las cifras más abajo (6 funciones, 86/181 pruebas…) son de cuando se escribió cada sección. Con clientes reales, la limpieza es `sql/limpiar_solo_pruebas.sql` (no `limpiar_pruebas.sql`, que borra todo).
+
 Todo el "cerebro" del juego (intentos, premios, códigos, vigencia, un código por celular, validar la victoria) vive en **Supabase**: una base de datos en internet, gratis, que se maneja con un panel web. El juego (que se publica en GitHub Pages) **solo llama a 6 funciones** con una clave pública; no puede leer ni escribir las tablas directamente.
 
 > Resumen de seguridad: las tablas están en un esquema privado (`app`) que Supabase no expone, además tienen *Row Level Security* sin políticas (cerradas), y solo las 6 funciones `SECURITY DEFINER` del esquema `public` las tocan. Un mismo código jamás se asigna a dos personas porque todos los reclamos pasan, de uno en uno, por un candado del servidor (`pg_advisory_xact_lock`).

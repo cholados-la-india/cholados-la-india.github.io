@@ -29,42 +29,61 @@ Pruebas tras los cambios: `probar-sql` **300 ✓** (20 nuevas, sección 26 y 21b
 
 **No verificado:** el aviso diario reactivándose (solo se sabrá con el tiempo); los límites nuevos del servidor contra el servidor real con tráfico de verdad (solo se comprobó que quedaron instalados y cerrados al público); nada de esto se probó en un celular real.
 
-## Bloque B — Experiencia de juego (PENDIENTE de aprobación)
-13. Saltar y cambiar de carril casi nunca suenan (el evento se borra antes de sonar: `logica.js` vacía `p.eventos` al empezar `paso()`).
-14. El personaje queda flotando si la partida termina en pleno salto (`terminando()` no aplica gravedad).
-15. «Seguir jugando» reanuda en seco → «3, 2, 1» antes de continuar.
-16. «Salir al inicio» en la pausa gasta el intento sin avisar → una línea de aviso.
-17. Con «Reducir movimiento» la cuenta «3, 2, 1» y «¡META!» no se ven (`juego.css`, `.cuenta.late`).
-18. Cualquier toque en la pausa reanuda la música; pausar justo en un evento repite partículas.
-19. Pantalla congelada tras la meta con mala señal (hasta ~37 s) → «Cargando…» y esperas más cortas.
-20. La calidad adaptativa se bloquea sin probar «sin contorno» cuando el escalón de resolución no cambia nada.
-21. Modelos más livianos sin cambiar el arte (semillas, gotas, tapa de crema, piña tapada): ~2,5–3 mil triángulos menos (estimado a mano).
-22. Música más liviana en gama baja (menos nodos por nota, mismo sonido). No medido.
-23. Menores: salto que varía con los FPS, basura por cuadro en `escena.js`, pausa cuando iOS congela la página, gesto «atrás» del borde.
+## Bloques B–E — HECHOS el 2026-11-19 (el usuario dijo: «tú dale a los bloques que siguen»)
 
-## Bloque C — Textos y marketing (PENDIENTE)
-24. La pantalla de inicio no dice qué se gana ni la compra mínima.
-25. Un solo vocabulario: premio (banco) · código (lo que recibes) · regalo (el producto); «activar» en el juego, «canjear» en el local; «celular», no «número»; sin «cupón».
-26. ~30 reescrituras de textos (ayuda «antes de que se acabe el tiempo», «12:00 a. m. del lunes», «0 intentos», títulos de perder al azar…).
-27. Ticket: dirección y horario arriba + «Cómo llegar» (falta `[ENLACE DE GOOGLE MAPS]`, lo da el dueño).
-28. Enlace a Instagram en las pantallas finales.
-29. Botón «Reta a un amigo» (WhatsApp / compartir) con su etiqueta UTM.
-30. Zonas de toque pequeñas y letra legal de 12,5 px.
-(Todo cambio en condiciones, ayuda del premio o ticket obliga a `npm run textos-legales` y a que la mamá del usuario lo vuelva a leer.)
+**Servidor:** el SQL de estos bloques (`iniciar_partida`, `admin_resumen`, `admin_estado_codigo`, `admin_canales` y la migración nueva `0005_revision_noviembre.sql`) se aplicó al servidor real por el conector el 2026-11-19 (migración `revision_noviembre_bloques_b_e`), después de comprobar en PGlite que deja las 57 funciones idénticas a pegar `todo-junto.sql`. Después: auditoría «✅ Todo en orden», los 32 avisos de `search_path` del asesor de Supabase desaparecieron, `probar-seguridad` 19 ✓, datos y PIN intactos.
 
-## Bloque D — Panel y caja (PENDIENTE)
-31. Configuración: guardar solo lo cambiado, avisar si el cambio cierra el juego, no convertir una fecha mal escrita en «sin fecha».
-32. CSV: una celda con `;` puede colar una fórmula en un Excel en español; `*.csv` al `.gitignore`.
-33. Caja: botón «Otro código» tras cada resultado; errores sin jerga.
-34. Detalles: «Mostrar más» antes de cargar, Resumen confunde cupo del día con el de la semana, falta `.vista, .canje { display: grid; gap: 16px }`, `#constructor` en la dirección rompe el panel.
+### B — Experiencia de juego
+| # | Hecho | Dónde |
+|---|---|---|
+| 13 | Saltar y cambiar de carril ya suenan (los eventos del toque entran por `p.eventosEntrada` y llegan al siguiente cuadro) | `logica.js` |
+| 14 | Si termina en pleno salto, cae al piso (antes flotaba en el festejo) | `logica.js` (`terminando` → `avanzarSalto`) |
+| 15 | «Seguir jugando» hace «3, 2, 1» con el juego quieto; pausar o salir de la app lo cancela | `main.js` (`alternarPausa`, `reanudando`) |
+| 16 | La pausa dice «Si sales, pierdes este intento.» | `textos.js`, `ui.js` |
+| 17 | Con «Reducir movimiento» se ven el «3, 2, 1» y el «¡META!» | `juego.css` |
+| 18 | En pausa ningún toque prende la música (`callado`); los eventos se vacían después de dibujar (no más explosión de partículas al reanudar) | `audio.js`, `main.js` |
+| 19 | Tras la meta, si el servidor tarda, sale «Cargando…»; lo que solo lee (estado, mi código) espera 8 s y 1 reintento (antes ~37 s); si falla al empezar, se recarga el inicio | `main.js`, `api-supabase.js` |
+| 20 | Calidad adaptativa: salta escalones que no cambian nada en ese aparato y, si bajar la resolución no ayudó, prueba UNA vez sin contorno antes de rendirse | `escena.js` |
+| 21 | Cholado: ~2.700 triángulos menos sin cambio visible (comparado lado a lado con la versión publicada con «Ver de cerca»: 25.787 → 23.120 en esa toma) | `modelos.js` |
+| 22 | Música más liviana: los metales comparten filtro y ganancia por nota (mismo sonido); el piano usa 2 osciladores en vez de 5 (casi igual); sin reverberación en celulares de ≤ 2 GB | `audio.js` |
+| 23 | Salto con fórmula exacta (igual a cualquier FPS); sin basura por cuadro (contadores y listas reutilizadas; las 220 partículas solo se recorren si hay alguna viva); pausa al perder el foco, al ocultar la página o si un cuadro tarda > 0,5 s. **No hecho:** el gesto «atrás» del borde (agregar historial confundía más de lo que ayudaba) | `logica.js`, `escena.js`, `main.js` |
 
-## Bloque E — Servidor y mantenimiento (PENDIENTE)
-35. `app.partidas` nunca se limpia: tope global por hora, tamaño de la base en el Resumen, receta de limpieza.
-36. 32 funciones internas sin `search_path` fijo; la auditoría de permisos no detecta sobrecargas viejas; `admin_resumen` recorre `partidas` ~30 veces; `admin_estado_codigo(null)` revienta.
-37. Política de datos: «6 meses después de que termine la campaña» y la campaña no tiene fecha de fin (decisión del usuario y su mamá).
-38. Acciones de GitHub: checkout v7, configure-pages v6, upload-pages-artifact v5, deploy-pages v5 (después de abrir).
-39. Código muerto: textos sin usar (`lema`, `errores.yaTienesCodigo`, `sinIntentos.volver`), funciones sin llamadas, CSS duplicado, comentarios de aplausos/coro.
-40. Documentos: recortar `CLAUDE.md` (60 KB, con contradicciones), actualizar `PLAN.md`, `pendientes.md` y las guías.
+**Dificultad:** con los arreglos 6 (doble choque) y 23 (salto exacto) el simulador pasa de Novato 0,5 % · Normal 6 % · Experto 46 % a **2 % · 14 % · 51 %**. Parte de la diferencia es del propio simulador (corre a 30 fps, donde el salto viejo quedaba 10 % más bajo); en un celular a 60 fps el salto real sube de 1,28 a 1,35 (lo que dice la configuración). Si el dueño quiere la dificultad de antes, es un número en el panel.
+
+**Bug que apareció y se arregló en la prueba:** al saltarse el recorrido de las partículas, las 220 arrancaban en tamaño 1 y se veía un cubo blanco a los pies del personaje; ahora el primer cuadro las deja en 0.
+
+### C — Textos y marketing
+| # | Hecho | Dónde |
+|---|---|---|
+| 24 | El inicio dice qué se gana y con qué compra («Llega a la meta y gánate un raspao personal o un cholado de 10 oz · con tu compra desde $30.000») | `textos.js` (`gancho`), `ui.js`, `juego.css` |
+| 25 | Un solo vocabulario (premio · código · regalo · activar/canjear · celular · promo), documentado arriba de `textos.js` | `textos.js` |
+| 26 | ~30 textos reescritos (ayuda sin «antes de que se acabe el tiempo», «lunes 26 de noviembre» sin «12:00 a. m.», «Ese era tu último intento», título de perder según el avance, «18 de 25 frutas», errores que dicen qué hacer…). Sin cambiar el fondo legal | `textos.js`, `util.js` (`fechaCortaBogota`) |
+| 27 | Ticket: código → vale hasta → **dónde canjearlo** → «¡Tómale captura!» → pasos; «no acumulable» como nota; «Si cierras esta página…». **«Cómo llegar» listo pero apagado** hasta tener `[ENLACE DE GOOGLE MAPS]` (`LOCAL.mapa`) | `ui.js`, `textos.js` |
+| 28 | Botón «Síguenos: @cholados.laindia» en sin intentos, sin premios, sin promo, perdiste sin intentos y código vencido | `ui.js` |
+| 29 | «Reta a un amigo» (menú de compartir del celular o WhatsApp) en perdiste, sin intentos y el ticket; su enlace lleva `utm_source=amigo` (sale en el panel). También se agregó un enlace aparte para las **historias** de Instagram | `main.js` (`retarAmigo`), `07-enlaces-para-redes.md` |
+| 30 | Toques de 40–44 px (selector, enlaces), «Ver política de datos» fuera de la casilla, letra legal de 13,5–15 px, etiqueta del selector más legible, inicio deslizable en pantallas bajas, «¡Corre!» que no se corta | `juego.css`, `ui.js` |
+| + | HTML: descripción nueva, `canonical`, `preconnect` al servidor, `og:image:alt/type`, aviso para navegadores sin módulos, `id` en el manifiesto; `canal.js` funciona en iOS 15–16, quita etiquetas mal escritas y recuerda el canal en memoria si el navegador no deja guardar | `index.html`, `manifest.webmanifest`, `canal.js` |
+| + | `06-textos-legales.md` regenerado (con el gancho del inicio y las otras pantallas que hablan de reglas). **La mamá del usuario debe volver a leerlo.** | `tools/textos-legales.mjs` |
+
+### D — Panel y caja
+| # | Hecho | Dónde |
+|---|---|---|
+| 31 | Configuración: guarda solo lo que cambiaste, pide confirmación si el cambio cierra el juego, no convierte una fecha mal escrita en «sin fecha», «Descartar» pregunta, aviso al cerrar con cambios sin guardar, «Vidas» solo enteros | `vista-config.js` |
+| 32 | CSV con punto y coma y todo entre comillas (Excel en español; un «;» en un nombre ya no cuela una fórmula); `*.csv` y `respaldos/` en `.gitignore` | `formato.js`, `.gitignore` |
+| 33 | Caja: «Otro código» tras cada resultado, el campo se selecciona al tocarlo, el teclado se esconde al verificar, mensajes sin jerga («Al servidor le falta una actualización…», «CAMBIÓ LA LISTA DE REGALOS», «ALGO RARO PASÓ»), ayuda que no depende del largo del código | `canje-ui.js`, `rpc.js` |
+| 34 | «Mostrar más» no sale antes de cargar; «Cargando…» y «Reintentar» en la lista; sin filas repetidas; desactivar/reactivar no te devuelve a la primera página; el Resumen dice «premios de hoy» cuando manda el cupo diario; `#constructor` ya no rompe el panel; «Esta cuenta ya no es de administrador»; separación entre tarjetas | `vista-codigos.js`, `vista-resumen.js`, `admin.js`, `panel.css` |
+
+### E — Servidor y mantenimiento
+| # | Hecho | Dónde |
+|---|---|---|
+| 35 | Tope global de 3.000 partidas por hora (todas las redes); el Resumen muestra el tamaño de la base; receta para borrar partidas viejas sin código (guía rápida 5.10) | `0002`, `0003`, `04-guia-rapida.md` |
+| 36 | `search_path` fijo en todas las funciones de `app` (0005); la auditoría detecta funciones públicas duplicadas y SECURITY DEFINER sin `search_path`; el Resumen hace una pasada por tabla para los 14 días (+ índice por fecha); `admin_estado_codigo(null)` ya no da error; `admin_canales` máximo 100 filas; la lista de regalos siempre es una lista; `limpiar_pruebas.sql` sin `cascade` | `0003`, `0004`, `0005`, `auditoria_permisos.sql` |
+| 37 | **PENDIENTE (decisión del dueño y su mamá):** la política promete borrar «6 meses después de que termine la campaña» y la campaña no tiene fecha de fin. Opciones: poner fecha de fin, o cambiar a «6 meses desde que vence tu código» (receta 5.8 de la guía rápida) | — |
+| 38 | Acciones de GitHub al día (checkout v7, configure-pages v6, upload-pages-artifact v5, deploy-pages v5; versiones comprobadas con `gh api`) | `.github/workflows/` |
+| 39 | Código muerto fuera: textos sin uso, `quiereMusica`/getters de audio, `grupo` reexportado, `alTerminar`, `ms`, medidas de `doble`, comentarios de aplausos/coro y de los previews, CSS duplicado | varios |
+| 40 | `CLAUDE.md` recortado de 64 KB a ~15 KB sin perder decisiones (el completo quedó en `documentos/claude-md-historico-2026-11.md`); `PLAN.md`, `pendientes.md` y las guías al día | documentos |
+
+**Pruebas al cerrar:** `probar-sql` **310 ✓** (sección 27 nueva), `probar-canal` 19 ✓, `probar-mutaciones` todas detectadas, `revisar-secretos` limpio, `probar-seguridad` 19 ✓ (servidor real). En la demo del navegador: inicio con el gancho, perdiste («¡Pilas con las cajas!», «0 de 25 frutas», «Todavía quedan 50 premios», «Reta a un amigo»), pausa con aviso y «3, 2, 1» con el juego quieto, ticket en el orden nuevo, caja con «Otro código», panel guardando solo lo cambiado. **No probado:** nada en un celular real (sonido, FPS, compartir, Instagram), y los topes nuevos con tráfico real.
 
 ## Dos cosas del dueño, fuera del código
 - Los commits llevan un correo institucional con su nombre (visible en el repo público): GitHub → Settings → Emails → «Keep my email addresses private».

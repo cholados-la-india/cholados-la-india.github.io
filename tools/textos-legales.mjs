@@ -8,7 +8,7 @@
 import { writeFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import { CONFIG } from '../web/js/config.js';
-import { LOCAL, T, listaRegalos, pesos } from '../web/js/textos.js';
+import { LOCAL, T } from '../web/js/textos.js';
 
 const md = (s) => String(s)
   .replace(/<b>(.*?)<\/b>/g, '**$1**')
@@ -26,6 +26,10 @@ const texto = `# Textos legales y del premio — para revisar
 >
 > **Para quien revisa (la dueña, su mamá, un abogado si quieren):** lee cada bloque tal como lo verá la gente y marca lo que cambiarías. Esto es un texto razonable para un juego promocional pequeño, **no es asesoría legal**: si el negocio crece, vale la pena que un abogado lo mire una vez. Marco de referencia: Ley 1581 de 2012 (protección de datos personales, Colombia).
 
+## 0. Lo primero que se ve (pantalla de inicio)
+
+${md(T.inicio.gancho(r.regalos))} — ${md(T.inicio.ganchoCompra(r.compraMinima))}
+
 ## 1. Datos del local (salen en el código del cliente)
 
 - Dirección: **${LOCAL.direccion}**
@@ -33,7 +37,7 @@ const texto = `# Textos legales y del premio — para revisar
 - Responsable de los datos: **${LOCAL.responsableDatos}**
 - Correo para consultar, corregir o borrar datos: **${LOCAL.correoContacto}**
 
-## 2. «Condiciones de la promoción» (botón «Condiciones», en el inicio, en el formulario y en el ticket)
+## 2. «Condiciones de la promoción» (botón «Ver condiciones», en el inicio, en el formulario y en el ticket)
 
 ${condiciones.map((c, i) => `${i + 1}. ${md(c)}`).join('\n')}
 
@@ -56,7 +60,16 @@ ${md(T.ayuda.premio(r.compraMinima, r.regalos))}
 
 ${T.codigo.pasos(r.compraMinima, r.regalos).map((p, i) => `${i + 1}. ${md(p)}`).join('\n')}
 
+${md(T.codigo.noAcumulable(r.compraMinima))}
+
 Cuadro «${T.codigo.canjeaAqui}»: **${LOCAL.direccion.toUpperCase()}** · ${LOCAL.dias} · **${md(LOCAL.horas)}**
+
+## 5b. Otras pantallas que hablan de las reglas
+
+- **Este celular ya tiene un código:** ${md(T.yaTienesCupon.mensaje(r.diasEntreCodigosPorCelular, '[fecha]'))}
+- **Sin intentos:** ${md(T.sinIntentos.mensaje('[lunes]'))}
+- **Sin premios:** ${md(T.sinPremios.mensaje('[lunes]'))}
+- **Ganó, pero ya no quedaban premios:** ${md(T.sinPremios.mensajeGanaste('[lunes]'))}
 
 ## 6. Lo que debe cumplirse en la práctica (no está en el texto del juego)
 
@@ -69,5 +82,3 @@ Cuadro «${T.codigo.canjeaAqui}»: **${LOCAL.direccion.toUpperCase()}** · ${LOC
 
 await writeFile(fileURLToPath(new URL('../PARA-MI-LEER-Y-TENER-A-MANO/06-textos-legales.md', import.meta.url)), texto, 'utf8');
 console.log('Listo: PARA-MI-LEER-Y-TENER-A-MANO/06-textos-legales.md');
-void listaRegalos;
-void pesos;

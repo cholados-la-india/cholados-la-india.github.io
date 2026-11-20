@@ -294,6 +294,7 @@ declare
   e jsonb;
   v_id uuid;
   v_hora timestamptz := date_trunc('hour', now());
+  v_total int;
 begin
   if p_device is null then
     return jsonb_build_object('ok', false, 'motivo', 'dispositivo');
@@ -306,6 +307,16 @@ begin
   -- Límite por red: tope de partidas por hora desde un mismo internet (frena a quien invente miles de dispositivos)
   if not app.limitar('partidas', v_hora, c.limite_partidas_ip_hora) then
     return jsonb_build_object('ok', false, 'motivo', 'limite-red', 'reiniciaEnISO', app.iso(v_hora + interval '1 hour'));
+  end if;
+  -- Tope GLOBAL (todas las redes juntas): 3.000 partidas por hora. Un local así nunca llega ni cerca; frena a quien reparta un
+  -- ataque en miles de redes para llenar la base (500 MB en el plan gratis). Se apaga junto con el límite por red (0).
+  if c.limite_partidas_ip_hora > 0 then
+    insert into app.limites_red as l (clave, ventana, cuenta) values ('partidas:global', v_hora, 1)
+    on conflict (clave, ventana) do update set cuenta = l.cuenta + 1
+    returning l.cuenta into v_total;
+    if v_total > 3000 then
+      return jsonb_build_object('ok', false, 'motivo', 'limite-red', 'reiniciaEnISO', app.iso(v_hora + interval '1 hour'));
+    end if;
   end if;
   insert into app.partidas (device_id, semana) values (p_device, app.semana_de(now())) returning id into v_id;
   return jsonb_build_object(

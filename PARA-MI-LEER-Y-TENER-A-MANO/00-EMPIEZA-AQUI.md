@@ -4,14 +4,16 @@
 
 Última actualización: 2026-11-19.
 
-## 🆕 Revisión de noviembre (2026-11-19): falta solo tu commit
+## 🆕 Revisión de noviembre (2026-11-19): hecha completa
 
-Claude revisó todo el proyecto de punta a punta y arregló 12 cosas de robustez y seguridad (el detalle está en `documentos/auditoria-2026-11.md`).
+Claude revisó todo el proyecto y arregló o mejoró **40 cosas** (el detalle, punto por punto, está en `documentos/auditoria-2026-11.md`). El servidor ya está actualizado. **Lo que te toca:**
 
-- **A. Hacer el commit y el push** con GitHub Desktop (con eso se publican los arreglos del juego, la caja y el panel).
-- ✅ **B. El servidor ya está actualizado** (Claude lo aplicó el 2026-11-19 con tu visto bueno; la revisión de permisos dio «✅ Todo en orden»). No tienes que pegar nada.
+- **A. Commit y push** con GitHub Desktop (publica los cambios del juego, la caja y el panel).
+- **B. Que tu mamá vuelva a leer `06-textos-legales.md`.** Cambió la redacción de varias frases (más claras y con un solo vocabulario: *premio*, *código*, *regalo*), no lo que se promete. Si algo no le gusta, díselo a Claude.
+- **C. El enlace de Google Maps del local** (Google Maps → el local → Compartir → Copiar enlace). Con eso aparece el botón «Cómo llegar» en el código del cliente. Pásaselo a Claude.
+- **D. Decidir el plazo de los datos personales.** Hoy la política dice «hasta 6 meses después de que termine la campaña», pero la campaña no tiene fecha de fin. O le ponen fecha de fin, o se cambia a «6 meses desde que vence tu código». Díselo a Claude cuando lo decidan.
 
-**Qué cambia para ti:** el PIN de la caja ahora debe tener **6 a 8 números** al cambiarlo (el que ya tienes sigue sirviendo) · en el panel → Cuenta el botón **«Desbloquear la caja»** está siempre · las pruebas que gastan premios reales ahora piden permiso (`04-guia-rapida.md`, sección 5.1b).
+**Qué cambia para ti:** el PIN de la caja, al cambiarlo, debe tener 6 a 8 números (el tuyo ya tiene 6) · panel → Cuenta → **«Desbloquear la caja»** está siempre · el panel → Resumen muestra cuánto pesa la base de datos (de 500 MB) · el CSV ahora abre bien en Excel en español · las pruebas que gastan premios reales piden permiso (`04-guia-rapida.md`, 5.1b) · en Instagram hay un enlace aparte para historias (`07-enlaces-para-redes.md`).
 
 ## Dónde estás ahora
 

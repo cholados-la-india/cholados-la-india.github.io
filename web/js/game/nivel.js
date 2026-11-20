@@ -1,3 +1,5 @@
+/** Las frutas que tienen modelo en la escena (modelos.js). */
+export const TIPOS_FRUTA = ['fresa', 'mango', 'lulo', 'pinita', 'papaya', 'manzana'];
 // nivel.js — Ritmo del juego y generación del recorrido (obstáculos y frutas).
 // Puro: no usa Three.js ni el DOM, así se puede probar en Node y simular con un bot.
 //
@@ -122,7 +124,10 @@ export function crearGenerador(cfg, rng) {
       }
       const largo = f.largoMin + Math.floor(rng() * (f.largoMax - f.largoMin + 1));
       const carril = Math.floor(rng() * 3);
-      const tipos = f.tipos ?? ['fresa', 'mango'];
+      // Solo las frutas que tienen modelo: un tipo mal escrito en la configuración (o que llegue del servidor) saldría
+      // invisible pero igual se recogería.
+      const tipos = (f.tipos ?? ['fresa', 'mango']).filter((t) => TIPOS_FRUTA.includes(t));
+      if (!tipos.length) tipos.push('fresa');
       const tipo = tipos[Math.min(tipos.length - 1, Math.floor(rng() * tipos.length))];
       const d0 = g.dFruta;
       for (let i = 0; i < largo; i++) {

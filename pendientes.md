@@ -1,6 +1,6 @@
 # pendientes.md — Cosas por resolver
 
-> **2026-11-19 — Revisión completa:** además de lo de abajo hay **28 propuestas pendientes de la auditoría de noviembre** (bloques B–E: experiencia de juego, textos y marketing, panel y caja, servidor y mantenimiento) en [documentos/auditoria-2026-11.md](documentos/auditoria-2026-11.md). El bloque A (12 arreglos) ya está hecho en el repo y **su SQL ya está aplicado al servidor real** (2026-11-19): **falta solo el commit del usuario**. Datos que debe dar el usuario: `[ENLACE DE GOOGLE MAPS]` del local (punto 27) y la decisión sobre el plazo de los datos (punto 37).
+> **2026-11-19 — Revisión completa:** la auditoría de noviembre ([documentos/auditoria-2026-11.md](documentos/auditoria-2026-11.md)) está **hecha completa** (40 puntos) y su SQL aplicado al servidor; falta el commit del usuario de los bloques B–E. **La mamá del usuario debe volver a leer `06-textos-legales.md`** (cambió la redacción). Datos que debe dar el usuario: `[ENLACE DE GOOGLE MAPS]` del local (punto 27) y la decisión sobre el plazo de los datos (punto 37).
 
 Lo que **NO** está decidido o falta. Mientras tanto se usan **placeholders visibles** en el código y los textos (no se inventa). Actualizar al resolver cada punto.
 Última actualización: 2026-10-20, noche (Etapa 7 hecha en el repo; falta que el usuario la active: `PARA-MI-LEER-Y-TENER-A-MANO/01-lista-de-lanzamiento.md`).

@@ -446,6 +446,7 @@ declare
   e jsonb;
   v_id uuid;
   v_hora timestamptz := date_trunc('hour', now());
+  v_total int;
 begin
   if p_device is null then
     return jsonb_build_object('ok', false, 'motivo', 'dispositivo');
@@ -458,6 +459,16 @@ begin
   -- Límite por red: tope de partidas por hora desde un mismo internet (frena a quien invente miles de dispositivos)
   if not app.limitar('partidas', v_hora, c.limite_partidas_ip_hora) then
     return jsonb_build_object('ok', false, 'motivo', 'limite-red', 'reiniciaEnISO', app.iso(v_hora + interval '1 hour'));
+  end if;
+  -- Tope GLOBAL (todas las redes juntas): 3.000 partidas por hora. Un local así nunca llega ni cerca; frena a quien reparta un
+  -- ataque en miles de redes para llenar la base (500 MB en el plan gratis). Se apaga junto con el límite por red (0).
+  if c.limite_partidas_ip_hora > 0 then
+    insert into app.limites_red as l (clave, ventana, cuenta) values ('partidas:global', v_hora, 1)
+    on conflict (clave, ventana) do update set cuenta = l.cuenta + 1
+    returning l.cuenta into v_total;
+    if v_total > 3000 then
+      return jsonb_build_object('ok', false, 'motivo', 'limite-red', 'reiniciaEnISO', app.iso(v_hora + interval '1 hour'));
+    end if;
   end if;
   insert into app.partidas (device_id, semana) values (p_device, app.semana_de(now())) returning id into v_id;
   return jsonb_build_object(
@@ -1238,12 +1249,13 @@ declare
   pt record;
   cd record;
   s app.staff;
-  e jsonb := app.estado_json(null);
+  e jsonb;
   v_dias jsonb;
 begin
   if not app.es_admin() then
     return jsonb_build_object('ok', false, 'motivo', 'no-autorizado');
   end if;
+  e := app.estado_json(null);   -- (después de comprobar el permiso: quien no es administrador no gasta trabajo del servidor)
   select * into cu from app.cupos();
   select count(*) as total,
          count(*) filter (where semana = v_sem) as sem,
@@ -1261,15 +1273,23 @@ begin
          count(*) filter (where estado_efectivo = 'canjeado' and app.semana_de(canjeado_en) = v_sem) as canjes_sem
     into cd from app.v_codigos;
   select * into s from app.staff where id = 1;
+  -- Últimos 14 días: UNA pasada por tabla (agrupando por día) y solo sobre esos días; antes eran 4 consultas por día
+  -- recorriendo todas las partidas (unas 30 vueltas), y con muchos datos el Resumen podía dejar de abrir.
+  with dias as (select app.dia_de(v_now) - g as d from generate_series(0, 13) g),
+       p as (select app.dia_de(inicio) as d, count(*) as partidas, count(*) filter (where resultado = 'gano_validado') as ganadores
+               from app.partidas where inicio >= app.inicio_dia(v_now) - interval '13 days' group by 1),
+       k as (select dia as d, count(*) as codigos from app.codigos where dia >= app.dia_de(v_now) - 13 group by 1),
+       j as (select app.dia_de(canjeado_en) as d, count(*) as canjes from app.codigos
+              where estado = 'canjeado' and canjeado_en >= app.inicio_dia(v_now) - interval '13 days' group by 1)
   select coalesce(jsonb_agg(jsonb_build_object(
-           'dia', x.d::text,
-           'partidas', (select count(*) from app.partidas where app.dia_de(inicio) = x.d),
-           'ganadores', (select count(*) from app.partidas where resultado = 'gano_validado' and app.dia_de(inicio) = x.d),
-           'codigos', (select count(*) from app.codigos where dia = x.d),
-           'canjes', (select count(*) from app.codigos where estado = 'canjeado' and app.dia_de(canjeado_en) = x.d))
-         order by x.d desc), '[]'::jsonb)
+           'dia', dias.d::text,
+           'partidas', coalesce(p.partidas, 0),
+           'ganadores', coalesce(p.ganadores, 0),
+           'codigos', coalesce(k.codigos, 0),
+           'canjes', coalesce(j.canjes, 0))
+         order by dias.d desc), '[]'::jsonb)
     into v_dias
-    from (select app.dia_de(v_now) - g as d from generate_series(0, 13) g) x;
+    from dias left join p using (d) left join k using (d) left join j using (d);
 
   return jsonb_build_object(
     'ok', true,
@@ -1288,6 +1308,7 @@ begin
     'codigos', jsonb_build_object('total', cd.total, 'semana', cd.sem, 'activos', cd.activos, 'vencidos', cd.vencidos,
                                   'desactivados', cd.desactivados, 'canjeados', cd.canjeados, 'canjesSemana', cd.canjes_sem),
     'dias', v_dias,
+    'baseMB', round(pg_database_size(current_database()) / 1048576.0, 1),   -- el plan gratis permite 500 MB
     'pin', jsonb_build_object(
       'configurado', s.pin_hash is not null,
       'cambiadoISO', case when s.pin_cambiado_en is not null then app.iso(s.pin_cambiado_en) end,
@@ -1349,14 +1370,15 @@ end $$;
 create or replace function public.admin_estado_codigo(p_codigo text, p_estado text) returns jsonb
 language plpgsql volatile security definer set search_path = app, pg_temp as $$
 declare
-  k app.codigos := app.buscar_codigo(p_codigo);
+  k app.codigos;
 begin
   if not app.es_admin() then
     return jsonb_build_object('ok', false, 'motivo', 'no-autorizado');
   end if;
-  if p_estado not in ('desactivado', 'activo') then
+  if p_estado is null or p_estado not in ('desactivado', 'activo') then   -- (con NULL antes llegaba al update y daba error)
     return jsonb_build_object('ok', false, 'motivo', 'datos');
   end if;
+  k := app.buscar_codigo(p_codigo);
   if k.id is null then
     return jsonb_build_object('ok', false, 'motivo', 'inexistente');
   end if;
@@ -1531,6 +1553,8 @@ begin
         left join app.codigos k on k.partida_id = p.id
        where v_desde is null or p.inicio >= v_desde
        group by p.utm_fuente, p.utm_medio, p.utm_campana
+       order by count(*) desc
+       limit 100   -- (alguien podría inventar una etiqueta distinta en cada partida: el panel no tiene por qué mostrar miles)
     ) g;
   return jsonb_build_object('ok', true, 'periodo', v_periodo, 'filas', v_filas, 'ahoraISO', app.iso(now()));
 end $$;
@@ -1546,6 +1570,43 @@ grant execute on function public.registrar_canal(uuid, text, text, text) to anon
 grant execute on function public.admin_canales(text) to authenticated;
 
 
+-- ┌───────────────────────────── migrations/0005_revision_noviembre.sql ─────────────────────────────
+-- 0005_revision_noviembre.sql — Endurecimiento de la revisión de noviembre de 2026 (bloque E). Idempotente: se puede volver a correr.
+--
+-- 1. search_path fijo en TODAS las funciones internas de «app» (el asesor de seguridad de Supabase avisaba de 32). Hoy solo las
+--    llaman funciones públicas que ya fijan el suyo, pero así ninguna depende de quién la llame. Se recorre el esquema entero:
+--    cualquier función nueva que se agregue después queda cubierta al volver a pegar este archivo.
+-- 2. Índice por fecha de inicio en app.partidas (el Resumen del panel y la limpieza de partidas viejas lo usan).
+-- 3. La lista de regalos siempre es un arreglo (si alguien la cambia a mano con algo raro, la caja dejaba de funcionar).
+
+do $$
+declare
+  f record;
+begin
+  for f in
+    select p.oid::regprocedure as firma
+      from pg_proc p
+     where p.pronamespace = 'app'::regnamespace
+       and p.prokind = 'f'
+       and not exists (select 1 from unnest(coalesce(p.proconfig, '{}')) x where x like 'search_path=%')
+  loop
+    execute format('alter function %s set search_path = app, extensions, pg_temp', f.firma);
+  end loop;
+end $$;
+
+create index if not exists partidas_inicio on app.partidas (inicio);
+
+do $$
+begin
+  if not exists (select 1 from pg_constraint where conname = 'configuracion_regalos_arreglo') then
+    alter table app.configuracion add constraint configuracion_regalos_arreglo check (jsonb_typeof(regalos) = 'array');
+  end if;
+end $$;
+
+-- Las funciones internas siguen cerradas al público
+revoke all on all functions in schema app from public, anon, authenticated;
+
+
 -- ┌───────────────────────────── sql/auditoria_permisos.sql ─────────────────────────────
 -- auditoria_permisos.sql — Revisa en tu Supabase REAL que nada quedó abierto de más para el público.
 -- Es de SOLO LECTURA (no cambia nada). Pégalo en el SQL Editor y pulsa Run.
@@ -1558,7 +1619,8 @@ grant execute on function public.admin_canales(text) to authenticated;
 --   · que anon/authenticated no puedan ni entrar al esquema «app» ni ejecutar sus funciones internas;
 --   · que anon solo pueda ejecutar las 10 funciones del juego y de la caja, y «authenticated» esas 10 + las 12 del administrador;
 --   · que todas las funciones públicas sean SECURITY DEFINER (corren con permisos del dueño, no del que llama);
---   · que no falte ninguna función prevista.
+--   · que no falte ninguna función prevista;
+--   · que no haya versiones viejas de una función pública (otra firma) y que toda SECURITY DEFINER fije su search_path.
 with permitidas_anon (nombre) as (
   values ('ping'), ('estado'), ('iniciar_partida'), ('terminar_partida'), ('reclamar_codigo'), ('mi_codigo'),
          ('canje_consultar'), ('canje_confirmar'), ('diag_red'), ('registrar_canal')
@@ -1615,6 +1677,16 @@ problemas as (
   union all
   select 'anon puede ejecutar una función admin_*', firma
     from funciones_publicas where proname like 'admin\_%' and has_function_privilege('anon', oid, 'EXECUTE')
+  union all
+  -- Si se cambia la firma de una función pública, «create or replace» crea OTRA y la vieja queda viva (y abierta)
+  select 'Función pública duplicada (quedó una versión vieja con otros parámetros)', proname::text
+    from funciones_publicas group by proname having count(*) > 1
+  union all
+  select 'Función SECURITY DEFINER sin search_path fijo', p.oid::regprocedure::text
+    from pg_proc p
+   where p.pronamespace in ('public'::regnamespace, 'app'::regnamespace) and p.prosecdef
+     and not exists (select 1 from pg_depend d where d.objid = p.oid and d.deptype = 'e')
+     and not exists (select 1 from unnest(coalesce(p.proconfig, '{}')) x where x like 'search_path=%')
 )
 select problema, detalle from problemas
 union all

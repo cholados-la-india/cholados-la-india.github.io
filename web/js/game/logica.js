@@ -32,6 +32,7 @@ export function crearPartida(cfg, { semilla = Date.now(), sinCuenta = false, inv
     y: 0, // altura de los pies sobre el piso
     vy: 0,
     enAire: false,
+    tSalto: 0, // segundos desde que despegó (la altura se calcula con la fórmula exacta: igual a 20 o a 120 cuadros por segundo)
     saltoPendienteHasta: -1,
     vidas: cfg.partida.vidas,
     invulHasta: -1,
@@ -45,6 +46,10 @@ export function crearPartida(cfg, { semilla = Date.now(), sinCuenta = false, inv
     obstaculos: [],
     frutasLista: [],
     eventos: [],
+    // Lo que pasa por un toque (saltar, cambiar de carril) llega ENTRE cuadros: se guarda aquí y entra a `eventos` en el
+    // siguiente paso. (Antes se metía directo en `eventos` y paso() lo borraba antes de que sonara: el salto y el cambio
+    // de carril casi nunca sonaban.)
+    eventosEntrada: [],
     semilla,
   };
   p.gen = crearGenerador(cfg, crearRNG(semilla));
@@ -55,6 +60,10 @@ export function crearPartida(cfg, { semilla = Date.now(), sinCuenta = false, inv
 export function paso(p, dt) {
   const cfg = p.cfg;
   p.eventos.length = 0;
+  if (p.eventosEntrada.length) {
+    for (const e of p.eventosEntrada) p.eventos.push(e);
+    p.eventosEntrada.length = 0;
+  }
 
   if (p.estado === 'cuenta') {
     const antes = Math.ceil(p.tCuenta);
@@ -78,7 +87,7 @@ export function paso(p, dt) {
   p.D += p.vel * dt;
   if (!p.mitadHecha && p.t >= T * 0.5) {
     p.mitadHecha = true;
-    p.eventos.push({ tipo: 'mitad' }); // la mitad del camino (suena un aliento de la gente)
+    p.eventos.push({ tipo: 'mitad' }); // la mitad del camino (suena el timbre corto de logro)
   }
 
   // Movimiento lateral (a velocidad constante hacia el carril elegido)
@@ -86,18 +95,9 @@ export function paso(p, dt) {
   const paso = (cfg.carriles.ancho / cfg.carriles.cambioS) * dt;
   p.x = Math.abs(objX - p.x) <= paso ? objX : p.x + Math.sign(objX - p.x) * paso;
 
-  // Salto (gravedad calculada para que alcance `alto` en `duracionS`)
-  if (p.enAire) {
-    const g = (8 * cfg.salto.alto) / (cfg.salto.duracionS * cfg.salto.duracionS);
-    p.vy -= g * dt;
-    p.y += p.vy * dt;
-    if (p.y <= 0) {
-      p.y = 0;
-      p.vy = 0;
-      p.enAire = false;
-      p.eventos.push({ tipo: 'aterrizo' });
-      if (p.t <= p.saltoPendienteHasta) saltar(p);
-    }
+  if (avanzarSalto(p, dt)) {
+    p.eventos.push({ tipo: 'aterrizo' });
+    if (p.t <= p.saltoPendienteHasta) saltar(p, true);
   }
 
   p.gen.generar(p);
@@ -125,10 +125,31 @@ export function paso(p, dt) {
   }
 }
 
+/**
+ * Salto con la fórmula exacta (no paso a paso): y = v0·τ − g·τ²/2. Así la altura y el tiempo en el aire son los mismos con
+ * cualquier cantidad de cuadros por segundo (antes, a 20 fps el salto quedaba un 15 % más bajo que a 120).
+ * Devuelve true en el cuadro en que aterriza.
+ */
+function avanzarSalto(p, dt) {
+  if (!p.enAire) return false;
+  const { alto, duracionS } = p.cfg.salto;
+  const g = (8 * alto) / (duracionS * duracionS);
+  const v0 = (4 * alto) / duracionS;
+  p.tSalto += dt;
+  p.y = v0 * p.tSalto - 0.5 * g * p.tSalto * p.tSalto;
+  p.vy = v0 - g * p.tSalto;
+  if (p.y > 0) return false;
+  p.y = 0;
+  p.vy = 0;
+  p.enAire = false;
+  return true;
+}
+
 /** Tras ganar o perder el mundo frena poco a poco (el jugador sigue un momento para festejar o caer). */
 function terminando(p, dt) {
   const cfg = p.cfg;
   p.tFin += dt;
+  avanzarSalto(p, dt); // si terminó en pleno salto, cae al piso (antes se quedaba flotando durante el festejo)
   const llegoALaMeta = p.estado === 'gano' || p.motivoFin === 'frutas'; // sigue un momento y pasa bajo el arco
   const duracion = llegoALaMeta ? cfg.partida.celebracionS * 0.75 : 0.5;
   const k = Math.max(0, 1 - p.tFin / duracion);
@@ -180,7 +201,7 @@ function recogerFrutas(p) {
     p.frutas += 1;
     p.eventos.push({ tipo: 'fruta', fruta: f });
     const minimo = p.cfg.partida.frutasMinimas ?? 0;
-    if (minimo > 0 && p.frutas === minimo) p.eventos.push({ tipo: 'minimo' }); // ya tiene las frutas para ganar: aplausos
+    if (minimo > 0 && p.frutas === minimo) p.eventos.push({ tipo: 'minimo' }); // ya tiene las frutas para ganar: timbre de logro
   }
 }
 
@@ -190,21 +211,25 @@ export function moverCarril(p, dir) {
   const n = Math.max(0, Math.min(2, p.carrilObjetivo + dir));
   if (n !== p.carrilObjetivo) {
     p.carrilObjetivo = n;
-    p.eventos.push({ tipo: 'carril', dir });
+    p.eventosEntrada.push({ tipo: 'carril', dir });
   }
 }
 
-/** Salta. Si ya está en el aire, guarda la orden unos instantes (buffer) para saltar al aterrizar. */
-export function saltar(p) {
+/**
+ * Salta. Si ya está en el aire, guarda la orden unos instantes (buffer) para saltar al aterrizar.
+ * `dentroDelPaso`: lo llama paso() mismo (el salto guardado): el evento va directo a `eventos`.
+ */
+export function saltar(p, dentroDelPaso = false) {
   if (p.estado !== 'jugando') return;
   if (p.enAire) {
     p.saltoPendienteHasta = p.t + p.cfg.salto.bufferS;
     return;
   }
   p.enAire = true;
+  p.tSalto = 0;
   p.vy = (4 * p.cfg.salto.alto) / p.cfg.salto.duracionS;
   p.saltoPendienteHasta = -1;
-  p.eventos.push({ tipo: 'salto' });
+  (dentroDelPaso ? p.eventos : p.eventosEntrada).push({ tipo: 'salto' });
 }
 
 export const progreso = (p) => Math.min(1, p.t / p.cfg.partida.duracionS);

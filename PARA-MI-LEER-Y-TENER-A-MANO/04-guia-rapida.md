@@ -84,7 +84,7 @@ Cada bloque se pega en el **SQL Editor** (sección 1). Los que solo empiezan con
 Borra TODOS los códigos y partidas y los contadores por red; **no** toca la configuración, el PIN ni los administradores. Úsalo después de correr pruebas del servidor real y **una vez antes de lanzar**. **NUNCA cuando ya haya clientes reales**: borraría los códigos que la gente tiene en el celular.
 
 ```sql
-truncate app.codigos, app.partidas, app.limites_red restart identity cascade;
+truncate app.codigos, app.partidas, app.limites_red restart identity;
 ```
 
 ### 5.1b Limpiar SOLO lo que dejan las pruebas (sirve aunque ya haya clientes)
@@ -295,6 +295,15 @@ where vence_en < now() - interval '180 days' and nombre <> '(borrado)';
 La **auditoría de permisos** sola (solo mira, no cambia nada) es el archivo `supabase/sql/auditoria_permisos.sql`.
 
 ---
+
+### 5.10 Borrar partidas viejas (si la base se está llenando)
+El plan gratis de Supabase permite 500 MB. Hoy el juego usa unos 11 MB y el panel → **Resumen** muestra cuánto va (abajo, «Base de datos: … MB de 500»). Si algún día pasa de 400 MB, esto borra las **partidas de hace más de 60 días que no tienen código** (no sirven para nada: los códigos de los clientes y sus partidas se quedan). Las estadísticas del panel de esos días viejos bajan; nada más cambia.
+
+```sql
+delete from app.partidas p
+ where p.inicio < now() - interval '60 days'
+   and not exists (select 1 from app.codigos k where k.partida_id = p.id);
+```
 
 ## 6. El panel de administrador
 

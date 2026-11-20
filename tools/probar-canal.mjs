@@ -58,7 +58,9 @@ ok('un valor guardado dañado no rompe nada', canalActual(t0) === null);
 memoria.set('cholado-canal', JSON.stringify({ fuente: '<img onerror=x>', hasta: t0 + 1e9 }));
 ok('un valor guardado con HTML se descarta', canalActual(t0) === null);
 globalThis.localStorage = { getItem: () => { throw new Error('bloqueado'); }, setItem: () => { throw new Error('bloqueado'); } };
-ok('con el almacenamiento bloqueado (navegadores internos) no rompe y no hay canal', iniciarCanal(ventana('https://x.github.io/?utm_source=vasos'), t0) === null);
+const bloqueada = ventana('https://x.github.io/?utm_source=vasos');
+ok('con el almacenamiento bloqueado (navegadores internos) no rompe, y el canal de ESTA visita igual cuenta (se recuerda en memoria)', iniciarCanal(bloqueada, t0)?.fuente === 'vasos' && bloqueada.barra === '/');
+ok('una etiqueta mal escrita igual se quita de la barra (para que no se comparta de rebote)', (() => { const v = ventana('https://x.github.io/?utm_source=%3Cmal%3E&x=1'); iniciarCanal(v, t0); return v.barra === '/?x=1'; })());
 
 console.log(`\n${fallos === 0 ? '✅ TODO BIEN' : '❌ HAY FALLOS'} — ${total - fallos} de ${total} comprobaciones correctas.\n`);
 process.exit(fallos === 0 ? 0 : 1);

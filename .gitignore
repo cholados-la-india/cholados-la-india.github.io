@@ -157,3 +157,8 @@ referencias-diseno/
 # El historial del proceso (hitos) NUNCA se ignora, aunque algun patron de arriba (out, dist, logs...) coincida con algo de adentro
 !historial/
 !historial/**
+
+# Respaldos del panel (Cuenta → «Descargar todos los códigos»): traen nombres y celulares de clientes y el repositorio es
+# PÚBLICO. Nunca se suben, aunque alguien los guarde dentro de esta carpeta.
+*.csv
+respaldos/

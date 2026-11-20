@@ -61,12 +61,12 @@ export const CONFIG = {
       cajaBaja: { peso: 4, ancho: 0.95, alto: 0.85, fondo: 0.8 }, // un carril; se salta o se esquiva
       pilaAlta: { peso: 3, ancho: 0.95, alto: 2.0, fondo: 0.8 }, // un carril; NO se salta, se esquiva
       barraBaja: { peso: 1.4, ancho: 3.6, alto: 0.6, fondo: 0.55 }, // atraviesa los 3 carriles; se salta
-      doble: { peso: 3, ancho: 0.95, alto: 0, fondo: 0.8 }, // dos obstáculos a la vez (cajas o pilas) dejando un carril libre
+      doble: { peso: 3 }, // dos obstáculos a la vez (cajas o pilas) dejando un carril libre (sus medidas son las de cada caja o pila)
     },
     horizonte: 74, // hasta qué distancia por delante se generan y se dibujan
   },
 
-  /* ───────────── Frutas (opcionales: no afectan la meta) ───────────── */
+  /* ───────────── Frutas (para ganar hay que llegar con partida.frutasMinimas) ───────────── */
   frutas: {
     cadaS: 2.6, // cada cuántos segundos aparece una hilera de frutas
     largoMin: 3,

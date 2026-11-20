@@ -1,7 +1,7 @@
 // modelos-nivel.js — Obstáculos nuevos de la Etapa 3 y la meta, construidos por código con el mismo estilo (G).
 // (La caja de fruta, las frutas y el decorado están en modelos.js.) Cada objeto = UNA malla con color por vértice.
 import * as THREE from '../../vendor/three/three.min.js';
-import { fusionar, grupo, pieza } from './modelos.js';
+import { fusionar, pieza } from './modelos.js';
 
 const caja = (x, y, z) => new THREE.BoxGeometry(x, y, z);
 const cil = (rs, ri, h, seg = 8) => new THREE.CylinderGeometry(rs, ri, h, seg, 1);
@@ -109,4 +109,3 @@ export function crearCartelMeta(texto) {
   return m;
 }
 
-export { grupo };

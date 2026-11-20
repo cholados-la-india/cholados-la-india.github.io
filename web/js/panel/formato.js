@@ -3,8 +3,6 @@ import { enBogota, fechaHoraBogota, horaBogota } from '../util.js';
 
 const MES3 = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'];
 
-export const ms = (iso) => (iso ? Date.parse(iso) : null);
-
 /** "$30.000" */
 export const pesos = (n) => '$' + Number(n ?? 0).toLocaleString('es-CO');
 
@@ -22,9 +20,9 @@ export function fechaCorta(iso) {
 }
 
 /** "2026-10-27 14:50" (para el CSV y las tablas; hora de Bogotá) */
-export function fechaSql(iso, conSegundos = false) {
+export function fechaSql(iso) {
   if (!iso) return '';
-  const s = enBogota(Date.parse(iso)).toISOString().slice(0, conSegundos ? 19 : 16);
+  const s = enBogota(Date.parse(iso)).toISOString().slice(0, 16);
   return s.replace('T', ' ');
 }
 
@@ -56,7 +54,9 @@ export const ESTADOS = {
 };
 
 /**
- * Convierte filas en texto CSV listo para Excel: separador coma, saltos CRLF, comillas dobles escapadas.
+ * Convierte filas en texto CSV listo para Excel en español: separador PUNTO Y COMA (el que usa Excel en Colombia; con coma
+ * abría todo en una sola columna), saltos CRLF y TODAS las celdas entre comillas (así un «;» dentro de un nombre nunca
+ * parte la celda). Google Sheets lo detecta solo.
  * ANTI-INYECCIÓN: si una celda empieza con = + - @ (o tab/enter), Excel podría ejecutarla como fórmula; los nombres los
  * escriben los jugadores, así que se les antepone una comilla simple. (El archivo lleva BOM para que Excel lea bien las tildes.)
  */
@@ -64,11 +64,11 @@ export function aCsv(columnas, filas) {
   const celda = (valor) => {
     let t = valor == null ? '' : String(valor);
     if (/^[=+\-@\t\r]/.test(t)) t = "'" + t;
-    return /[",\r\n]/.test(t) ? '"' + t.replace(/"/g, '""') + '"' : t;
+    return '"' + t.replace(/"/g, '""') + '"';
   };
-  const lineas = [columnas.map((c) => celda(c.titulo)).join(',')];
-  for (const f of filas) lineas.push(columnas.map((c) => celda(c.valor(f))).join(','));
-  return '﻿' + lineas.join('\r\n') + '\r\n';
+  const lineas = [columnas.map((c) => celda(c.titulo)).join(';')];
+  for (const f of filas) lineas.push(columnas.map((c) => celda(c.valor(f))).join(';'));
+  return '﻿' + lineas.join('\r\n') + '\r\n'; // (BOM escrito como ﻿: el carácter invisible se borraba fácil al editar)
 }
 
 /** Descarga un texto como archivo. */

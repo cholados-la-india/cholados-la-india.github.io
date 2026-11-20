@@ -9,7 +9,8 @@
 --   · que anon/authenticated no puedan ni entrar al esquema «app» ni ejecutar sus funciones internas;
 --   · que anon solo pueda ejecutar las 10 funciones del juego y de la caja, y «authenticated» esas 10 + las 12 del administrador;
 --   · que todas las funciones públicas sean SECURITY DEFINER (corren con permisos del dueño, no del que llama);
---   · que no falte ninguna función prevista.
+--   · que no falte ninguna función prevista;
+--   · que no haya versiones viejas de una función pública (otra firma) y que toda SECURITY DEFINER fije su search_path.
 with permitidas_anon (nombre) as (
   values ('ping'), ('estado'), ('iniciar_partida'), ('terminar_partida'), ('reclamar_codigo'), ('mi_codigo'),
          ('canje_consultar'), ('canje_confirmar'), ('diag_red'), ('registrar_canal')
@@ -66,6 +67,16 @@ problemas as (
   union all
   select 'anon puede ejecutar una función admin_*', firma
     from funciones_publicas where proname like 'admin\_%' and has_function_privilege('anon', oid, 'EXECUTE')
+  union all
+  -- Si se cambia la firma de una función pública, «create or replace» crea OTRA y la vieja queda viva (y abierta)
+  select 'Función pública duplicada (quedó una versión vieja con otros parámetros)', proname::text
+    from funciones_publicas group by proname having count(*) > 1
+  union all
+  select 'Función SECURITY DEFINER sin search_path fijo', p.oid::regprocedure::text
+    from pg_proc p
+   where p.pronamespace in ('public'::regnamespace, 'app'::regnamespace) and p.prosecdef
+     and not exists (select 1 from pg_depend d where d.objid = p.oid and d.deptype = 'e')
+     and not exists (select 1 from unnest(coalesce(p.proconfig, '{}')) x where x like 'search_path=%')
 )
 select problema, detalle from problemas
 union all

@@ -1,7 +1,7 @@
 # PLAN.md — Cholado Runner
 
 Estado por etapas. **Regla:** solo se trabaja en la etapa que el usuario pida; al cerrar cada una se resume (qué se hizo, archivos tocados, frase de commit), se espera el visto bueno y se actualiza este archivo y los demás documentos.
-Última actualización: 2026-10-20 (noche): Etapas 1–6 y Fases A y B **cerradas**; **Etapa 7 hecha en el repositorio, a la espera del visto bueno del usuario** (falta que él la ponga en marcha en GitHub y Supabase: `PARA-MI-LEER-Y-TENER-A-MANO/01-lista-de-lanzamiento.md`). URL: `https://cholados-la-india.github.io/` (organización y repo ya creados).
+Última actualización: **2026-11-19 — revisión completa de noviembre (40 puntos) HECHA y su SQL aplicado al servidor; ver `documentos/auditoria-2026-11.md`.** Antes (2026-10-20, noche): Etapas 1–6 y Fases A y B **cerradas**; **Etapa 7 hecha en el repositorio, a la espera del visto bueno del usuario** (falta que él la ponga en marcha en GitHub y Supabase: `PARA-MI-LEER-Y-TENER-A-MANO/01-lista-de-lanzamiento.md`). URL: `https://cholados-la-india.github.io/` (organización y repo ya creados).
 Contexto completo en `CLAUDE.md`; historia detallada en `documentos/bitacora.md`; lo abierto en `pendientes.md`.
 
 | # | Etapa | Estado |
@@ -14,6 +14,7 @@ Contexto completo en `CLAUDE.md`; historia detallada en `documentos/bitacora.md`
 | 6 | Pruebas, seguridad y compatibilidad | ✅ **Cerrada** (2026-10-20): 244 pruebas SQL; servidor real 43 + 30 + 19 ✓; canje doble y limpieza hechos por el usuario; celulares reales en pendientes |
 | A | **Fase bonus A**: revisión de bugs en localhost | ✅ **Hecha por ahora** (Claude arregló 9 bugs; el usuario dijo «no más bugs por ahora»; la prueba en el XR queda opcional, `pendientes.md` #36) |
 | B | **Fase bonus B**: mejoras estéticas | ✅ **Cerrada** (2026-10-20): cholado final «Mermelada», sonido sin aplausos, textos; hito `historial/09-fase-b-cierre/` |
+| R | **Revisión de noviembre** (auditoría completa) | ✅ **Hecha** (2026-11-19): 40 puntos en 5 bloques; quedan 2 decisiones del dueño (mapa del local y plazo de los datos) |
 | 7 | Publicación, QR y lista de lanzamiento | ✅ **Hecha en el repo (2026-10-20), esperando visto bueno**: Pages + aviso diario como workflows, UTM por canal y panel, QR, textos legales, guías y lista de lanzamiento. **Falta que el usuario la active** (`PARA-MI-LEER-Y-TENER-A-MANO/01-lista-de-lanzamiento.md`) |
 
 ## Etapa 1 — Contexto y preguntas ✅

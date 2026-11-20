@@ -15,7 +15,13 @@ export function vistaConfig(ctx) {
 
   const estadoGuardado = el('span', { class: 'estado' });
   const botonGuardar = el('button', { type: 'button', class: 'boton', onclick: guardar }, 'Guardar cambios');
-  const botonDescartar = el('button', { type: 'button', class: 'boton secundario', onclick: () => ctx.cargar(contenedor, cargar) }, 'Descartar cambios');
+  const botonDescartar = el('button', { type: 'button', class: 'boton secundario', onclick: () => {
+    if (!sucio || confirm('¿Descartar los cambios que no has guardado?')) ctx.cargar(contenedor, cargar);
+  } }, 'Descartar cambios');
+  // Si cierras la pestaña con cambios sin guardar, el navegador pregunta antes
+  window.addEventListener('beforeunload', (e) => {
+    if (sucio && contenedor.isConnected) e.preventDefault();
+  });
 
   function marcar(si = true) {
     sucio = si;
@@ -48,7 +54,8 @@ export function vistaConfig(ctx) {
   function dificultad(ruta, etiqueta, ayuda) {
     const [grupo, clave] = ruta.split('.');
     const valor = actual.juego?.[grupo]?.[clave];
-    const input = el('input', { type: 'number', step: 'any', inputmode: 'decimal', placeholder: `Fábrica: ${CONFIG[grupo][clave]}`, value: valor ?? '' });
+    const entero = ruta === 'partida.vidas';
+    const input = el('input', { type: 'number', step: entero ? 1 : 'any', inputmode: entero ? 'numeric' : 'decimal', placeholder: `Fábrica: ${CONFIG[grupo][clave]}`, value: valor ?? '' });
     campos.dificultad[ruta] = { input, etiqueta };
     return el('label', { class: 'campo' }, el('span', {}, etiqueta), input, el('span', { class: 'ayuda' }, ayuda));
   }
@@ -139,8 +146,11 @@ export function vistaConfig(ctx) {
     }
     cambios.regalos = [...campos.regalos.querySelectorAll('input')].map((i) => i.value.trim()).filter(Boolean);
     cambios.prefijoCodigo = campos.prefijo.value.trim();
-    cambios.campanaInicioISO = deInputFecha(campos.inicio.value);
-    cambios.campanaFinISO = deInputFecha(campos.fin.value);
+    for (const [clave, campo, nombre] of [['campanaInicioISO', campos.inicio, 'Empieza'], ['campanaFinISO', campos.fin, 'Termina']]) {
+      cambios[clave] = deInputFecha(campo.value);
+      // Antes, una fecha que no se entendía se guardaba como «sin fecha» (campaña siempre activa) sin avisar
+      if (campo.value.trim() && !cambios[clave]) throw new Error(`La fecha de «${nombre}» no se entiende. Escríbela de nuevo o déjala vacía.`);
+    }
     // La dificultad se arma sobre lo que ya hay guardado, para no borrar ajustes que no tienen casilla aquí.
     const juego = structuredClone(actual.juego ?? {});
     for (const [ruta, { input }] of Object.entries(campos.dificultad)) {
@@ -153,7 +163,20 @@ export function vistaConfig(ctx) {
       }
     }
     cambios.juego = juego;
+    // Solo se manda lo que CAMBIASTE (el servidor acepta cambios parciales). Así, si alguien ajustó algo desde el SQL Editor u
+    // otro dispositivo mientras esta pestaña estaba abierta, guardar otra casilla no lo pisa con el valor viejo.
+    const igual = (k, v) => (k.endsWith('ISO') ? (Date.parse(actual[k] ?? '') || null) === (Date.parse(v ?? '') || null) : JSON.stringify(actual[k] ?? null) === JSON.stringify(v ?? null));
+    for (const k of Object.keys(cambios)) if (igual(k, cambios[k])) delete cambios[k];
     return cambios;
+  }
+
+  /** ¿Con estos cambios el juego queda cerrado para la gente? (fechas fuera de hoy o 0 premios) */
+  function cierraElJuego(c) {
+    const ahora = Date.now();
+    const ini = Date.parse(('campanaInicioISO' in c ? c.campanaInicioISO : actual.campanaInicioISO) ?? '');
+    const fin = Date.parse(('campanaFinISO' in c ? c.campanaFinISO : actual.campanaFinISO) ?? '');
+    const premios = 'premiosPorSemana' in c ? c.premiosPorSemana : actual.premiosPorSemana;
+    return (fin && fin < ahora) || (ini && ini > ahora) || premios === 0;
   }
 
   async function guardar() {
@@ -164,6 +187,12 @@ export function vistaConfig(ctx) {
       ctx.aviso(e.message, 'error');
       return;
     }
+    if (!Object.keys(cambios).length) {
+      marcar(false);
+      ctx.aviso('No había nada distinto que guardar.');
+      return;
+    }
+    if (cierraElJuego(cambios) && !confirm('Con esto el juego queda CERRADO para la gente desde ya (fechas fuera de hoy o 0 premios). ¿Guardar de todas formas?')) return;
     botonGuardar.disabled = true;
     botonGuardar.textContent = 'Guardando…';
     try {
@@ -174,7 +203,7 @@ export function vistaConfig(ctx) {
       }
       actual = r.config;
       pintar();
-      ctx.aviso('Guardado. Los jugadores ya ven los cambios.');
+      ctx.aviso('Guardado. Vale para quien abra el juego desde ahora.');
     } catch (e) {
       ctx.errorDeCarga(e);
     } finally {

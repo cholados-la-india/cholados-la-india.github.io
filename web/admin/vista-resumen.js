@@ -111,7 +111,7 @@ export function vistaResumen(ctx) {
       el('div', { class: 'estadisticas' },
         dato(r.premiosSemanaRestantes ?? r.premiosRestantes, 'Premios que quedan esta semana', { total: r.premiosPorSemana, clase: 'destacado', sub: `Se reinicia el lunes 00:00` }),
         r.cupoDiario > 0 && dato(r.premiosHoyRestantes ?? 0, 'Premios que quedan HOY', { total: r.cupoDiario, clase: r.premiosHoyRestantes === 0 ? 'cerrado' : '', sub: 'Cupo diario activo; se renueva a las 12:00 a. m.' }),
-        dato(r.jugable ? 'Abierto' : 'Cerrado', 'Estado del juego', { clase: r.jugable ? '' : 'cerrado', sub: r.jugable ? 'La gente puede jugar por premio' : MOTIVOS[r.motivo] ?? r.motivo }),
+        dato(r.jugable ? 'Abierto' : 'Cerrado', 'Estado del juego', { clase: r.jugable ? '' : 'cerrado', sub: r.jugable ? 'La gente puede jugar por premio' : (r.motivo === 'sin-premios' && r.limitadoPor === 'dia' ? 'Se acabaron los premios de hoy.' : MOTIVOS[r.motivo] ?? r.motivo) }),
         dato(r.partidas.semana, 'Partidas esta semana', { sub: `${r.partidas.total.toLocaleString('es-CO')} en total` }),
         dato(r.partidas.ganadoresSemana, 'Llegaron a la meta esta semana', { sub: `${r.partidas.ganadores.toLocaleString('es-CO')} en total` }),
         dato(r.codigos.semana, 'Códigos expedidos esta semana', { sub: `${r.codigos.total.toLocaleString('es-CO')} en total` }),
@@ -123,7 +123,7 @@ export function vistaResumen(ctx) {
         r.partidas.sinCupo > 0 && el('p', { class: 'nota' }, `Llegaron a la meta pero ya no había premios: ${r.partidas.sinCupo}.`)),
       tarjetaCanales(),
       el('div', { class: 'tarjeta' }, el('h2', {}, 'Últimos 14 días'), tablaDias(r),
-        el('p', { class: 'nota' }, `Datos al ${fechaCorta(r.ahoraISO)} (los días van en hora de Bogotá).`)),
+        el('p', { class: 'nota' }, `Datos al ${fechaCorta(r.ahoraISO)} (los días van en hora de Bogotá).${r.baseMB != null ? ` Base de datos: ${String(r.baseMB).replace('.', ',')} MB de 500 (plan gratis)${r.baseMB > 400 ? ' — ¡casi llena! Mira la guía rápida, sección 5.10.' : ''}.` : ''}`)),
       el('button', { type: 'button', class: 'boton secundario', onclick: () => ctx.cargar(contenedor, cargar) }, 'Actualizar'),
     );
   }

@@ -8,7 +8,7 @@ import { CONFIG } from '../config.js';
 import { ErrorServidor } from './rpc.js';
 import { dormir } from './dom.js';
 
-export const PIN_DEMO = '1234';
+const PIN_DEMO = '1234'; // (en la demo la caja arranca con este PIN; uno nuevo desde el panel debe tener 6 a 8 números)
 export const CLAVE_DEMO = 'demo';
 export const TOKEN_DEMO = 'token-de-mentira';
 

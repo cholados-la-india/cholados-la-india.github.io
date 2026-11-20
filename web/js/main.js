@@ -153,8 +153,10 @@ async function irInicio(recargar = true) {
   token = null;
   pausado = false;
   terminada = false;
+  cancelarReanudar();
   ui.mostrarHUD(false);
   ui.mostrarCuenta(null);
+  audio.reanudar(); // si salió desde la pausa, el sonido estaba callado a propósito
   audio.musica('menu'); // en el inicio y las pantallas suena la salsa suave (desde el primer toque)
   if (recargar || !estadoServidor) {
     ui.mostrar('cargando');
@@ -228,25 +230,66 @@ async function iniciarJuego(boton) {
     audio.musica('juego'); // la misma salsa, ahora completa y con metales
     audio.cuenta();
   } catch {
+    // Puede que el servidor SÍ haya registrado la partida (y gastado el intento) y solo se perdió la respuesta: se recarga
+    // el inicio para que el contador de intentos diga la verdad.
     ui.toast(T.inicio.errorConexion);
     soltarBoton();
+    if (n === navegacion) {
+      estadoServidor = null;
+      iniciando = false;
+      irInicio(true);
+    }
   } finally {
     iniciando = false;
   }
 }
 
+// Al «Seguir jugando» no se arranca en seco (a 10–14 u/s el choque era casi seguro): hay un «3, 2, 1» corto antes.
+// Mientras dura, el juego sigue congelado; si se vuelve a pausar (o se sale de la app) se cancela.
+let reanudando = null; // temporizador de la cuenta para seguir
+function cancelarReanudar() {
+  if (!reanudando) return false;
+  clearTimeout(reanudando);
+  reanudando = null;
+  ui.mostrarCuenta(null);
+  return true;
+}
 function alternarPausa(forzar) {
   if (!partida || terminada || !['cuenta', 'jugando'].includes(partida.estado)) return;
   const quiere = forzar ?? !pausado;
-  if (quiere === pausado) return;
-  pausado = quiere;
-  if (pausado) {
+  if (quiere) {
+    if (cancelarReanudar()) {
+      ui.mostrar('pausa'); // pausó otra vez durante el «3, 2, 1»
+      audio.pausar();
+      return;
+    }
+    if (pausado) return;
+    pausado = true;
     ui.mostrar('pausa');
     audio.pausar();
-  } else {
-    ui.ocultar();
-    audio.reanudar();
+    return;
   }
+  if (!pausado || reanudando) return;
+  ui.ocultar();
+  audio.reanudar();
+  if (partida.estado === 'cuenta') {
+    pausado = false; // todavía estaba en la cuenta del principio: esa misma cuenta sirve
+    return;
+  }
+  let n = 0;
+  const seguir = () => {
+    if (n < 3) {
+      ui.mostrarCuenta(T.juego.cuenta[n]);
+      audio.cuenta();
+      n += 1;
+      reanudando = setTimeout(seguir, 550);
+    } else {
+      reanudando = null;
+      ui.mostrarCuenta(null);
+      pausado = false;
+    }
+  };
+  seguir();
 }
 // Celular acostado: se tapa con un aviso (CSS, .gira) y se pausa, para no perder la partida al girarlo sin querer.
 // OJO: se mira la orientación del APARATO, no el tamaño de la ventana. En iPhone, al abrir el teclado (p. ej. para escribir el
@@ -273,6 +316,13 @@ document.addEventListener('visibilitychange', () => {
   else if (!pausado) audio.reanudar();
   if (document.hidden && cfg.desarrollo.autoPausa) alternarPausa(true); // al cambiar de app o apagar la pantalla, se pausa
 });
+// Algunas cosas de iPhone y de los navegadores de Instagram/Facebook (centro de control, notificaciones, hojas que se
+// abren encima) congelan la página SIN avisar con visibilitychange: también se pausa al perder el foco o al ocultar la página.
+for (const evento of ['blur', 'pagehide']) {
+  window.addEventListener(evento, () => {
+    if (cfg.desarrollo.autoPausa) alternarPausa(true);
+  });
+}
 
 /* ───────────── Fin de la partida ───────────── */
 function alTerminarPartida(p) {
@@ -292,7 +342,13 @@ function alTerminarPartida(p) {
   const pedido = api.terminarPartida({ token, gano: resumen.gano, progreso: resumen.progreso, frutas: resumen.frutas }).catch((error) => ({ error }));
   hooks.alTerminar.forEach((f) => f(resumen));
   const espera = resumen.gano ? cfg.partida.festejoS * 1000 : resumen.motivo === 'frutas' ? cfg.partida.celebracionS * 1000 : 900; // si llegó a la meta, pasa bajo el arco
+  let respondio = false;
+  pedido.then(() => { respondio = true; });
   setTimeout(async () => {
+    if (!respondio) {
+      ui.mostrarHUD(false);
+      ui.mostrar('cargando'); // con mala señal la respuesta tarda: que no quede la escena quieta sin ningún mensaje
+    }
     const r = await pedido;
     mostrarResultado(resumen, r);
   }, espera);
@@ -308,7 +364,7 @@ function mostrarResultado(resumen, r) {
   if (!r.estado) {
     // El servidor contestó que esa partida no existe o no vale (p. ej. ya pasó mucho tiempo): no hay nada que recuperar
     olvidarVictoria();
-    ui.mostrar('error', { mensaje: resumen.gano ? T.ganaste.errores.partidaInvalida : T.inicio.errorConexion });
+    ui.mostrar('error', { mensaje: resumen.gano ? T.ganaste.errores.partidaInvalida : T.inicio.errorGuardar, boton: T.codigo.volver });
     return;
   }
   estadoServidor = r.estado;
@@ -321,7 +377,7 @@ function mostrarResultado(resumen, r) {
     ui.mostrar('sin-premios', { ...estadoServidor, ganaste: true, tieneCodigo: tieneCodigoActivo() });
   } else if (resumen.gano) {
     olvidarVictoria();
-    ui.mostrar('error', { mensaje: T.ganaste.errores.partidaInvalida }); // el servidor no validó la victoria (token, tiempo o frutas)
+    ui.mostrar('error', { mensaje: T.ganaste.errores.partidaInvalida, boton: T.codigo.volver }); // el servidor no validó la victoria (token, tiempo o frutas)
   } else {
     ui.mostrar('perdiste', {
       progreso: resumen.progreso,
@@ -329,6 +385,7 @@ function mostrarResultado(resumen, r) {
       frutasMinimas: resumen.frutasMinimas,
       motivo: resumen.motivo,
       intentosRestantes: estadoServidor.intentosRestantes,
+      premiosRestantes: estadoServidor.premiosRestantes,
     });
   }
 }
@@ -408,7 +465,7 @@ async function reclamar() {
     }
   } else if (r.motivo === 'partida-invalida') {
     olvidarVictoria();
-    ui.mostrar('error', { mensaje: T.ganaste.errores.partidaInvalida }); // no hay nada que corregir en el formulario
+    ui.mostrar('error', { mensaje: T.ganaste.errores.partidaInvalida, boton: T.codigo.volver }); // no hay nada que corregir en el formulario
   } else {
     // Se queda en el formulario: se puede corregir y volver a intentar
     ui.enviando(false);
@@ -417,6 +474,25 @@ async function reclamar() {
     else if (r.motivo === 'datos') ui.errorFormulario(T.ganaste.errores.datos); // el servidor no dice cuál campo falló
     else ui.errorFormulario(T.ganaste.errores.generico);
   }
+}
+
+/**
+ * «Reta a un amigo»: abre el menú de compartir del celular (WhatsApp, Instagram…) con un enlace que trae su propia etiqueta
+ * (utm_source=amigo): así el panel muestra cuánta gente llega invitada. Si el navegador no tiene «Compartir», abre WhatsApp.
+ */
+async function retarAmigo(progreso) {
+  const url = `${location.origin}${location.pathname}?utm_source=amigo&utm_medium=compartir&utm_campaign=lanzamiento`;
+  const texto = T.redes.mensajeRetar(progreso);
+  if (navigator.share) {
+    try {
+      await navigator.share({ text: texto, url });
+      return;
+    } catch (e) {
+      if (e?.name === 'AbortError') return; // la persona cerró el menú: no pasa nada
+    }
+  }
+  const w = window.open(`https://wa.me/?text=${encodeURIComponent(`${texto} ${url}`)}`, '_blank', 'noopener');
+  if (!w && (await ui.copiarTexto(`${texto} ${url}`))) ui.toast(T.redes.copiadoEnlace);
 }
 
 /* ───────────── Acciones de los botones ───────────── */
@@ -429,7 +505,11 @@ ui.alAccion((accion, el) => {
     const p = accion.split(':')[1];
     escena.usarPersonaje(p);
     almacen.escribir('cholado-personaje', p);
-    irInicio(false);
+    for (const b of el.parentElement?.querySelectorAll('[data-accion^="personaje:"]') ?? []) {
+      const on = b === el;
+      b.classList.toggle('on', on);
+      b.setAttribute('aria-pressed', String(on));
+    }
     return;
   }
   switch (accion) {
@@ -481,6 +561,9 @@ ui.alAccion((accion, el) => {
       break;
     case 'reclamar':
       reclamar();
+      break;
+    case 'retar':
+      retarAmigo(el.dataset.progreso === '' ? null : Number(el.dataset.progreso));
       break;
     case 'otro-numero':
       ui.mostrar('ganaste', {}); // se equivocó de número: vuelve al formulario (la partida sigue siendo válida)
@@ -536,6 +619,11 @@ function tick(dtReal) {
   }
   const midiendo = Boolean(partida) && partida.estado === 'jugando' && !pausado && !document.hidden;
   escena.frame(pausado ? 0 : dt, dtReal, partida, Boolean(partida), midiendo);
+  // Los eventos de este cuadro ya sonaron y se dibujaron: se vacían. (En pausa paso() no corre, y antes la escena volvía a
+  // procesar los del último cuadro en cada cuadro: al reanudar salía una explosión de partículas.)
+  if (partida) partida.eventos.length = 0;
+  // Un cuadro de más de medio segundo jugando = la página estuvo congelada (cosas de iPhone que no avisan): se pausa.
+  if (dtReal > 0.5 && partida?.estado === 'jugando' && !pausado && cfg.desarrollo.autoPausa) alternarPausa(true);
 }
 const hudOculto = () => document.getElementById('hud').hidden;
 

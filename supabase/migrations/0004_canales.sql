@@ -78,6 +78,8 @@ begin
         left join app.codigos k on k.partida_id = p.id
        where v_desde is null or p.inicio >= v_desde
        group by p.utm_fuente, p.utm_medio, p.utm_campana
+       order by count(*) desc
+       limit 100   -- (alguien podría inventar una etiqueta distinta en cada partida: el panel no tiene por qué mostrar miles)
     ) g;
   return jsonb_build_object('ok', true, 'periodo', v_periodo, 'filas', v_filas, 'ahoraISO', app.iso(now()));
 end $$;

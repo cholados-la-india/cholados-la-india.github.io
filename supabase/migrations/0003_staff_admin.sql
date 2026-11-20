@@ -504,12 +504,13 @@ declare
   pt record;
   cd record;
   s app.staff;
-  e jsonb := app.estado_json(null);
+  e jsonb;
   v_dias jsonb;
 begin
   if not app.es_admin() then
     return jsonb_build_object('ok', false, 'motivo', 'no-autorizado');
   end if;
+  e := app.estado_json(null);   -- (después de comprobar el permiso: quien no es administrador no gasta trabajo del servidor)
   select * into cu from app.cupos();
   select count(*) as total,
          count(*) filter (where semana = v_sem) as sem,
@@ -527,15 +528,23 @@ begin
          count(*) filter (where estado_efectivo = 'canjeado' and app.semana_de(canjeado_en) = v_sem) as canjes_sem
     into cd from app.v_codigos;
   select * into s from app.staff where id = 1;
+  -- Últimos 14 días: UNA pasada por tabla (agrupando por día) y solo sobre esos días; antes eran 4 consultas por día
+  -- recorriendo todas las partidas (unas 30 vueltas), y con muchos datos el Resumen podía dejar de abrir.
+  with dias as (select app.dia_de(v_now) - g as d from generate_series(0, 13) g),
+       p as (select app.dia_de(inicio) as d, count(*) as partidas, count(*) filter (where resultado = 'gano_validado') as ganadores
+               from app.partidas where inicio >= app.inicio_dia(v_now) - interval '13 days' group by 1),
+       k as (select dia as d, count(*) as codigos from app.codigos where dia >= app.dia_de(v_now) - 13 group by 1),
+       j as (select app.dia_de(canjeado_en) as d, count(*) as canjes from app.codigos
+              where estado = 'canjeado' and canjeado_en >= app.inicio_dia(v_now) - interval '13 days' group by 1)
   select coalesce(jsonb_agg(jsonb_build_object(
-           'dia', x.d::text,
-           'partidas', (select count(*) from app.partidas where app.dia_de(inicio) = x.d),
-           'ganadores', (select count(*) from app.partidas where resultado = 'gano_validado' and app.dia_de(inicio) = x.d),
-           'codigos', (select count(*) from app.codigos where dia = x.d),
-           'canjes', (select count(*) from app.codigos where estado = 'canjeado' and app.dia_de(canjeado_en) = x.d))
-         order by x.d desc), '[]'::jsonb)
+           'dia', dias.d::text,
+           'partidas', coalesce(p.partidas, 0),
+           'ganadores', coalesce(p.ganadores, 0),
+           'codigos', coalesce(k.codigos, 0),
+           'canjes', coalesce(j.canjes, 0))
+         order by dias.d desc), '[]'::jsonb)
     into v_dias
-    from (select app.dia_de(v_now) - g as d from generate_series(0, 13) g) x;
+    from dias left join p using (d) left join k using (d) left join j using (d);
 
   return jsonb_build_object(
     'ok', true,
@@ -554,6 +563,7 @@ begin
     'codigos', jsonb_build_object('total', cd.total, 'semana', cd.sem, 'activos', cd.activos, 'vencidos', cd.vencidos,
                                   'desactivados', cd.desactivados, 'canjeados', cd.canjeados, 'canjesSemana', cd.canjes_sem),
     'dias', v_dias,
+    'baseMB', round(pg_database_size(current_database()) / 1048576.0, 1),   -- el plan gratis permite 500 MB
     'pin', jsonb_build_object(
       'configurado', s.pin_hash is not null,
       'cambiadoISO', case when s.pin_cambiado_en is not null then app.iso(s.pin_cambiado_en) end,
@@ -615,14 +625,15 @@ end $$;
 create or replace function public.admin_estado_codigo(p_codigo text, p_estado text) returns jsonb
 language plpgsql volatile security definer set search_path = app, pg_temp as $$
 declare
-  k app.codigos := app.buscar_codigo(p_codigo);
+  k app.codigos;
 begin
   if not app.es_admin() then
     return jsonb_build_object('ok', false, 'motivo', 'no-autorizado');
   end if;
-  if p_estado not in ('desactivado', 'activo') then
+  if p_estado is null or p_estado not in ('desactivado', 'activo') then   -- (con NULL antes llegaba al update y daba error)
     return jsonb_build_object('ok', false, 'motivo', 'datos');
   end if;
+  k := app.buscar_codigo(p_codigo);
   if k.id is null then
     return jsonb_build_object('ok', false, 'motivo', 'inexistente');
   end if;

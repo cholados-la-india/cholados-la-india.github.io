@@ -55,7 +55,7 @@ const ok = (nombre, cond, detalle = '') => {
 };
 const seccion = (t) => console.log(`\n${t}`);
 
-const migraciones = ['0001_tablas.sql', '0002_funciones.sql', '0003_staff_admin.sql', '0004_canales.sql'];
+const migraciones = ['0001_tablas.sql', '0002_funciones.sql', '0003_staff_admin.sql', '0004_canales.sql', '0005_revision_noviembre.sql'];
 for (const f of migraciones) await db.exec(await readFile(new URL(`../supabase/migrations/${f}`, import.meta.url), 'utf8'));
 
 const FIRMAS = {
@@ -669,7 +669,7 @@ await sql(`truncate app.limites_red`);
   const soloXff = await conRed({ 'x-forwarded-for': `${RED_A}, 10.0.0.1` }, () => rpc('iniciar_partida', randomUUID()));
   ok('sin cf-connecting-ip se usa el primer valor de x-forwarded-for (misma red A → bloqueada)', soloXff.motivo === 'limite-red');
   const claves = (await sql(`select clave from app.limites_red`)).map((x) => x.clave);
-  ok('la IP nunca se guarda en claro (solo una huella con sal secreta)', claves.length >= 2 && claves.every((k) => /^partidas:[0-9a-f]{24}$/.test(k)) && !claves.some((k) => k.includes('203.0.113')), JSON.stringify(claves));
+  ok('la IP nunca se guarda en claro (solo una huella con sal secreta)', claves.length >= 2 && claves.every((k) => /^partidas:([0-9a-f]{24}|global)$/.test(k)) && !claves.some((k) => k.includes('203.0.113')), JSON.stringify(claves));
   await sql(`update app.limites_red set ventana = ventana - interval '1 hour'`);
   ok('al pasar la hora la red A vuelve a poder jugar', (await conRed(red(RED_A), () => rpc('iniciar_partida', randomUUID()))).ok === true);
   await sql(`update app.configuracion set limite_partidas_ip_hora = 0 where id = 1`);
@@ -1145,6 +1145,48 @@ await sql(`truncate app.limites_red`);
   await reiniciarDatos();
   await reiniciarStaff();
   await sql(`truncate app.limites_red`);
+}
+
+seccion('27. Revisión de noviembre (bloque E) — tope global, search_path, auditoría más estricta y Resumen en una pasada');
+await reiniciarDatos();
+await reiniciarConfig5();
+await sql(`truncate app.limites_red`);
+{
+  // Tope global de partidas por hora (sin IP: todas las redes juntas)
+  await sql(`insert into app.limites_red (clave, ventana, cuenta) values ('partidas:global', date_trunc('hour', now()), 3000)`);
+  const lleno = await rpc('iniciar_partida', randomUUID());
+  ok('con 3.000 partidas en esta hora (todas las redes juntas) la siguiente → limite-red, sin gastar intento', lleno.ok === false && lleno.motivo === 'limite-red', JSON.stringify(lleno));
+  await sql(`update app.configuracion set limite_partidas_ip_hora = 0 where id = 1`);
+  ok('con el límite por red en 0 también se apaga el global', (await rpc('iniciar_partida', randomUUID())).ok === true);
+  await reiniciarConfig5();
+  await sql(`truncate app.limites_red`);
+  ok('con el contador global bajo, se juega normal', (await rpc('iniciar_partida', randomUUID())).ok === true);
+
+  // search_path fijo en todas las funciones de app (lo que pedía el asesor de seguridad de Supabase)
+  const sinRuta = await sql(`select p.oid::regprocedure::text f from pg_proc p where p.pronamespace = 'app'::regnamespace and p.prokind = 'f'
+                              and not exists (select 1 from unnest(coalesce(p.proconfig, '{}')) x where x like 'search_path=%')`);
+  ok('todas las funciones internas de app tienen search_path fijo', sinRuta.length === 0, JSON.stringify(sinRuta));
+  ok('…y siguen cerradas al público', (await sql(`select count(*)::int n from pg_proc p where p.pronamespace = 'app'::regnamespace and has_function_privilege('anon', p.oid, 'execute')`))[0].n === 0);
+
+  // La auditoría ahora detecta una versión vieja de una función pública (otra firma)
+  await db.exec(`create function public.estado(p_device uuid, p_extra int) returns jsonb language sql security definer set search_path = app, pg_temp as $$ select '{}'::jsonb $$;`);
+  const audit = await sql(await readFile(new URL('../supabase/sql/auditoria_permisos.sql', import.meta.url), 'utf8'));
+  ok('la auditoría detecta una función pública duplicada (versión vieja con otros parámetros)', audit.some((x) => /duplicada/.test(x.problema)), JSON.stringify(audit));
+  await db.exec(`drop function public.estado(uuid, int);`);
+
+  // Resumen: días en una sola pasada, con los mismos números
+  await reiniciarDatos();
+  await nuevoCodigo(30);
+  await nuevoCodigo(31);
+  const rs = await admin('admin_resumen');
+  const hoy = rs.dias[0];
+  ok('admin_resumen: 14 días, y hoy cuenta 2 partidas ganadas y 2 códigos', rs.dias.length === 14 && hoy.partidas === 2 && hoy.ganadores === 2 && hoy.codigos === 2 && hoy.canjes === 0, JSON.stringify(hoy));
+  ok('admin_resumen trae el tamaño de la base (baseMB)', typeof rs.baseMB === 'number' && rs.baseMB > 0, String(rs.baseMB));
+  ok('admin_estado_codigo con estado NULL → «datos» (antes daba error)', (await admin('admin_estado_codigo', 'X', null)).motivo === 'datos');
+  let rechazado = false;
+  try { await sql(`update app.configuracion set regalos = '"un texto"'::jsonb where id = 1`); } catch { rechazado = true; }
+  ok('la lista de regalos no se puede guardar como algo que no sea una lista', rechazado);
+  await reiniciarDatos();
 }
 
 console.log(`\n${fallos === 0 ? '✅ TODO BIEN' : '❌ HAY FALLOS'} — ${total - fallos} de ${total} comprobaciones correctas.\n`);

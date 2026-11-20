@@ -42,12 +42,17 @@ const mensajeError = (e) =>
 async function llamar(nombre, argumentos = {}) {
   let token = await tokenFresco();
   if (!token) throw new ErrorServidor('sesion', 'No hay sesión.');
+  const revisar = (r) => {
+    // Si a esta cuenta le quitaron el permiso de administrador con el panel abierto, se dice claro (antes: «algo salió mal»)
+    if (r?.ok === false && r.motivo === 'no-autorizado') throw new ErrorServidor('servidor', 'Esta cuenta ya no es de administrador.');
+    return r;
+  };
   try {
-    return await rpc(nombre, argumentos, { token });
+    return revisar(await rpc(nombre, argumentos, { token }));
   } catch (e) {
     if (e instanceof ErrorServidor && e.tipo === 'sesion') {
       token = await tokenFresco(true);
-      if (token) return rpc(nombre, argumentos, { token });
+      if (token) return revisar(await rpc(nombre, argumentos, { token }));
     }
     throw e;
   }
@@ -185,7 +190,7 @@ function construirPanel(sesion) {
   reemplazar(raiz, Object.values(paneles));
 
   function irA(clave, dato) {
-    if (!vistas[clave]) clave = 'resumen';
+    if (!Object.hasOwn(vistas, clave)) clave = 'resumen'; // (con «in» o vistas[clave], #constructor en la dirección rompía el panel)
     for (const [k] of PESTANAS) {
       botones[k].setAttribute('aria-selected', String(k === clave));
       paneles[k].hidden = k !== clave;

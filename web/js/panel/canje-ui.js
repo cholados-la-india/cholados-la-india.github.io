@@ -13,9 +13,8 @@ import { horaBogota } from '../util.js';
  * @param conPin       true en la caja (pide el PIN), false en el panel de administrador
  * @param consultar    ({pin, codigo}) → respuesta del servidor
  * @param confirmar    ({pin, codigo, regalo}) → respuesta del servidor
- * @param alTerminar   (opcional) se llama cuando se canjea con éxito (el panel actualiza sus números)
  */
-export function crearCanje({ conPin, consultar, confirmar, alTerminar }) {
+export function crearCanje({ conPin, consultar, confirmar }) {
   let ocupado = false;
 
   const campoPin = conPin
@@ -23,8 +22,9 @@ export function crearCanje({ conPin, consultar, confirmar, alTerminar }) {
     : null;
   const campoCodigo = el('input', {
     type: 'text', class: 'mayus', autocapitalize: 'characters', autocomplete: 'off', autocorrect: 'off', spellcheck: 'false',
-    placeholder: 'Ej.: K7M2', 'aria-label': 'Código del cliente',
+    placeholder: 'Ej.: K7M2', 'aria-label': 'Código del cliente', enterkeyhint: 'search',
   });
+  campoCodigo.addEventListener('focus', () => campoCodigo.select()); // un toque y se escribe el siguiente encima
   const botonVerificar = el('button', { type: 'submit', class: 'boton grande' }, 'Verificar');
   const resultado = el('section', { 'aria-live': 'polite', class: 'resultado-zona' });
 
@@ -39,7 +39,7 @@ export function crearCanje({ conPin, consultar, confirmar, alTerminar }) {
     'form',
     { class: 'tarjeta', novalidate: true, onsubmit: verificar },
     conPin && el('label', { class: 'campo' }, el('span', {}, 'PIN de la caja'), campoPin),
-    el('label', { class: 'campo' }, el('span', {}, 'Código del cliente'), campoCodigo, el('span', { class: 'ayuda' }, 'Sirve completo (LAINDIA-K7M2) o solo las 4 letras finales.')),
+    el('label', { class: 'campo' }, el('span', {}, 'Código del cliente'), campoCodigo, el('span', { class: 'ayuda' }, 'Sirve completo o solo las letras que van después del guion.')),
     botonVerificar,
   );
   const elemento = el('div', { class: 'canje' }, formulario, resultado);
@@ -59,13 +59,17 @@ export function crearCanje({ conPin, consultar, confirmar, alTerminar }) {
   function panel(clase, icono, titulo, ...resto) {
     return el('div', { class: `resultado ${clase}`, role: 'status' }, el('div', { class: 'icono', 'aria-hidden': 'true' }, icono), el('h2', {}, titulo), ...resto);
   }
+  // Tras cualquier resultado que no sea «válido» se ofrece pasar al siguiente cliente sin borrar el campo a mano
+  const botonOtro = () => el('button', { type: 'button', class: 'boton secundario', onclick: limpiar }, 'Otro código');
   const detalle = (texto) => el('p', { class: 'detalle' }, texto);
   const cliente = (r) => r.nombre && el('p', { class: 'cliente' }, `Cliente: ${r.nombre} · ${formatoCelular(r.celular)}`);
 
   function panelError(err) {
     if (err instanceof ErrorServidor) {
       if (err.tipo === 'red') return panel('error', '✖', 'SIN CONEXIÓN', detalle('No hay internet o el servidor no responde. Revisa la conexión y vuelve a intentar.'));
-      if (err.tipo === 'sesion') return panel('error', '✖', 'SESIÓN VENCIDA', detalle('Vuelve a iniciar sesión.'));
+      if (err.tipo === 'sesion') return conPin
+        ? panel('error', '✖', 'NO SE PUDO', detalle('Recarga la página. Si sigue pasando, avísale al dueño.'))
+        : panel('error', '✖', 'SESIÓN VENCIDA', detalle('Vuelve a iniciar sesión.'));
       return panel('error', '✖', 'NO SE PUDO', detalle(err.message));
     }
     return panel('error', '✖', 'ALGO SALIÓ MAL', detalle('Intenta de nuevo. Si sigue pasando, avísale al dueño.'));
@@ -96,17 +100,17 @@ export function crearCanje({ conPin, consultar, confirmar, alTerminar }) {
         return mostrar(panelValido(r, contexto));
       case 'canjeado':
         return mostrar(panel('aviso-naranja', '!', 'YA FUE CANJEADO', r.codigo && el('p', { class: 'codigo-grande' }, r.codigo), cliente(r),
-          detalle(`Canjeado el ${fechaLarga(r.canjeadoISO)}${haceCuanto(r)}`), r.regaloElegido && detalle(`Se entregó: ${r.regaloElegido}`)));
+          detalle(`Canjeado el ${fechaLarga(r.canjeadoISO)}${haceCuanto(r)}`), r.regaloElegido && detalle(`Se entregó: ${r.regaloElegido}`), botonOtro()));
       case 'vencido':
         return mostrar(panel('error', '✖', 'VENCIDO', r.codigo && el('p', { class: 'codigo-grande' }, r.codigo), cliente(r),
-          detalle(`Era válido hasta el ${valeHasta(r.venceISO)}`)));
+          detalle(`Era válido hasta el ${valeHasta(r.venceISO)}`), botonOtro()));
       case 'desactivado':
         return mostrar(panel('neutro', '✖', 'DESACTIVADO', r.codigo && el('p', { class: 'codigo-grande' }, r.codigo), cliente(r),
-          detalle('El administrador desactivó este código. No se puede canjear.')));
+          detalle('El administrador desactivó este código. No se puede canjear.'), botonOtro()));
       case 'inexistente':
-        return mostrar(panel('error', '✖', 'NO EXISTE', detalle('No encontramos ese código. Revisa que esté bien escrito (los códigos no llevan 0, O, 1 ni I).')));
+        return mostrar(panel('error', '✖', 'NO EXISTE', detalle('No encontramos ese código. Revisa que esté bien escrito (los códigos no llevan 0, O, 1 ni I).'), botonOtro()));
       case 'regalo-invalido':
-        return mostrar(panel('aviso-naranja', '!', 'ELIGE UN REGALO', detalle('Marca el regalo que escoge el cliente y vuelve a intentar.')));
+        return mostrar(panel('aviso-naranja', '!', 'CAMBIÓ LA LISTA DE REGALOS', detalle('Toca «Verificar» otra vez y elige de nuevo el regalo.')));
       case 'pin-incorrecto': {
         const n = r.intentosRestantes;
         campoPin?.select();
@@ -119,7 +123,8 @@ export function crearCanje({ conPin, consultar, confirmar, alTerminar }) {
       case 'sin-pin':
         return mostrar(panel('neutro', '!', 'FALTA EL PIN', detalle('Todavía no hay un PIN configurado. El dueño debe ponerlo desde el panel de administrador.')));
       default:
-        return mostrar(panel('error', '✖', 'RESPUESTA RARA', detalle('El servidor respondió algo inesperado. Avísale al dueño.')));
+        if (r?.motivo === 'no-autorizado') return mostrar(panel('error', '✖', 'NO AUTORIZADO', detalle('Esta cuenta ya no es de administrador.')));
+        return mostrar(panel('error', '✖', 'ALGO RARO PASÓ', detalle('Intenta otra vez. Si sigue pasando, avísale al dueño.')));
     }
   }
 
@@ -146,7 +151,6 @@ export function crearCanje({ conPin, consultar, confirmar, alTerminar }) {
         const c = await confirmar({ pin: contexto.pin, codigo: r.codigo, regalo: elegido });
         if (c.ok && c.resultado === 'canjeado-ahora') {
           mostrar(panelExito(c));
-          alTerminar?.(c);
         } else {
           pintar(c, contexto); // por ejemplo: otra persona lo canjeó justo antes ("ya canjeado")
         }
@@ -197,6 +201,7 @@ export function crearCanje({ conPin, consultar, confirmar, alTerminar }) {
       return;
     }
     ocupar(true);
+    campoCodigo.blur(); // que el teclado no tape el resultado
     mostrar(panel('cargando', '', 'Verificando…'));
     try {
       pintar(await consultar({ pin, codigo }), { pin, codigo });

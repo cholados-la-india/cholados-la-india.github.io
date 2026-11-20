@@ -10,7 +10,7 @@ export const DEMO = new URLSearchParams(location.search).get('api') === 'falsa';
 const TIEMPO_MAX_MS = 12000;
 
 export class ErrorServidor extends Error {
-  /** tipo: 'red' (sin conexión), 'sesion' (token vencido o inválido), 'faltan-funciones' (no se corrió 0003), 'servidor' */
+  /** tipo: 'red' (sin conexión), 'sesion' (token vencido o inválido), 'faltan-funciones' (falta pegar el SQL nuevo), 'servidor' */
   constructor(tipo, mensaje, http) {
     super(mensaje);
     this.tipo = tipo;
@@ -54,7 +54,7 @@ export async function rpc(nombre, argumentos = {}, { token } = {}) {
   const texto = `${cuerpo?.message ?? ''} ${cuerpo?.code ?? ''} ${cuerpo?.hint ?? ''}`;
   if (res.status === 401 || /JWT|PGRST30/i.test(texto)) throw new ErrorServidor('sesion', 'La sesión venció o no es válida.', res.status);
   if (res.status === 404 || /PGRST202|Could not find the function/i.test(texto)) {
-    throw new ErrorServidor('faltan-funciones', 'El servidor todavía no tiene las funciones de la Etapa 5 (falta correr 0003_staff_admin.sql).', res.status);
+    throw new ErrorServidor('faltan-funciones', 'Al servidor le falta una actualización. Avísale al dueño (hay que volver a pegar supabase/todo-junto.sql en Supabase).', res.status);
   }
-  throw new ErrorServidor('servidor', `El servidor respondió con un error (${res.status}).`, res.status);
+  throw new ErrorServidor('servidor', `El servidor tuvo un problema (error ${res.status}). Espera un momento e intenta otra vez. Si lleva días sin uso, puede estar en pausa: revísalo en Supabase.`, res.status);
 }

@@ -1,4 +1,4 @@
-// Paletas compartidas por los estilos de la ronda 2 (D, E, F). Es la misma del estilo C, el favorito.
+// La paleta del juego (estilo G, nacida del estilo C de la Etapa 2).
 // Colores del menú de Cholados La India: magenta, lima y celeste, con cielo durazno.
 export const paletaJugosa = {
   cieloArriba: 0xd8287f,

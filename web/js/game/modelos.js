@@ -1,6 +1,6 @@
 // modelos.js — Personajes y objetos del juego, construidos por código (sin archivos de modelo 3D).
-// Movido tal cual desde web/previews/shared/kit.js (estilo G elegido en la Etapa 2): choladito, La India,
-// caja de fruta, fresa, mango, palmera, sombrilla y piña. Cada personaje/objeto = UNA malla con color por vértice.
+// Estilo G (Etapa 2) con el detalle de la Fase B: el cholado (Choladito y el premio de la meta), La India, las cajas de fruta,
+// las 6 frutas y el decorado. Cada personaje/objeto = UNA malla con color por vértice.
 import * as THREE from '../../vendor/three/three.min.js';
 
 export const RAD = Math.PI / 180;
@@ -80,6 +80,8 @@ export function crearModelos(detalle) {
   const ico = (r, d = 1) => new THREE.IcosahedronGeometry(r, d === 0 ? 0 : d === 2 && detalle >= 1.3 ? 2 : 1);
   // Versiones "mini" para adornos diminutos (cuentas, aretes, bandas): no crecen con el nivel de detalle y casi no cuestan triángulos.
   const esfMini = (r) => new THREE.SphereGeometry(r, 5, 3);
+  // Para puntitos de 1–2 píxeles en pantalla (las semillas de la fruta del vaso): 8 triángulos en vez de 20.
+  const esfMicro = (r) => new THREE.SphereGeometry(r, 4, 2);
   const toroMini = (r, tubo, arco = Math.PI * 2) => new THREE.TorusGeometry(r, tubo, 3, 8, arco);
   const toro = (r, tubo, rad = 4, seg = 10, arco = Math.PI * 2) => new THREE.TorusGeometry(r, tubo, Math.max(3, S(rad)), S(seg), arco);
   const capsula = (r, largo) => new THREE.CapsuleGeometry(r, largo, 2, S(6));
@@ -138,7 +140,7 @@ export function crearModelos(detalle) {
         for (let k = 0; k < 5; k++) {
           const a = (k - 2) * 0.55;
           const dy = (((k * 37) % 5) - 2) * 0.018;
-          p.push(pieza(esfMini(0.011), sem, [dx * (rr + tam * 0.45) + dz * Math.sin(a) * tam * 0.6, y + dy, dz * (rr + tam * 0.45) - dx * Math.sin(a) * tam * 0.6]));
+          p.push(pieza(esfMicro(0.011), sem, [dx * (rr + tam * 0.45) + dz * Math.sin(a) * tam * 0.6, y + dy, dz * (rr + tam * 0.45) - dx * Math.sin(a) * tam * 0.6]));
         }
       }
     };
@@ -176,7 +178,9 @@ export function crearModelos(detalle) {
     const phiCrema = Math.PI * 0.24; // un poquito más de leche condensada que en la primera versión (0,20)
     const phiMora = 1.28;
     // (1) la piña: una media esfera amarilla cubierta de trocitos (solo se ven los que no tapa la mermelada)
-    p.push(pieza(new THREE.SphereGeometry(Rm * 0.9, S(12), S(7), 0, Math.PI * 2, 0, Math.PI / 2), 0xe3b82c, [0, YT - 0.01, 0], [0, 0, 0], [1, hm, 1]));
+    // (Optimización sin cambio visible: solo se genera la franja de abajo, la única que asoma; lo de arriba lo tapa la mermelada.)
+    const phiPina = phiMora - 0.15;
+    p.push(pieza(new THREE.SphereGeometry(Rm * 0.9, S(12), 3, 0, Math.PI * 2, phiPina, Math.PI / 2 - phiPina), 0xe3b82c, [0, YT - 0.01, 0], [0, 0, 0], [1, hm, 1]));
     for (let k = 0; k < 150; k++) {
       const phi = Math.acos(1 - ((k + 0.5) / 150) * 0.97);
       if (phi < phiMora - 0.1) continue;
@@ -184,7 +188,9 @@ export function crearModelos(detalle) {
       p.push(pieza(ico(0.04 + (k % 3) * 0.007, 0), [0xf6d44a, 0xffe27a, 0xe9c230][k % 3], sobre(phi, th, 0.91), [k, th, 0.4 * k], [1.1, 0.8, 1.1])); // piña en cuadritos chiquitos
     }
     // (2) la mermelada de mora: una cáscara oscura que tapa la piña + grumos para que no se vea lisa
-    p.push(pieza(new THREE.SphereGeometry(Rm * 0.99, S(14), S(8), 0, Math.PI * 2, 0, phiMora), 0x4d1038, [0, YT - 0.01, 0], [0, 0, 0], [1, hm, 1]));
+    // (sin la parte de arriba, que queda debajo de la leche condensada: también es una optimización sin cambio visible)
+    const phiMora0 = phiCrema - 0.12;
+    p.push(pieza(new THREE.SphereGeometry(Rm * 0.99, S(14), Math.max(3, Math.round(S(8) * (phiMora - phiMora0) / phiMora)), 0, Math.PI * 2, phiMora0, phiMora - phiMora0), 0x4d1038, [0, YT - 0.01, 0], [0, 0, 0], [1, hm, 1]));
     for (let k = 0; k < 40; k++) {
       const phi = 0.2 + ((k * 0.61803) % 1) * (phiMora - 0.04 - 0.2);
       const th = k * 2.39996 * 1.3;
@@ -197,15 +203,15 @@ export function crearModelos(detalle) {
     // (4) la leche condensada (crema cálida, no blanca): una cobija por arriba con gotas que se riegan
     const crema = 0xfce4a8;
     const cremaClara = 0xfff1c8;
-    p.push(pieza(new THREE.SphereGeometry(Rm * 1.13, S(14), S(8), 0, Math.PI * 2, 0, phiCrema), crema, [0, YT - 0.01, 0], [0, 0, 0], [1, hm, 1]));
+    p.push(pieza(new THREE.SphereGeometry(Rm * 1.13, S(14), 5, 0, Math.PI * 2, 0, phiCrema), crema, [0, YT - 0.01, 0], [0, 0, 0], [1, hm, 1]));
     for (let k = 0; k < 9; k++) {
       const th = k * 0.698 + (k % 2) * 0.1;
       const phi = phiCrema + (k % 3) * 0.05;
-      p.push(pieza(esf(0.055 + (k % 2) * 0.015, 6, 5), k % 2 ? crema : cremaClara, sobre(phi, th, 1.13)));
+      p.push(pieza(esf(0.055 + (k % 2) * 0.015, 4, 3), k % 2 ? crema : cremaClara, sobre(phi, th, 1.13)));
     }
     [[0.3, 0.2], [1.0, 0.1], [1.7, 0.24], [2.4, 0.13], [3.1, 0.2], [3.8, 0.09], [4.5, 0.22], [5.2, 0.12], [5.8, 0.17]].forEach(([th, largo]) => {
       const [gx, gy, gz] = sobre(phiCrema + 0.03, th, 1.14);
-      p.push(pieza(capsula(0.032, largo * 0.9), crema, [gx, gy - largo * 0.5, gz], [0, -th, 0], [0.85, 1, 0.85]));
+      p.push(pieza(new THREE.CapsuleGeometry(0.032, largo * 0.9, 2, 6), crema, [gx, gy - largo * 0.5, gz], [0, -th, 0], [0.85, 1, 0.85]));
     });
     // vetas de leche condensada que bajan por la mermelada
     for (let q = 0; q < 6; q++) {
@@ -555,6 +561,7 @@ export function crearModelos(detalle) {
     return fusionar([...persona(-0.32, 0xd8287f, 0xc9987f, 0x16100e), ...persona(0.34, 0xffd21f, 0x8d5a3b, 0x3a2418)]);
   };
 
-  return { cholado: cholado(), india: india(), cajaFruta: cajaFruta(0), cajasFruta: [cajaFruta(0), cajaFruta(1), cajaFruta(2)], fresa: fresa(), mango: mango(), lulo: lulo(), pinita: pinita(), papaya: papaya(), manzana: manzana(), palmera: palmera(), sombrilla: sombrilla(), pina: pina(), nube: nube(), banderines: banderines(), puesto: puesto(), gente: gente(), caja, cono };
+  const cajasFruta = [cajaFruta(0), cajaFruta(1), cajaFruta(2)];
+  return { cholado: cholado(), india: india(), cajaFruta: cajasFruta[0], cajasFruta, fresa: fresa(), mango: mango(), lulo: lulo(), pinita: pinita(), papaya: papaya(), manzana: manzana(), palmera: palmera(), sombrilla: sombrilla(), pina: pina(), nube: nube(), banderines: banderines(), puesto: puesto(), gente: gente(), caja, cono };
 }
 

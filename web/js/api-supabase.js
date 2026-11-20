@@ -24,11 +24,11 @@ function cabeceras() {
  * Llama a una función del servidor. `reintentos`: solo para funciones que se pueden repetir sin efecto doble
  * (estado, mi_codigo, terminar_partida y reclamar_codigo son "idempotentes"; iniciar_partida NO: gasta un intento).
  */
-async function rpc(nombre, argumentos, { reintentos = 0 } = {}) {
+async function rpc(nombre, argumentos, { reintentos = 0, tiempoMs = TIEMPO_MAX_MS } = {}) {
   let ultimoError;
   for (let i = 0; i <= reintentos; i++) {
     const control = new AbortController();
-    const reloj_ = setTimeout(() => control.abort(), TIEMPO_MAX_MS);
+    const reloj_ = setTimeout(() => control.abort(), tiempoMs);
     try {
       const res = await fetch(`${SUPABASE.url}/rest/v1/rpc/${nombre}`, {
         method: 'POST',
@@ -56,7 +56,10 @@ async function rpc(nombre, argumentos, { reintentos = 0 } = {}) {
   throw ultimoError;
 }
 
-export const obtenerEstado = () => rpc('estado', { p_device: idDispositivo() }, { reintentos: 2 });
+// Lo que solo LEE (el estado, mi código) espera menos: con mala señal es mejor mostrar «Reintentar» a los ~17 s que dejar
+// «Cargando…» casi 40 s. Terminar y reclamar sí insisten más (valen un premio y repetirlas no cambia nada).
+const LECTURA = { reintentos: 1, tiempoMs: 8000 };
+export const obtenerEstado = () => rpc('estado', { p_device: idDispositivo() }, LECTURA);
 
 export const iniciarPartida = () => rpc('iniciar_partida', { p_device: idDispositivo() });
 
@@ -73,7 +76,7 @@ export const reclamarPremio = ({ token, nombre, celular, consentimiento }) =>
 export const registrarCanal = ({ token, fuente, medio, campana }) =>
   rpc('registrar_canal', { p_token: token, p_fuente: fuente ?? null, p_medio: medio ?? null, p_campana: campana ?? null }, { reintentos: 1 });
 
-export const miCodigo = () => rpc('mi_codigo', { p_device: idDispositivo() }, { reintentos: 2 });
+export const miCodigo = () => rpc('mi_codigo', { p_device: idDispositivo() }, LECTURA);
 
 /** Despierta al servidor y devuelve su hora (la usa el aviso diario que evita que el proyecto gratis se pause). */
 export const ping = () => rpc('ping', {}, { reintentos: 1 });

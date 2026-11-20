@@ -156,7 +156,7 @@ export function iniciarDebug({ cfg, escena, api, hooks, reiniciar, obtenerPartid
   $('#dbg-premios').addEventListener('change', (e) => { api.debug?.fijar({ premiosPorSemana: Number(e.target.value) }); reiniciar(); });
   $('#dbg-intentos').addEventListener('change', (e) => { api.debug?.fijar({ intentosPorSemana: Number(e.target.value) }); reiniciar(); });
   $('#dbg-semana').addEventListener('click', () => { api.debug?.reiniciarSemana(); reiniciar(); });
-  $('#dbg-borrar-api').addEventListener('click', () => { api.debug?.borrarTodo(); localStorage.removeItem('cholado-mi-codigo'); location.reload(); });
+  $('#dbg-borrar-api').addEventListener('click', () => { api.debug?.borrarTodo(); location.reload(); });
 
   /* Ver los modelos de cerca (Fase B) */
   const CAMARAS = {
