@@ -37,6 +37,9 @@ export function crearEscena(canvas, contenedor, cfg, tema = {}) {
   const material = crearMaterialEstiloG();
   const contorno = crearContorno(CONTORNO_ESTILO_G);
   const M = crearModelos(1.6);
+  // Los personajes (y el cholado del premio) con más segmentos para que se vean redondos y no «poligonales»: unos 3 mil
+  // triángulos más por personaje. En celulares de poca memoria se quedan como estaban (lo más liviano).
+  const MP = gamaBaja ? M : crearModelos(2.4, { soloPersonajes: true });
   const contornos = []; // mallas de contorno (para quitarlas si el celular va justo)
 
   function crearMalla(geo, { instancias = 0, conContorno = true, jugable = true, geoContorno = null } = {}) {
@@ -69,6 +72,8 @@ export function crearEscena(canvas, contenedor, cfg, tema = {}) {
   ];
   [[-26, -62, 13, 9, 0], [-10, -70, 15, 13, 1], [9, -66, 14, 8, 0], [27, -60, 13, 10, 1], [-38, -55, 10, 6, 1], [40, -52, 11, 7, 0], [0, -84, 18, 11, 0]]
     .forEach(([x, z, r, h, k]) => fijo.push(pieza(M.cono(r, h, 6), k ? pal.montanaB : pal.montanaA, [x, h / 2 - 0.02, z])));
+  // Cali en el horizonte: las Tres Cruces en la montaña de la izquierda y Cristo Rey en la de la derecha
+  fijo.push(...M.cerrosDeCali([-26, 8.3, -62], [27, 9.3, -60]));
   escena.add(crearMalla(fusionar(fijo), { conContorno: false }));
 
   const sol = new THREE.Mesh(new THREE.CircleGeometry(9, 28), new THREE.MeshBasicMaterial({ color: pal.sol, fog: false }));
@@ -93,6 +98,21 @@ export function crearEscena(canvas, contenedor, cfg, tema = {}) {
   const iGente = crearMalla(M.gente, { instancias: gente.length, jugable: false });
   const iPuestos = crearMalla(M.puesto, { instancias: puestos.length, jugable: false });
   const iCuerdas = crearMalla(M.banderines, { instancias: cuerdas.length, jugable: false });
+  // Noviembre de 2026 (pedido del usuario: «mezcla de las tres»): la marca del negocio, Cali y la fiesta de salsa
+  const banderas = [[-3.3, 6], [3.3, 17], [-3.3, 46], [3.3, 58]]; // banderas de Cali
+  const vallas = [[-5.4, 25, 0.35], [5.4, 37, -0.35]]; // [x, fase, giro]: vallas con el logo de Cholados La India
+  const vasos = [[-4.3, 76], [4.4, 1]]; // vasos gigantes de cholado
+  const parejas = [[3.4, 15], [-3.4, 44], [3.4, 54], [-3.4, 62]]; // parejas bailando salsa
+  const tarimas = [[6.6, 60]]; // la orquesta
+  const iBanderas = crearMalla(M.banderaCali, { instancias: banderas.length, jugable: false });
+  const iVallas = crearMalla(M.valla, { instancias: vallas.length, jugable: false });
+  const texLogo = new THREE.TextureLoader().load('assets/marca/logo.png');
+  texLogo.colorSpace = THREE.SRGBColorSpace;
+  const iLogos = new THREE.InstancedMesh(new THREE.PlaneGeometry(3.1, 1.28), new THREE.MeshBasicMaterial({ map: texLogo, transparent: true, alphaTest: 0.05 }), vallas.length);
+  iLogos.frustumCulled = false;
+  const iVasos = crearMalla(M.vasoGigante, { instancias: vasos.length, jugable: false });
+  const iParejas = crearMalla(M.pareja, { instancias: parejas.length, jugable: false });
+  const iTarimas = crearMalla(M.tarima, { instancias: tarimas.length, jugable: false });
   const iNubes = new THREE.InstancedMesh(M.nube, new THREE.MeshBasicMaterial({ vertexColors: true, fog: false }), nubes.length);
   iNubes.frustumCulled = false;
   const iRayas = crearMalla(fusionar([pieza(M.caja(0.09, 0.02, 1.1), pal.linea)]), { instancias: nRayas * 2, conContorno: false });
@@ -101,7 +121,7 @@ export function crearEscena(canvas, contenedor, cfg, tema = {}) {
   const iBarras = crearMalla(crearBarraBaja(), { instancias: MAX.barraBaja });
   const iFrutas = Object.fromEntries(TIPOS_FRUTA.map((k) => [k, crearMalla(M[k], { instancias: MAX.fruta })]));
   const todasInstancias = [iPalmas, iSombrillas, iPinas, iRayas, ...iCajas, iPilas, iBarras, ...Object.values(iFrutas)];
-  escena.add(...todasInstancias, iGente, iPuestos, iCuerdas, iNubes);
+  escena.add(...todasInstancias, iGente, iPuestos, iCuerdas, iNubes, iBanderas, iVallas, iLogos, iVasos, iParejas, iTarimas);
 
   const maxSombras = 1 + MAX.cajaBaja + MAX.pilaAlta;
   const sombras = new THREE.InstancedMesh(
@@ -116,8 +136,8 @@ export function crearEscena(canvas, contenedor, cfg, tema = {}) {
   const meta = new THREE.Group();
   meta.add(crearMalla(crearArcoMeta()));
   meta.add(crearCartelMeta(tema.textoMeta ?? '¡META!'));
-  const premio = crearMalla(M.cholado.cuerpo, { geoContorno: M.cholado.contornoCuerpo });
-  const premioCascaron = new THREE.Mesh(M.cholado.cascaron, new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.15, depthWrite: false }));
+  const premio = crearMalla(MP.cholado.cuerpo, { geoContorno: MP.cholado.contornoCuerpo });
+  const premioCascaron = new THREE.Mesh(MP.cholado.cascaron, new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.15, depthWrite: false }));
   premio.add(premioCascaron);
   premio.scale.setScalar(1.55);
   premio.position.set(0, 4.65, 0);
@@ -144,7 +164,7 @@ export function crearEscena(canvas, contenedor, cfg, tema = {}) {
     escena.add(g);
     return partes;
   }
-  const personajes = { cholado: ensamblar(M.cholado), india: ensamblar(M.india) };
+  const personajes = { cholado: ensamblar(MP.cholado), india: ensamblar(MP.india) };
   let actual = cfg.desarrollo.personajeInicial in personajes ? cfg.desarrollo.personajeInicial : 'india';
   personajes[actual].g.visible = true;
 
@@ -281,7 +301,7 @@ export function crearEscena(canvas, contenedor, cfg, tema = {}) {
   // de basura, y en gama baja eso se nota como tirones)
   const nCaja = [0, 0, 0];
   const nFruta = Object.fromEntries(TIPOS_FRUTA.map((k) => [k, 0]));
-  const mallasQueSeMueven = [...iCajas, iPilas, iBarras, ...Object.values(iFrutas), iPalmas, iSombrillas, iPinas, iRayas, sombras, iGente, iPuestos, iCuerdas, iNubes];
+  const mallasQueSeMueven = [...iCajas, iPilas, iBarras, ...Object.values(iFrutas), iPalmas, iSombrillas, iPinas, iRayas, sombras, iGente, iPuestos, iCuerdas, iNubes, iBanderas, iVallas, iLogos, iVasos, iParejas, iTarimas];
 
   /* ───────────── El cuadro ───────────── */
   /**
@@ -304,6 +324,17 @@ export function crearEscena(canvas, contenedor, cfg, tema = {}) {
     puestos.forEach(([x, f], i) => poner(iPuestos, i, x, 0, zLejos(f, D), 1, x < 0 ? -Math.PI / 2 : Math.PI / 2));
     cuerdas.forEach((f, i) => poner(iCuerdas, i, 0, 0, zLejos(f, D)));
     nubes.forEach(([x, y, z, s], i) => poner(iNubes, i, x + Math.sin(idleT * 0.08 + i * 2) * 2.5, y, z, s));
+    banderas.forEach(([x, f], i) => poner(iBanderas, i, x, 0, zLejos(f, D), 1, x < 0 ? -1.1 : 1.1)); // la tela, girada hacia quien corre (de canto no se veía)
+    vallas.forEach(([x, f, r], i) => {
+      poner(iVallas, i, x, 0, zLejos(f, D), 1, r);
+      d.position.set(x, 2.6, zLejos(f, D));
+      d.position.x += Math.sin(r) * 0.02; // el logo, un pelito delante del tablero
+      d.updateMatrix();
+      iLogos.setMatrixAt(i, d.matrix);
+    });
+    vasos.forEach(([x, f], i) => poner(iVasos, i, x, 0, zLejos(f, D), 1, i * 1.3));
+    parejas.forEach(([x, f], i) => poner(iParejas, i, x, Math.abs(Math.sin(idleT * 5.6 + i)) * 0.06, zLejos(f, D), 1, idleT * 2.2 + i * 1.7)); // dan vueltas bailando
+    tarimas.forEach(([x, f], i) => poner(iTarimas, i, x, 0, zLejos(f, D), 1, x > 0 ? Math.PI : 0)); // la orquesta mira a la pista
     for (let i = 0; i < nRayas; i++) {
       const z = zLejos(i * (LARGO / nRayas), D);
       poner(iRayas, i, -W / 2, 0.012, z);

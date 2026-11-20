@@ -43,6 +43,10 @@ function sonar(e) {
   else if (e.tipo === 'minimo') audio.logro(true); // ya tiene las frutas para ganar
   else if (e.tipo === 'mitad') audio.logro(false);
 }
+// El estado del servidor se pide YA, antes de armar la escena 3D (que en un celular toma su rato): así las dos cosas
+// pasan al mismo tiempo y la pantalla «Cargando…» dura lo que la más lenta de las dos, no la suma.
+let estadoTemprano = api.obtenerEstado().catch(() => null);
+performance.mark?.('cholado:inicio');
 let escena;
 try {
   escena = crearEscena(document.getElementById('lienzo'), raiz, cfg, { textoMeta: T.juego.meta });
@@ -161,7 +165,9 @@ async function irInicio(recargar = true) {
   if (recargar || !estadoServidor) {
     ui.mostrar('cargando');
     try {
-      const estado = await api.obtenerEstado();
+      const temprano = estadoTemprano;
+      estadoTemprano = null; // solo sirve para la primera pantalla
+      const estado = (temprano && (await temprano)) || (await api.obtenerEstado());
       if (n !== navegacion) return;
       estadoServidor = estado;
       aplicarServidor(estadoServidor);

@@ -150,7 +150,8 @@ export function crearUI(raiz, cfg) {
       </section>`;
     },
 
-    cargando: () => `<section class="pantalla centro"><div class="panel"><p class="mensaje" role="status">${T.inicio.cargando}</p></div></section>`,
+    // Con el logo (igual que la pantalla que trae el HTML): así la carga no se ve como un cuadro suelto
+    cargando: () => `<section class="pantalla centro"><div class="panel cargando-inicial"><img class="logo" src="assets/marca/logo.png" alt="${esc(T.negocio)}" width="380" height="157"><p class="mensaje" role="status">${T.inicio.cargando}</p></div></section>`,
 
     error: ({ mensaje, boton }) => `
       <section class="pantalla centro"><div class="panel">

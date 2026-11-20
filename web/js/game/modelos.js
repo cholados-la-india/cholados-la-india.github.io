@@ -69,7 +69,11 @@ export function fusionar(piezas) {
 
 /* ───────────────────────── Modelos (todo por código, sin archivos) ───────────────────────── */
 
-export function crearModelos(detalle) {
+/**
+ * @param detalle         multiplica los segmentos de lo redondo (esferas, cilindros, conos)
+ * @param soloPersonajes  arma solo el cholado y La India (la escena los pide con más detalle en celulares que lo aguantan)
+ */
+export function crearModelos(detalle, { soloPersonajes = false } = {}) {
   const S = (n) => Math.max(3, Math.round(n * detalle));
   const caja = (x, y, z) => new THREE.BoxGeometry(x, y, z);
   const cil = (rs, ri, h, seg = 8, abierto = false) => new THREE.CylinderGeometry(rs, ri, h, S(seg), 1, abierto);
@@ -561,7 +565,109 @@ export function crearModelos(detalle) {
     return fusionar([...persona(-0.32, 0xd8287f, 0xc9987f, 0x16100e), ...persona(0.34, 0xffd21f, 0x8d5a3b, 0x3a2418)]);
   };
 
+  /* ───────────── Decorado de noviembre: Cholados La India + Cali + fiesta de salsa (pocos triángulos: se repiten) ───────────── */
+
+  /**
+   * Bandera de Santiago de Cali en su asta: cinco franjas horizontales azul, rojo, blanco, rojo y verde; las rojas miden un
+   * tercio de las otras (proporción 3-1-3-1-3, Decreto 295 de 1954). La tela mira hacia la pista (±x).
+   */
+  const banderaCali = () => {
+    const p = [pieza(cil(0.05, 0.06, 3.4, 5), 0xe9d3f0, [0, 1.7, 0]), pieza(esf(0.09, 5, 4), 0xffd21f, [0, 3.45, 0])];
+    const franjas = [[0x1f4fb4, 3], [0xd62f2f, 1], [0xffffff, 3], [0xd62f2f, 1], [0x2e9a3e, 3]]; // de arriba abajo
+    const alto = 0.95;
+    let y = 3.3;
+    for (const [color, partes] of franjas) {
+      const h = (alto * partes) / 11;
+      p.push(pieza(caja(0.04, h, 1.4), color, [0, y - h / 2, 0.72]));
+      y -= h;
+    }
+    return fusionar(p);
+  };
+
+  /** Marco de la valla de Cholados La India (el logo va encima, como imagen, desde la escena). Mira hacia +z. */
+  const valla = () => fusionar([
+    pieza(cil(0.07, 0.08, 2.0, 5), 0x7b4b1d, [-1.3, 1.0, -0.06]),
+    pieza(cil(0.07, 0.08, 2.0, 5), 0x7b4b1d, [1.3, 1.0, -0.06]),
+    pieza(caja(3.4, 1.6, 0.1), 0xd8287f, [0, 2.6, -0.08]), // tablero magenta del menú
+    pieza(caja(3.55, 0.12, 0.16), 0xb6e80a, [0, 3.42, -0.06]), // borde lima arriba
+    pieza(caja(3.55, 0.12, 0.16), 0xb6e80a, [0, 1.78, -0.06]), // y abajo
+  ]);
+
+  /** Vaso gigante de cholado (adorno de la calle): vaso rojo transparente-ish, crema, uvita y pitillo. Pocos triángulos. */
+  const vasoGigante = () => fusionar([
+    pieza(cil(0.75, 0.5, 1.6, 10), 0xc21436, [0, 0.8, 0]),
+    pieza(cil(0.77, 0.77, 0.12, 10), 0xffffff, [0, 1.62, 0]),
+    pieza(new THREE.SphereGeometry(0.72, S(8), 4, 0, Math.PI * 2, 0, Math.PI / 2), 0xfce4a8, [0, 1.66, 0], [0, 0, 0], [1, 0.75, 1]),
+    pieza(esf(0.16, 6, 5), 0x4a2a6e, [0, 2.25, 0]),
+    pieza(cil(0.05, 0.05, 1.3, 5), 0xffd21f, [0.3, 2.3, 0], [0, 0, -0.35]),
+    pieza(caja(0.5, 0.4, 0.05), 0xf2cb80, [-0.35, 2.05, 0.2], [0, 0.3, 0.4]), // wafer
+  ]);
+
+  /** Pareja bailando salsa: él de camisa blanca y pantalón oscuro, ella de vestido rojo con vuelo; tomados de la mano. */
+  const pareja = () => {
+    const tronco = new THREE.CylinderGeometry(0.15, 0.2, 0.6, 6, 1);
+    const p = [
+      // él
+      pieza(new THREE.CylinderGeometry(0.11, 0.13, 0.5, 6, 1), 0x2a1a2e, [-0.32, 0.25, 0]),
+      pieza(tronco, 0xffffff, [-0.32, 0.8, 0]),
+      pieza(esfMini(0.15), 0x8d5a3b, [-0.32, 1.25, 0]),
+      pieza(esfMini(0.155), 0x16100e, [-0.32, 1.3, 0.03], [0, 0, 0], [1, 0.75, 1]),
+      pieza(caja(0.36, 0.07, 0.07), 0x8d5a3b, [-0.13, 0.95, 0], [0, 0, 0.2]), // brazo hacia ella
+      pieza(caja(0.07, 0.34, 0.07), 0x8d5a3b, [-0.55, 1.02, 0], [0, 0, 0.6]), // el otro, arriba
+      // ella
+      pieza(new THREE.ConeGeometry(0.42, 0.75, 8, 1, true), 0xd62f2f, [0.32, 0.45, 0]), // falda con vuelo
+      pieza(tronco, 0xd62f2f, [0.32, 0.92, 0], [0, 0, 0], [0.85, 0.7, 0.85]),
+      pieza(esfMini(0.14), 0xc9987f, [0.32, 1.28, 0]),
+      pieza(esfMini(0.16), 0x3a2418, [0.32, 1.32, 0.04], [0, 0, 0], [1, 0.8, 1]),
+      pieza(esfMini(0.06), 0xffd21f, [0.42, 1.38, 0]), // flor en el pelo
+      pieza(caja(0.07, 0.36, 0.07), 0xc9987f, [0.55, 1.08, 0], [0, 0, -0.5]),
+    ];
+    return fusionar(p);
+  };
+
+  /** Tarima con la orquesta: tablado, techo a rayas y cuatro músicos (dos trompetistas, conguero y cantante). Mira hacia +x. */
+  const tarima = () => {
+    const p = [
+      pieza(caja(2.2, 0.5, 3.4), 0x7b4b1d, [0, 0.25, 0]),
+      pieza(caja(2.3, 0.08, 3.5), 0x9a6428, [0, 0.52, 0]),
+    ];
+    for (const z of [-1.6, 1.6]) for (const x of [-1.0, 1.0]) p.push(pieza(cil(0.06, 0.06, 2.2, 5), 0xeeeeee, [x, 1.6, z]));
+    for (let i = 0; i < 6; i++) p.push(pieza(caja(2.3, 0.08, 0.6), i % 2 ? 0xffffff : 0x66c3e0, [0, 2.75, -1.5 + i * 0.6]));
+    const musico = (z, camisa, conTrompeta) => {
+      p.push(pieza(new THREE.CylinderGeometry(0.15, 0.2, 0.6, 6, 1), camisa, [0, 0.9, z]));
+      p.push(pieza(esfMini(0.15), 0x8d5a3b, [0, 1.35, z]));
+      p.push(pieza(esfMini(0.16), 0x16100e, [-0.03, 1.39, z], [0, 0, 0], [1, 0.75, 1]));
+      if (conTrompeta) {
+        p.push(pieza(cil(0.025, 0.025, 0.45, 5), 0xffd21f, [0.3, 1.32, z], [0, 0, Math.PI / 2 - 0.2]));
+        p.push(pieza(cono(0.09, 0.14, 7, true), 0xffd21f, [0.55, 1.37, z], [0, 0, -Math.PI / 2 - 0.2]));
+      }
+    };
+    musico(-1.0, 0xffd21f, true);
+    musico(-0.35, 0xd8287f, true);
+    musico(0.35, 0xffffff, false);
+    p.push(pieza(cil(0.17, 0.13, 0.55, 8), 0xc98a3f, [0.3, 0.83, 0.35])); // conga
+    musico(1.0, 0x66c3e0, false);
+    p.push(pieza(cil(0.015, 0.015, 0.9, 4), 0x333333, [0.25, 1.0, 1.0])); // micrófono
+    return fusionar(p);
+  };
+
+  /** Las Tres Cruces y Cristo Rey, los cerros de Cali, para poner en la cima de dos montañas del fondo (silueta blanca). */
+  const cerrosDeCali = (cruces, cristo) => {
+    const p = [];
+    for (const [dx, h] of [[-2.2, 3.4], [0, 4.2], [2.2, 3.4]]) {
+      p.push(pieza(caja(0.45, h, 0.45), 0xffffff, [cruces[0] + dx, cruces[1] + h / 2, cruces[2]]));
+      p.push(pieza(caja(1.8, 0.42, 0.45), 0xffffff, [cruces[0] + dx, cruces[1] + h * 0.72, cruces[2]]));
+    }
+    const [x, y, z] = cristo;
+    p.push(pieza(caja(1.2, 0.6, 1.2), 0xf3ece4, [x, y + 0.3, z])); // pedestal
+    p.push(pieza(cil(0.32, 0.5, 2.4, 6), 0xf3ece4, [x, y + 1.8, z])); // túnica
+    p.push(pieza(caja(2.4, 0.32, 0.32), 0xf3ece4, [x, y + 2.75, z])); // brazos abiertos
+    p.push(pieza(esf(0.3, 6, 5), 0xf3ece4, [x, y + 3.25, z])); // cabeza
+    return p;
+  };
+
+  if (soloPersonajes) return { cholado: cholado(), india: india() };
   const cajasFruta = [cajaFruta(0), cajaFruta(1), cajaFruta(2)];
-  return { cholado: cholado(), india: india(), cajaFruta: cajasFruta[0], cajasFruta, fresa: fresa(), mango: mango(), lulo: lulo(), pinita: pinita(), papaya: papaya(), manzana: manzana(), palmera: palmera(), sombrilla: sombrilla(), pina: pina(), nube: nube(), banderines: banderines(), puesto: puesto(), gente: gente(), caja, cono };
+  return { cholado: cholado(), india: india(), cajaFruta: cajasFruta[0], cajasFruta, fresa: fresa(), mango: mango(), lulo: lulo(), pinita: pinita(), papaya: papaya(), manzana: manzana(), palmera: palmera(), sombrilla: sombrilla(), pina: pina(), nube: nube(), banderines: banderines(), puesto: puesto(), gente: gente(), banderaCali: banderaCali(), valla: valla(), vasoGigante: vasoGigante(), pareja: pareja(), tarima: tarima(), cerrosDeCali, caja, cono };
 }
 

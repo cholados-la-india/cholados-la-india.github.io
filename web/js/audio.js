@@ -1,5 +1,11 @@
-// audio.js — Todo el sonido del juego se FABRICA con Web Audio (osciladores y ruido): no hay archivos de audio.
-// Ventajas: cero descargas, cero problemas de licencias (nada de pistas ajenas) y cabe en pocos KB.
+// audio.js — El sonido del juego.
+//
+//   · INSTRUMENTOS GRABADOS (desde noviembre de 2026, autorizado por el usuario): piano, trompetas, trombón, bajo acústico,
+//     campana (agogó) y clave (bloque de madera) suenan con grabaciones reales del banco Fluid R3 (licencia MIT; ver
+//     web/assets/sonidos/LICENCIA.txt). Son 32 notas sueltas (~740 KB) que se descargan DESPUÉS del primer toque (no frenan el
+//     inicio); para las notas que faltan se cambia la velocidad de la grabación más cercana (máximo ±1 semitono y medio).
+//     Mientras cargan, o si fallan, suenan las versiones fabricadas con osciladores (las de antes).
+//   · Lo demás se FABRICA con Web Audio (osciladores y ruido): congas, bongó, timbal, güiro, platillo y todos los efectos.
 //
 //   · Efectos: saltar, carril, aterrizar, fruta (suben de tono), choque, cuenta atrás, meta, perder, clic y una campanita de logro.
 //     (Se probaron aplausos y gente alentando sintetizados, pero sonaban a estática: se quitaron. Si se quieren, usar un audio real con licencia.)
@@ -18,7 +24,9 @@ const AC = window.AudioContext || window.webkitAudioContext;
 const BPM = 168; // negras por minuto (la salsa bailable anda entre 160 y 220; con 184 al usuario le pareció demasiado rápida)
 const DUR16 = 60 / BPM / 4; // duración de una semicorchea
 const nota = (midi) => 440 * 2 ** ((midi - 69) / 12);
-const VOL_MUSICA = { juego: 0.7, menu: 0.42 }; // la música de fondo: más baja en las pantallas, completa al jugar
+// La música de fondo: más baja en las pantallas, completa al jugar. (Con las grabaciones llena más: se bajó para dejar aire a
+// los efectos. Medido con _renderizar: pico 0,77 jugando, 0,49 en el menú, cero recortes, también con los efectos encima.)
+const VOL_MUSICA = { juego: 0.55, menu: 0.36 };
 
 let ctx = null;
 let maestro = null;
@@ -45,6 +53,80 @@ function respuestaSala() {
   }
   return buf;
 }
+
+/* ───────────── Grabaciones de instrumentos (banco Fluid R3, MIT) ───────────── */
+const MUESTRAS = {
+  piano: { carpeta: 'acoustic_grand_piano', notas: ['B3', 'D4', 'F4', 'Ab4', 'B4', 'D5', 'F5', 'Ab5', 'B5', 'D6'] },
+  trompeta: { carpeta: 'trumpet', notas: ['Bb4', 'Db5', 'E5', 'G5', 'Bb5'] },
+  trombon: { carpeta: 'trombone', notas: ['Bb3', 'Db4', 'E4', 'G4', 'Bb4'] },
+  bajo: { carpeta: 'acoustic_bass', notas: ['C2', 'Eb2', 'Gb2', 'A2', 'C3', 'Eb3', 'Gb3', 'A3'] },
+  agogo: { carpeta: 'agogo', notas: ['C5', 'G5'] },
+  bloque: { carpeta: 'woodblock', notas: ['C5', 'G5'] },
+};
+const BASE_SONIDOS = new URL('../assets/sonidos/', import.meta.url);
+const bancos = {}; // instrumento → [{ midi, buf, inicio }] (solo cuando ya cargó)
+let cargandoMuestras = null;
+/** «Ab4» → 68 */
+function midiDe(nombre) {
+  const [, letra, alt, oct] = /^([A-G])(b?)(-?\d)$/.exec(nombre);
+  return 12 * (Number(oct) + 1) + { C: 0, D: 2, E: 4, F: 5, G: 7, A: 9, B: 11 }[letra] - (alt ? 1 : 0);
+}
+const decodificar = (datos) => new Promise((ok, mal) => {
+  const p = ctx.decodeAudioData(datos, ok, mal); // (forma con callbacks: la entienden también los Safari viejos)
+  if (p?.then) p.then(ok, mal);
+});
+/** Descarga y prepara las grabaciones (una sola vez, en segundo plano). */
+function cargarMuestras() {
+  if (cargandoMuestras || !ctx || typeof fetch !== 'function') return cargandoMuestras;
+  cargandoMuestras = Promise.all(Object.entries(MUESTRAS).map(async ([inst, { carpeta, notas }]) => {
+    const lista = [];
+    for (const n of notas) {
+      try {
+        const res = await fetch(new URL(`${carpeta}/${n}.mp3`, BASE_SONIDOS));
+        if (!res.ok) continue;
+        const buf = await decodificar(await res.arrayBuffer());
+        // Los MP3 traen un silencio al principio (del codificador): se salta para que el ritmo quede justo
+        const d = buf.getChannelData(0);
+        let i = 0;
+        while (i < d.length && Math.abs(d[i]) < 0.004) i++;
+        // Las grabaciones vienen bajitas (pico ~0,1) y cada una distinta: se normalizan a pico 1, así «vol» es el pico real
+        let pico = 0;
+        for (let k = i; k < d.length; k++) if (Math.abs(d[k]) > pico) pico = Math.abs(d[k]);
+        lista.push({ midi: midiDe(n), buf, inicio: Math.max(0, i / buf.sampleRate - 0.002), norma: pico > 0 ? 1 / pico : 1 });
+      } catch {
+        /* esa nota no cargó: se usa la más cercana (o los osciladores) */
+      }
+    }
+    if (lista.length) bancos[inst] = lista;
+  }));
+  return cargandoMuestras;
+}
+/**
+ * Toca una grabación: la nota más cercana del banco, con la velocidad ajustada al tono pedido, un ataque cortico y una
+ * caída suave al final (para cortar notas largas sin «clic»). Devuelve false si ese instrumento todavía no cargó.
+ */
+function tocarMuestra(t, inst, midi, { vol, dur, liberar = 0.07, destino = bMusica } = {}) {
+  const lista = bancos[inst];
+  if (!lista) return false;
+  let m = lista[0];
+  for (const x of lista) if (Math.abs(x.midi - midi) < Math.abs(m.midi - midi)) m = x;
+  const s = ctx.createBufferSource();
+  s.buffer = m.buf;
+  s.playbackRate.value = 2 ** ((midi - m.midi) / 12);
+  const g = ctx.createGain();
+  g.gain.setValueAtTime(0, t);
+  const v = vol * m.norma;
+  g.gain.linearRampToValueAtTime(v, t + 0.003);
+  g.gain.setValueAtTime(v, t + dur);
+  g.gain.linearRampToValueAtTime(0, t + dur + liberar);
+  s.connect(g);
+  g.connect(destino);
+  s.start(t, m.inicio);
+  s.stop(t + dur + liberar + 0.02);
+  return true;
+}
+/** Un poquito de «mano humana»: ni todas las notas exactas en el tiempo ni todas igual de fuertes (lo que más delata a una máquina). */
+const humano = (t, v) => [t + (Math.random() - 0.5) * 0.008, v * (0.88 + Math.random() * 0.24)];
 
 function crear(forzado) {
   if (ctx || !AC) return;
@@ -163,11 +245,14 @@ const cascara = (t, v = 1) => {
 };
 /** Cencerro: dos cuadradas desafinadas (el «tin-tin» de la campana); `f` = más agudo (campana del timbal) o más grave (la del bongocero). */
 const campana = (t, v = 1, f = 562) => {
+  const [th, vh] = humano(t, 0.16 * v);
+  if (tocarMuestra(th, 'agogo', 69 + 12 * Math.log2(f / 440), { vol: vh, dur: 0.12 })) return; // agogó afinado a la campana pedida
   tono({ t, f, dur: 0.12, tipo: 'square', vol: 0.05 * v, destino: bMusica });
   tono({ t, f: f * 1.5, dur: 0.1, tipo: 'square', vol: 0.04 * v, destino: bMusica });
   ruido({ t, dur: 0.015, vol: 0.06 * v, f: 3000, q: 1, tipo: 'highpass', destino: bMusica });
 };
 const clave = (t, v = 1) => {
+  if (tocarMuestra(t, 'bloque', 81, { vol: 0.3 * v, dur: 0.09 })) return; // (el bloque de madera, un poco más agudo: suena a claves)
   tono({ t, f: 1850, dur: 0.05, vol: 0.2 * v, destino: bMusica });
   tono({ t, f: 2500, dur: 0.03, vol: 0.08 * v, destino: bMusica });
 };
@@ -181,6 +266,7 @@ const timbal = (t, v = 1) => {
 const platillo = (t, v = 1) => ruido({ t, dur: 0.7, vol: 0.12 * v, f: 5200, q: 0.5, tipo: 'highpass', destino: bMusica });
 /** Bajo eléctrico: sierra con filtro que se cierra + una onda grave debajo. */
 const bajo = (t, midi, dur, vol) => {
+  if (tocarMuestra(t, 'bajo', midi, { vol: vol * 1.1, dur, liberar: 0.05 })) return;
   const f = nota(midi);
   const o = ctx.createOscillator();
   o.type = 'sawtooth';
@@ -212,6 +298,8 @@ const armonicosPiano = () => {
 };
 /** Piano: la nota + sus armónicos (que se apagan antes) + el golpe del martillo. */
 const piano = (t, midi, vol = 0.14, dur = 0.3) => {
+  const [th, vh] = humano(t, vol);
+  if (tocarMuestra(th, 'piano', midi, { vol: vh * 1.6, dur: dur * 1.15, liberar: 0.12 })) return;
   const f = nota(midi);
   tono({ t, f, dur, vol, ataque: 0.002, destino: bMusica });
   const o = ctx.createOscillator();
@@ -234,6 +322,14 @@ const piano = (t, midi, vol = 0.14, dur = 0.3) => {
  * la mitad de piezas, que es lo que más pesa en un celular de gama baja.
  */
 const metales = (t, midis, dur, vol) => {
+  // Con grabaciones: trompetas arriba y trombón en las notas graves (como en una orquesta de salsa caleña)
+  if (bancos.trompeta && bancos.trombon) {
+    for (const midi of midis) {
+      const [th, vh] = humano(t, vol);
+      tocarMuestra(th, midi >= 70 ? 'trompeta' : 'trombon', midi, { vol: vh * 3.3, dur: Math.max(0.09, dur * 0.85), liberar: 0.06 });
+    }
+    return;
+  }
   for (const midi of midis) {
     const f = nota(midi);
     const fl = ctx.createBiquadFilter();
@@ -373,6 +469,11 @@ export const audio = {
       }
     }
     iniciarMusica();
+    if (ctx.state === 'running') cargarMuestras(); // en segundo plano, ya con el audio desbloqueado
+  },
+  /** Para las pruebas y el diagnóstico: ¿qué instrumentos grabados ya cargaron? */
+  get grabaciones() {
+    return Object.keys(bancos);
   },
   get encendido() {
     return encendido;
@@ -418,6 +519,7 @@ export const audio = {
    * que no haya errores. `opciones`: { musica: true, efectos: ['meta', 'logro'] }.
    */
   async _renderizar(segundos = 12, modoPrueba = 'juego', opciones = {}) {
+    if (ctx) await cargarMuestras(); // (las grabaciones se decodifican con el contexto real y sirven en cualquier otro)
     const antes = { ctx, maestro, bMusica, bEfectos, ruidoBuf, modo };
     ctx = null;
     ruidoBuf = null;
