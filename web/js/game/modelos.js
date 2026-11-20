@@ -413,39 +413,57 @@ export function crearModelos(detalle, { soloPersonajes = false } = {}) {
   }
 
   /**
-   * Obstáculo: caja de madera con fruta encima. Hay 3 variantes para que no sean siempre naranjas:
-   *   0 = naranjas y mango · 1 = papayas y manzanas · 2 = piñas, lulos y limones.
+   * Obstáculo: caja de madera con fruta encima. Hay 4 variantes con las frutas del local:
+   *   0 = mangos, lulos y limones · 1 = papayas y bananos · 2 = piñas y maracuyás · 3 = guanábanas, lulos y limones.
    */
   function cajaFruta(variante = 0) {
     const p = [pieza(caja(1, 0.55, 0.8), 0xc98a3f, [0, 0.275, 0])];
     [0.1, 0.275, 0.45].forEach((y) => p.push(pieza(caja(1.02, 0.06, 0.82), 0x9a6428, [0, y, 0])));
     [[-0.5, -0.4], [0.5, -0.4], [-0.5, 0.4], [0.5, 0.4]].forEach(([x, z]) => p.push(pieza(caja(0.09, 0.6, 0.09), 0x7b4b1d, [x, 0.3, z])));
-    if (variante === 0) {
-      [[-0.25, -0.1], [0.2, -0.15], [0, 0.15]].forEach(([x, z]) => p.push(pieza(ico(0.2), 0xff8a1f, [x, 0.72, z])));
-      p.push(pieza(ico(0.17), 0xffb21a, [0.32, 0.7, 0.18], [0, 0, 0], [1, 1.2, 0.9]));
-      p.push(pieza(cono(0.09, 0.2, 4), 0x4caf3d, [-0.1, 0.92, 0.02]));
-    } else if (variante === 1) {
-      // dos papayas acostadas (naranja con la barriga más clara) y tres manzanas rojas con su hoja
-      [[-0.2, -0.12, 0.2], [0.1, 0.18, -0.15]].forEach(([x, z, g]) => {
-        p.push(pieza(ico(0.19), 0xff8a3c, [x, 0.72, z], [0, g, Math.PI / 2], [0.8, 1.55, 0.8]));
-        p.push(pieza(ico(0.12), 0xffb26a, [x - 0.02, 0.8, z + 0.02], [0, g, Math.PI / 2], [0.6, 1.2, 0.5]));
-      });
-      [[0.33, -0.14], [-0.35, 0.2], [0.3, 0.22]].forEach(([x, z]) => {
-        p.push(pieza(ico(0.15), 0xe5233e, [x, 0.7, z]));
-        p.push(pieza(cono(0.04, 0.1, 4), 0x4caf3d, [x, 0.88, z], [0.5, 0, 0.5]));
-      });
-    } else {
-      // dos piñas paradas con su penacho, lulos naranja y unos limones verdes
-      [[-0.22, -0.1], [0.12, 0.16]].forEach(([x, z]) => {
-        p.push(pieza(ico(0.17), 0xf2a31b, [x, 0.78, z], [0, 0, 0], [1, 1.45, 1]));
-        for (let k = 0; k < 5; k++) p.push(...grupo([pieza(cono(0.05, 0.28, 4), 0x3fa34d, [0, 0.14, 0], [0, 0, 0], [1, 1, 0.5])], [x, 1.0, z], [0, (k / 5) * Math.PI * 2, 0.5]));
-      });
-      [[0.34, -0.12], [-0.38, 0.18], [0.3, 0.25]].forEach(([x, z]) => {
-        p.push(pieza(ico(0.12), 0xffa21f, [x, 0.68, z]));
-        p.push(pieza(cono(0.05, 0.08, 4), 0x5bbd3a, [x, 0.8, z]));
-      });
-      p.push(pieza(ico(0.09), 0xb6e80a, [0.02, 0.62, -0.22], [0, 0, 0], [1.2, 0.9, 1]));
-      p.push(pieza(ico(0.09), 0xb6e80a, [-0.08, 0.62, 0.3], [0, 0.6, 0], [1.2, 0.9, 1]));
+    // Las frutas que usa el local (pedido de la mamá del usuario, noviembre de 2026): lulo, maracuyá, piña, guanábana, papaya,
+    // banano, mango y limón. Piezas de pocos triángulos: estas cajas se repiten mucho en la pista.
+    const lulo = (x, z) => {
+      p.push(pieza(ico(0.12), 0xffa21f, [x, 0.68, z]));
+      p.push(pieza(cono(0.05, 0.08, 4), 0x5bbd3a, [x, 0.8, z]));
+    };
+    const limon = (x, z, g = 0) => p.push(pieza(ico(0.085), 0x8bc34a, [x, 0.63, z], [0, g, 0], [1.25, 0.9, 1]));
+    const mango = (x, z, g = 0) => {
+      p.push(pieza(ico(0.17), 0xffb21a, [x, 0.72, z], [0, g, 0.4], [1, 1.18, 0.88]));
+      p.push(pieza(ico(0.09), 0xff5a2a, [x + 0.06, 0.7, z + 0.07])); // el cachete rojo
+    };
+    const maracuya = (x, z) => {
+      p.push(pieza(ico(0.14), 0xf3c623, [x, 0.7, z]));
+      p.push(pieza(cil(0.012, 0.012, 0.06, 4), 0x6b4423, [x, 0.85, z]));
+    };
+    const papaya = (x, z, g) => {
+      p.push(pieza(ico(0.19), 0xff8a3c, [x, 0.72, z], [0, g, Math.PI / 2], [0.8, 1.55, 0.8]));
+      p.push(pieza(ico(0.12), 0x7fbf3f, [x - 0.02, 0.8, z + 0.02], [0, g, Math.PI / 2], [0.6, 1.2, 0.5])); // la parte verde de la cáscara
+    };
+    const pina = (x, z) => {
+      p.push(pieza(ico(0.17), 0xf2a31b, [x, 0.78, z], [0, 0, 0], [1, 1.45, 1]));
+      for (let k = 0; k < 5; k++) p.push(...grupo([pieza(cono(0.05, 0.28, 4), 0x3fa34d, [0, 0.14, 0], [0, 0, 0], [1, 1, 0.5])], [x, 1.0, z], [0, (k / 5) * Math.PI * 2, 0.5]));
+    };
+    const guanabana = (x, z, g = 0) => {
+      p.push(pieza(ico(0.2), 0x5f9e3a, [x, 0.75, z], [0, g, 0.3], [1, 1.35, 1]));
+      for (let k = 0; k < 5; k++) p.push(pieza(cono(0.035, 0.08, 3), 0x3f7a26, [x + Math.cos(k * 1.3) * 0.17, 0.75 + (k - 2) * 0.07, z + Math.sin(k * 1.3) * 0.17], [Math.sin(k) * 1.2, 0, Math.cos(k) * 1.2])); // las espinitas
+    };
+    const bananos = (x, z, g) => { // un racimo de 4
+      for (let k = 0; k < 4; k++) {
+        p.push(...grupo([
+          pieza(cil(0.045, 0.05, 0.3, 5), 0xf5d313, [0, 0.15, 0]),
+          pieza(cil(0.035, 0.045, 0.2, 5), 0xf5d313, [0.05, 0.38, 0], [0, 0, -0.45]),
+          pieza(cil(0.02, 0.02, 0.05, 4), 0x5a3a1a, [0.1, 0.5, 0], [0, 0, -0.45]),
+        ], [x, 0.6, z], [Math.PI / 2 - 0.25, g + (k - 1.5) * 0.28, 0]));
+      }
+    };
+    if (variante === 0) { // mangos, lulos y limones
+      mango(-0.22, -0.1, 0.4); mango(0.18, 0.12, -0.6); lulo(0.34, -0.18); lulo(-0.35, 0.22); limon(0.0, -0.25); limon(-0.05, 0.3, 0.7);
+    } else if (variante === 1) { // papayas y un racimo de bananos
+      papaya(-0.2, -0.12, 0.2); papaya(0.12, 0.2, -0.15); bananos(0.15, -0.15, 0.3);
+    } else if (variante === 2) { // piñas y maracuyás
+      pina(-0.22, -0.1); pina(0.14, 0.16); maracuya(0.34, -0.14); maracuya(-0.36, 0.2); maracuya(0.32, 0.28);
+    } else { // guanábanas, lulos y limones
+      guanabana(-0.2, -0.05, 0.3); guanabana(0.2, 0.12, -0.4); lulo(0.35, -0.22); limon(-0.38, 0.25); limon(0.0, 0.3, 0.6);
     }
     return fusionar(p);
   }
@@ -666,8 +684,82 @@ export function crearModelos(detalle, { soloPersonajes = false } = {}) {
     return p;
   };
 
+  /* ───────────── Más Cali (pedido de la mamá del usuario): La Ermita, el Gato de Tejada, las gatas del río y el chontaduro ───────────── */
+
+  /** Un gato sentado mirando hacia +z (cuerpo, pecho, cabeza, orejas, ojos y cola enroscada). `c` = color, `o` = ojos. */
+  const gatoSentado = (c, o, esc = 1, pos = [0, 0, 0]) => grupo([
+    pieza(esf(0.5, 8, 6), c, [0, 0.55, -0.08], [0, 0, 0], [0.95, 1.15, 1.05]), // cuerpo
+    pieza(esf(0.3, 7, 5), c, [0, 0.62, 0.32], [0, 0, 0], [1, 1.1, 0.8]), // pecho
+    pieza(esf(0.34, 8, 6), c, [0, 1.32, 0.18]), // cabeza
+    pieza(cono(0.13, 0.26, 4), c, [-0.18, 1.6, 0.16], [0, 0, 0.25]), // orejas
+    pieza(cono(0.13, 0.26, 4), c, [0.18, 1.6, 0.16], [0, 0, -0.25]),
+    pieza(esfMini(0.06), o, [-0.12, 1.36, 0.47]), // ojos
+    pieza(esfMini(0.06), o, [0.12, 1.36, 0.47]),
+    pieza(cil(0.07, 0.06, 0.6, 5), c, [0.45, 0.25, 0.1], [0, 0, Math.PI / 2 - 0.3]), // cola en el piso
+    pieza(cil(0.06, 0.05, 0.35, 5), c, [0.72, 0.42, 0.2], [0.3, 0, 0.2]), // y la puntica levantada
+    pieza(esf(0.11, 5, 4), c, [-0.16, 0.12, 0.42], [0, 0, 0], [1, 0.7, 1.3]), // patas delanteras
+    pieza(esf(0.11, 5, 4), c, [0.16, 0.12, 0.42], [0, 0, 0], [1, 0.7, 1.3]),
+  ], pos, [0, 0, 0], [esc, esc, esc]);
+
+  /** El Gato del Río de Hernando Tejada: el gato de bronce grande sobre su base. Mira hacia +z. */
+  const gatoTejada = () => fusionar([
+    pieza(caja(1.6, 0.5, 1.6), 0xb9b0a2, [0, 0.25, 0]),
+    ...gatoSentado(0x8a5a2b, 0x2a1a10, 1.5, [0, 0.5, 0]),
+  ]);
+
+  /** Las gatas (las «novias del gato»): tres gatas de colores sobre bases bajitas, junto al río. Miran hacia +z. */
+  const gatasDelRio = () => fusionar([
+    pieza(caja(1.2, 0.25, 0.9), 0xd9cfc0, [-1.35, 0.125, 0]),
+    pieza(caja(1.2, 0.25, 0.9), 0xd9cfc0, [0, 0.125, 0.4]),
+    pieza(caja(1.2, 0.25, 0.9), 0xd9cfc0, [1.35, 0.125, 0]),
+    ...gatoSentado(0xf48fb1, 0x3a0f33, 0.85, [-1.35, 0.25, 0]), // rosada
+    ...gatoSentado(0xffd21f, 0x3a0f33, 0.85, [0, 0.25, 0.4]), // amarilla
+    ...gatoSentado(0x66c3e0, 0x3a0f33, 0.85, [1.35, 0.25, 0]), // celeste
+    pieza(esfMini(0.09), 0xd8287f, [-1.15, 1.4, 0.3]), // florecitas pintadas
+    pieza(esfMini(0.09), 0x2e9a3e, [0.2, 1.45, 0.7]),
+    pieza(esfMini(0.09), 0xff8a1f, [1.55, 1.4, 0.3]),
+  ]);
+
+  /** Carreta de chontaduro: la carreta con sus ruedas, la parva de chontaduros rojos y naranjas, y su sombrilla. Mira hacia +z. */
+  const chontaduro = () => {
+    const p = [
+      pieza(caja(1.3, 0.12, 0.8), 0xc98a3f, [0, 0.75, 0]),
+      pieza(caja(1.34, 0.22, 0.06), 0x9a6428, [0, 0.9, 0.4]),
+      pieza(caja(1.34, 0.22, 0.06), 0x9a6428, [0, 0.9, -0.4]),
+      pieza(cil(0.32, 0.32, 0.08, 10), 0x3a2418, [-0.45, 0.32, 0.44], [Math.PI / 2, 0, 0]),
+      pieza(cil(0.32, 0.32, 0.08, 10), 0x3a2418, [-0.45, 0.32, -0.44], [Math.PI / 2, 0, 0]),
+      pieza(cil(0.05, 0.05, 0.75, 4), 0x7b4b1d, [0.55, 0.4, 0]),
+      pieza(cil(0.03, 0.03, 1.7, 5), 0xeeeeee, [0.5, 1.6, -0.3]),
+      pieza(cono(0.85, 0.4, 8, true), 0xffd21f, [0.5, 2.45, -0.3]),
+      pieza(caja(0.5, 0.05, 0.4), 0xffffff, [0.35, 0.83, 0.1]), // el plato con sal y miel
+    ];
+    const colores = [0xe0461f, 0xf07a1e, 0xd8361a, 0xf59a2a];
+    for (let k = 0; k < 18; k++) {
+      const a = k * 2.4;
+      const r = 0.08 + (k % 6) * 0.04;
+      p.push(pieza(esfMini(0.075), colores[k % 4], [-0.25 + Math.cos(a) * r, 0.88 + Math.floor(k / 6) * 0.09, Math.sin(a) * r * 0.8]));
+    }
+    return fusionar(p);
+  };
+
+  /** La Ermita (neogótica, blanca, con la torre y su aguja gris azulada). Para el fondo: va sin repetirse. Frente hacia +z. */
+  const ermita = (x, y, z, e = 1) => grupo([
+    pieza(caja(3.2, 4.2, 6.5), 0xf7f3ec, [0, 2.1, -1.5]), // nave
+    pieza(cono(2.4, 2.2, 4), 0x8fa6c8, [0, 5.3, -1.5], [0, Math.PI / 4, 0], [0.95, 1, 1.9]), // techo
+    pieza(caja(1.6, 6.5, 1.6), 0xffffff, [0, 3.25, 1.8]), // torre del frente
+    pieza(cono(0.95, 5.2, 4), 0x8fa6c8, [0, 9.1, 1.8], [0, Math.PI / 4, 0]), // aguja
+    pieza(caja(0.08, 0.9, 0.08), 0xffd21f, [0, 12.1, 1.8]), // cruz
+    pieza(caja(0.5, 0.08, 0.08), 0xffd21f, [0, 12.25, 1.8]),
+    ...[-1, 1].flatMap((l) => [
+      pieza(caja(0.7, 4.6, 0.7), 0xffffff, [l * 1.45, 2.3, 1.6]), // torrecitas de los lados
+      pieza(cono(0.45, 2.2, 4), 0x8fa6c8, [l * 1.45, 5.7, 1.6], [0, Math.PI / 4, 0]),
+    ]),
+    pieza(new THREE.CircleGeometry(0.45, 10), 0x5b7fc2, [0, 4.6, 2.62]), // el rosetón
+    pieza(caja(0.8, 1.6, 0.05), 0x6b4423, [0, 0.8, 2.62]), // la puerta
+  ], [x, y, z], [0, 0, 0], [e, e, e]);
+
   if (soloPersonajes) return { cholado: cholado(), india: india() };
-  const cajasFruta = [cajaFruta(0), cajaFruta(1), cajaFruta(2)];
-  return { cholado: cholado(), india: india(), cajaFruta: cajasFruta[0], cajasFruta, fresa: fresa(), mango: mango(), lulo: lulo(), pinita: pinita(), papaya: papaya(), manzana: manzana(), palmera: palmera(), sombrilla: sombrilla(), pina: pina(), nube: nube(), banderines: banderines(), puesto: puesto(), gente: gente(), banderaCali: banderaCali(), valla: valla(), vasoGigante: vasoGigante(), pareja: pareja(), tarima: tarima(), cerrosDeCali, caja, cono };
+  const cajasFruta = [cajaFruta(0), cajaFruta(1), cajaFruta(2), cajaFruta(3)];
+  return { cholado: cholado(), india: india(), cajaFruta: cajasFruta[0], cajasFruta, fresa: fresa(), mango: mango(), lulo: lulo(), pinita: pinita(), papaya: papaya(), manzana: manzana(), palmera: palmera(), sombrilla: sombrilla(), pina: pina(), nube: nube(), banderines: banderines(), puesto: puesto(), gente: gente(), banderaCali: banderaCali(), valla: valla(), vasoGigante: vasoGigante(), pareja: pareja(), tarima: tarima(), gatoTejada: gatoTejada(), gatasDelRio: gatasDelRio(), chontaduro: chontaduro(), cerrosDeCali, ermita, caja, cono };
 }
 

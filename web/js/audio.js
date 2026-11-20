@@ -1,19 +1,11 @@
 // audio.js — El sonido del juego.
 //
-//   · INSTRUMENTOS GRABADOS (desde noviembre de 2026, autorizado por el usuario): piano, trompetas, trombón, bajo acústico,
-//     campana (agogó) y clave (bloque de madera) suenan con grabaciones reales del banco Fluid R3 (licencia MIT; ver
-//     web/assets/sonidos/LICENCIA.txt). Son 32 notas sueltas (~740 KB) que se descargan DESPUÉS del primer toque (no frenan el
-//     inicio); para las notas que faltan se cambia la velocidad de la grabación más cercana (máximo ±1 semitono y medio).
-//     Mientras cargan, o si fallan, suenan las versiones fabricadas con osciladores (las de antes).
-//   · Lo demás se FABRICA con Web Audio (osciladores y ruido): congas, bongó, timbal, güiro, platillo y todos los efectos.
-//
-//   · Efectos: saltar, carril, aterrizar, fruta (suben de tono), choque, cuenta atrás, meta, perder, clic y una campanita de logro.
-//     (Se probaron aplausos y gente alentando sintetizados, pero sonaban a estática: se quitaron. Si se quieren, usar un audio real con licencia.)
-//   · Música: una salsa «de Cali»: rápida (168 negras por minuto), con la sección rítmica DENSA que la caracteriza —clave de son 3-2,
-//     marcha de las congas en semicorcheas, bongó (martillo), cascarilla y campana del timbal, güiro—, bajo tumbao con la nota
-//     anticipada que cruza el compás, montuno (guajeo) de piano en octavas, metales (trompetas y trombón) con riffs de mambo, platillazo
-//     y «paila» (redoble) del timbal al cerrar la frase. Dos intensidades: «menu» (suave, sin metales; suena en el
-//     inicio y las pantallas) y «juego» (completa). Detalle y fuentes: documentos/salsa-referencia.md
+//   · MÚSICA: una salsa ORIGINAL al estilo caleño (ver «La canción», más abajo), tocada casi toda con GRABACIONES reales del
+//     banco Fluid R3 (licencia MIT; ver web/assets/sonidos/LICENCIA.txt): piano, trompetas, trombones y bajo acústico (notas
+//     sueltas en MP3) + congas, tumba, bongó, timbales, campana, clave, güiro, maracas y platillo (golpes en WAV). En total ~1 MB,
+//     que se descarga DESPUÉS del primer toque (no frena el inicio). Mientras carga, o si algo falla, ese instrumento suena con
+//     osciladores (las versiones de antes). Cada instrumento va un poco a la izquierda o a la derecha, como en una tarima.
+//   · EFECTOS (saltar, carril, aterrizar, fruta, choque, cuenta atrás, meta, perder, clic, logro): fabricados con osciladores.
 //   · Los navegadores solo dejan sonar después de un TOQUE (en iPhone, el toque tiene que TERMINAR: touchend/click, no basta
 //     con pointerdown). `activar()` se llama en todos los toques y teclas hasta que el audio queda en marcha.
 //   · Se puede silenciar (botón de sonido en el inicio y en la pausa); se recuerda en este navegador.
@@ -21,12 +13,12 @@ import { almacen } from './util.js';
 
 const CLAVE = 'cholado-sonido';
 const AC = window.AudioContext || window.webkitAudioContext;
-const BPM = 168; // negras por minuto (la salsa bailable anda entre 160 y 220; con 184 al usuario le pareció demasiado rápida)
+const BPM = 174; // negras por minuto (la salsa caleña es rápida; con 184 al usuario le pareció demasiado)
 const DUR16 = 60 / BPM / 4; // duración de una semicorchea
 const nota = (midi) => 440 * 2 ** ((midi - 69) / 12);
-// La música de fondo: más baja en las pantallas, completa al jugar. (Con las grabaciones llena más: se bajó para dejar aire a
-// los efectos. Medido con _renderizar: pico 0,77 jugando, 0,49 en el menú, cero recortes, también con los efectos encima.)
-const VOL_MUSICA = { juego: 0.55, menu: 0.36 };
+// La música de fondo: más baja en las pantallas, completa al jugar. Medido con _renderizar (canción nueva, todo grabado):
+// pico ~0,76 jugando, ~0,36 en el menú, cero recortes, también con los efectos encima. No subirlo: en celulares satura.
+const VOL_MUSICA = { juego: 0.5, menu: 0.36 };
 
 let ctx = null;
 let maestro = null;
@@ -60,8 +52,10 @@ const MUESTRAS = {
   trompeta: { carpeta: 'trumpet', notas: ['Bb4', 'Db5', 'E5', 'G5', 'Bb5'] },
   trombon: { carpeta: 'trombone', notas: ['Bb3', 'Db4', 'E4', 'G4', 'Bb4'] },
   bajo: { carpeta: 'acoustic_bass', notas: ['C2', 'Eb2', 'Gb2', 'A2', 'C3', 'Eb3', 'Gb3', 'A3'] },
-  agogo: { carpeta: 'agogo', notas: ['C5', 'G5'] },
-  bloque: { carpeta: 'woodblock', notas: ['C5', 'G5'] },
+  // Percusión latina sacada del banco completo (FluidR3_GM.sf2): un golpe por archivo, en WAV
+  ...Object.fromEntries([['conga', 'conga'], ['tumba', 'tumba'], ['bongoAlto', 'bongo-alto'], ['bongoBajo', 'bongo-bajo'], ['timbalAlto', 'timbal-alto'],
+    ['timbalBajo', 'timbal-bajo'], ['cencerro', 'cencerro'], ['clave', 'clave'], ['guiroLargo', 'guiro-largo'], ['guiroCorto', 'guiro-corto'],
+    ['maracas', 'maracas'], ['platillo', 'platillo']].map(([inst, archivo]) => [inst, { carpeta: 'percusion', notas: [archivo], wav: true }])),
 };
 const BASE_SONIDOS = new URL('../assets/sonidos/', import.meta.url);
 const bancos = {}; // instrumento → [{ midi, buf, inicio }] (solo cuando ya cargó)
@@ -78,11 +72,11 @@ const decodificar = (datos) => new Promise((ok, mal) => {
 /** Descarga y prepara las grabaciones (una sola vez, en segundo plano). */
 function cargarMuestras() {
   if (cargandoMuestras || !ctx || typeof fetch !== 'function') return cargandoMuestras;
-  cargandoMuestras = Promise.all(Object.entries(MUESTRAS).map(async ([inst, { carpeta, notas }]) => {
+  cargandoMuestras = Promise.all(Object.entries(MUESTRAS).map(async ([inst, { carpeta, notas, wav }]) => {
     const lista = [];
     for (const n of notas) {
       try {
-        const res = await fetch(new URL(`${carpeta}/${n}.mp3`, BASE_SONIDOS));
+        const res = await fetch(new URL(`${carpeta}/${n}.${wav ? 'wav' : 'mp3'}`, BASE_SONIDOS));
         if (!res.ok) continue;
         const buf = await decodificar(await res.arrayBuffer());
         // Los MP3 traen un silencio al principio (del codificador): se salta para que el ritmo quede justo
@@ -92,7 +86,7 @@ function cargarMuestras() {
         // Las grabaciones vienen bajitas (pico ~0,1) y cada una distinta: se normalizan a pico 1, así «vol» es el pico real
         let pico = 0;
         for (let k = i; k < d.length; k++) if (Math.abs(d[k]) > pico) pico = Math.abs(d[k]);
-        lista.push({ midi: midiDe(n), buf, inicio: Math.max(0, i / buf.sampleRate - 0.002), norma: pico > 0 ? 1 / pico : 1 });
+        lista.push({ midi: wav ? 60 : midiDe(n), buf, inicio: Math.max(0, i / buf.sampleRate - 0.002), norma: pico > 0 ? 1 / pico : 1 });
       } catch {
         /* esa nota no cargó: se usa la más cercana (o los osciladores) */
       }
@@ -105,14 +99,14 @@ function cargarMuestras() {
  * Toca una grabación: la nota más cercana del banco, con la velocidad ajustada al tono pedido, un ataque cortico y una
  * caída suave al final (para cortar notas largas sin «clic»). Devuelve false si ese instrumento todavía no cargó.
  */
-function tocarMuestra(t, inst, midi, { vol, dur, liberar = 0.07, destino = bMusica } = {}) {
+function tocarMuestra(t, inst, midi, { vol, dur, liberar = 0.07, destino = bMusica, pan = 0, tasa = 1 } = {}) {
   const lista = bancos[inst];
   if (!lista) return false;
   let m = lista[0];
   for (const x of lista) if (Math.abs(x.midi - midi) < Math.abs(m.midi - midi)) m = x;
   const s = ctx.createBufferSource();
   s.buffer = m.buf;
-  s.playbackRate.value = 2 ** ((midi - m.midi) / 12);
+  s.playbackRate.value = tasa * 2 ** ((midi - m.midi) / 12);
   const g = ctx.createGain();
   g.gain.setValueAtTime(0, t);
   const v = vol * m.norma;
@@ -120,13 +114,25 @@ function tocarMuestra(t, inst, midi, { vol, dur, liberar = 0.07, destino = bMusi
   g.gain.setValueAtTime(v, t + dur);
   g.gain.linearRampToValueAtTime(0, t + dur + liberar);
   s.connect(g);
-  g.connect(destino);
+  if (pan && ctx.createStereoPanner) {
+    const p = ctx.createStereoPanner(); // cada instrumento en su lugar de la «tarima» (izquierda/derecha)
+    p.pan.value = pan;
+    g.connect(p);
+    p.connect(destino);
+  } else {
+    g.connect(destino);
+  }
   s.start(t, m.inicio);
   s.stop(t + dur + liberar + 0.02);
   return true;
 }
 /** Un poquito de «mano humana»: ni todas las notas exactas en el tiempo ni todas igual de fuertes (lo que más delata a una máquina). */
 const humano = (t, v) => [t + (Math.random() - 0.5) * 0.008, v * (0.88 + Math.random() * 0.24)];
+/** Un golpe de percusión grabado (con su mano humana). Si esa grabación no ha cargado, se usa `siNo` (los osciladores). */
+function golpe(t, inst, vol, { tasa = 1, dur = 0.5, pan = 0 } = {}, siNo = null) {
+  const [th, vh] = humano(t, vol);
+  if (!tocarMuestra(th, inst, 60, { vol: vh, dur, liberar: 0.04, pan, tasa })) siNo?.();
+}
 
 function crear(forzado) {
   if (ctx || !AC) return;
@@ -245,14 +251,11 @@ const cascara = (t, v = 1) => {
 };
 /** Cencerro: dos cuadradas desafinadas (el «tin-tin» de la campana); `f` = más agudo (campana del timbal) o más grave (la del bongocero). */
 const campana = (t, v = 1, f = 562) => {
-  const [th, vh] = humano(t, 0.16 * v);
-  if (tocarMuestra(th, 'agogo', 69 + 12 * Math.log2(f / 440), { vol: vh, dur: 0.12 })) return; // agogó afinado a la campana pedida
   tono({ t, f, dur: 0.12, tipo: 'square', vol: 0.05 * v, destino: bMusica });
   tono({ t, f: f * 1.5, dur: 0.1, tipo: 'square', vol: 0.04 * v, destino: bMusica });
   ruido({ t, dur: 0.015, vol: 0.06 * v, f: 3000, q: 1, tipo: 'highpass', destino: bMusica });
 };
 const clave = (t, v = 1) => {
-  if (tocarMuestra(t, 'bloque', 81, { vol: 0.3 * v, dur: 0.09 })) return; // (el bloque de madera, un poco más agudo: suena a claves)
   tono({ t, f: 1850, dur: 0.05, vol: 0.2 * v, destino: bMusica });
   tono({ t, f: 2500, dur: 0.03, vol: 0.08 * v, destino: bMusica });
 };
@@ -357,75 +360,161 @@ const metales = (t, midis, dur, vol) => {
   }
 };
 
-/* ───────────── La canción: 8 compases (128 semicorcheas) ─────────────
-   Parte A (compases 1-4): clave, cascarilla, marcha de congas, martillo del bongó, güiro, bajo tumbao y guajeo de piano.
-   Parte B (compases 5-8): la cascarilla pasa a la campana y entran los metales con riffs de mambo (solo en «juego»).
-   Armonía: Re menor 7 → Sol 7 → Do mayor 7 → La 7 (el giro típico), dos veces.
-   Lo que cada instrumento toca sale de las descripciones de documentos/salsa-referencia.md. */
-const ACORDES = [
-  { raiz: 38, notas: [62, 65, 69, 72] }, // Re menor 7
-  { raiz: 43, notas: [59, 62, 65, 67] }, // Sol 7
-  { raiz: 36, notas: [60, 64, 67, 71] }, // Do mayor 7
-  { raiz: 45, notas: [61, 64, 67, 69] }, // La 7
-];
-const CLAVE_SON = new Set([0, 6, 12, 20, 24]); // clave de son 3-2 en 2 compases (32 semicorcheas)
-const CASCARA = new Set([0, 6, 12, 18, 20, 24, 30]); // cascarilla del timbal que sigue la clave 3-2
-// Marcha de las congas (se repite cada 2 tiempos = 8 semicorcheas): talón, punta, palmada en el «y», punta, talón, punta, abiertas en el «y» y el «a» del 2
-const MARCHA = ['talon', 'punta', 'palmada', 'punta', 'talon', 'punta', 'abierta', 'abierta'];
-// Guajeo de piano de 2 compases: [semicorchea, nota del acorde (0-3)]; se toca en octavas
-const GUAJEO = [
-  [[2, 2], [5, 0], [8, 3], [10, 1], [13, 0]],
-  [[0, 2], [3, 1], [6, 0], [8, 1], [11, 2], [14, 3]],
-];
-// Metales de la parte B: [semicorchea dentro del compás, duración en semicorcheas]
-const RIFFS = [
-  [[0, 3], [3, 2], [6, 2], [10, 2], [14, 2]],
-  [[0, 6], [8, 2], [12, 2], [14, 2]],
-  [[0, 3], [3, 2], [6, 2], [10, 2], [14, 2]],
-  [[0, 4], [6, 2], [10, 2], [12, 4]],
-];
+/** Trompetas (grabadas): `d` en semicorcheas. Dos voces van un poco a la derecha, como en la tarima. */
+function trompetas(t, midis, d, vol) {
+  const dur = Math.max(0.08, d * DUR16 * 0.88);
+  if (!bancos.trompeta) return metales(t, midis, dur, vol);
+  midis.forEach((n, i) => {
+    const [th, vh] = humano(t, vol * 3.3);
+    tocarMuestra(th, 'trompeta', n, { vol: i ? vh * 0.8 : vh, dur, liberar: 0.06, pan: i ? 0.4 : 0.2 });
+  });
+}
+/** Trombones (grabados), un poco a la izquierda. */
+function trombones(t, midis, d, vol) {
+  const dur = Math.max(0.08, d * DUR16 * 0.88);
+  if (!bancos.trombon) return metales(t, midis, dur, vol);
+  midis.forEach((n) => {
+    const [th, vh] = humano(t, vol * 3.3);
+    tocarMuestra(th, 'trombon', n, { vol: vh, dur, liberar: 0.07, pan: -0.3 });
+  });
+}
+/** Conga fabricada (solo mientras cargan las grabaciones). */
+const congaSintetica = (t, pos, f) => conga(t, { 0: 'talon', 4: 'palmada', 8: 'talon', 12: 'abierta', 14: 'grave' }[pos] ?? 'punta', f);
 
+/* ───────────── La canción (noviembre de 2026): una salsa ORIGINAL al estilo caleño ─────────────
+   Pedido del usuario: que suene a la salsa que se oye en Cali (Grupo Niche, Guayacán…) y con instrumentos de verdad. No copia la
+   melodía de ninguna canción (tienen derechos de autor): toma la FORMA y el sabor de esas orquestas.
+     · 32 compases en La menor, a 174 negras por minuto (la salsa caleña es rápida; 184 se sentía demasiado), clave de son 2-3.
+     · A (1-8): tema de las trompetas en terceras, piano montuno, bajo tumbao, congas, bongó «martillo», cáscara, güiro y clave.
+     · B (9-16): el «coro» lo cantan las trompetas (frase de 2 compases que se repite) y entran las maracas.
+     · C (17-24): MAMBO — los trombones con un riff grave, las trompetas con golpes cortos y la campana de mambo; platillazo al entrar.
+     · D (25-32): MOÑA — una contramelodía aguda de trompetas sobre notas largas de los trombones; cierra con la «paila» del timbal.
+   En el menú suena solo A y B, más suave y sin golpes de metales. Casi todo son GRABACIONES (Fluid R3, MIT); si algo no ha
+   cargado, ese instrumento suena con los osciladores de antes. */
+const COMPASES = 32;
+const ARMONIA = [ // un acorde por compás, ciclo de 8: Am · Dm · G7 · Cmaj7 · Fmaj7 · Dm7 · E7 · E7
+  { raiz: 45, quinta: 52, notas: [57, 60, 64, 69] },
+  { raiz: 38, quinta: 45, notas: [57, 62, 65, 69] },
+  { raiz: 43, quinta: 50, notas: [55, 59, 62, 65] },
+  { raiz: 36, quinta: 43, notas: [55, 59, 60, 64] },
+  { raiz: 41, quinta: 48, notas: [53, 57, 60, 64] },
+  { raiz: 38, quinta: 45, notas: [53, 57, 60, 62] },
+  { raiz: 40, quinta: 47, notas: [56, 59, 62, 64] },
+  { raiz: 40, quinta: 47, notas: [56, 59, 62, 68] },
+];
+// Tema de la sección A: [compás, semicorchea, nota MIDI, duración en semicorcheas] (original)
+const TEMA = [
+  [0, 0, 76, 2], [0, 2, 77, 2], [0, 4, 76, 3], [0, 7, 72, 3], [0, 10, 69, 2], [0, 12, 72, 4],
+  [1, 2, 74, 2], [1, 4, 77, 3], [1, 7, 74, 3], [1, 10, 72, 2], [1, 12, 69, 4],
+  [2, 0, 71, 2], [2, 2, 74, 2], [2, 4, 77, 3], [2, 7, 76, 3], [2, 10, 74, 2], [2, 12, 71, 4],
+  [3, 2, 72, 2], [3, 4, 76, 4], [3, 8, 79, 4], [3, 12, 76, 4],
+  [4, 0, 77, 3], [4, 3, 76, 3], [4, 6, 72, 2], [4, 8, 69, 4], [4, 12, 72, 2], [4, 14, 74, 2],
+  [5, 0, 77, 4], [5, 4, 74, 2], [5, 6, 72, 2], [5, 8, 74, 4], [5, 12, 76, 4],
+  [6, 0, 76, 2], [6, 2, 80, 2], [6, 4, 83, 4], [6, 8, 80, 2], [6, 10, 76, 2], [6, 12, 74, 4],
+  [7, 0, 71, 6], [7, 8, 76, 2], [7, 10, 74, 2], [7, 12, 71, 2], [7, 14, 68, 2],
+];
+// El «coro» (sección B): frase de 2 compases que se repite 4 veces; la última vez sube un poco (sobre el E7)
+const CORO = [[0, 0, 81, 3], [0, 3, 79, 3], [0, 6, 77, 2], [0, 8, 76, 4], [0, 12, 74, 2], [0, 14, 76, 2], [1, 0, 72, 6], [1, 8, 69, 2], [1, 10, 72, 2], [1, 12, 74, 4]];
+// Mambo (sección C): golpes de las trompetas [semicorchea, duración] y riff grave de los trombones [semicorchea, salto desde la raíz, duración]
+const GOLPES = [[0, 2], [3, 2], [6, 1], [7, 2], [10, 2], [12, 3]];
+const RIFF = [[0, 12, 3], [3, 19, 2], [6, 12, 2], [8, 15, 2], [10, 17, 2], [12, 19, 4]];
+// Moña (sección D): contramelodía aguda, un motivo por compás que sigue al acorde [semicorchea, índice de nota del acorde, duración]
+const MONA = [[0, 3, 2], [2, 2, 2], [4, 3, 3], [8, 1, 2], [10, 2, 2], [12, 3, 4]];
+// Clave de son 2-3 en 2 compases (32 semicorcheas): «2» = tiempos 2 y 3; «3» = 1, 2 y medio y 4
+const CLAVE_23 = new Set([4, 8, 16, 22, 28]);
+// Cáscara del timbal (la cascarita sobre el casco), en 2-3
+const CASCARA_23 = new Set([0, 2, 4, 6, 8, 11, 12, 14, 16, 18, 20, 22, 26, 28, 30]);
+// Montuno de piano (2 compases, en corcheas): [corchea, grado del acorde (0-3), con octava]
+const MONTUNO = [[1, 0, true], [3, 1, false], [4, 2, true], [6, 1, false], [8, 3, true], [9, 2, false], [11, 1, true], [12, 0, false], [14, 2, true]];
+
+/** La tercera de abajo dentro de la escala de La menor (con sol sostenido sobre el E7): para que las trompetas suenen en armonía. */
+function terceraAbajo(midi, compas) {
+  const escala = compas % 8 >= 6 ? [9, 11, 0, 2, 4, 5, 8] : [9, 11, 0, 2, 4, 5, 7];
+  let n = midi - 1;
+  let pasos = 0;
+  while (n > midi - 6) {
+    if (escala.includes(((n % 12) + 12) % 12)) pasos++;
+    if (pasos === 2) return n;
+    n--;
+  }
+  return midi - 3;
+}
+
+/** Una semicorchea de la canción. `s` = semicorchea desde el principio de la canción. */
 function paso_(t, s) {
-  const compas = Math.floor(s / 16) % 8;
+  const compas = Math.floor(s / 16) % COMPASES;
   const pos = s % 16;
-  const ac = ACORDES[compas % 4];
-  const siguiente = ACORDES[(compas + 1) % 4]; // el bajo anticipa el acorde que viene
-  const B = compas >= 4;
+  const ac = ARMONIA[compas % 8];
+  const sig = ARMONIA[(compas + 1) % 8];
+  const seccion = compas < 8 ? 'A' : compas < 16 ? 'B' : compas < 24 ? 'C' : 'D';
   const juego = modo === 'juego';
-  const fuerte = juego ? 1 : 0.75;
+  const f = juego ? 1 : 0.7; // el menú, más suave
+  const fuerte = seccion === 'C' || seccion === 'D';
 
-  if (CLAVE_SON.has(s % 32)) clave(t, juego ? 1 : 0.6);
-  if (B && juego) {
-    if (pos % 4 === 0) campana(t, pos % 8 === 0 ? 1.3 : 0.7, 560); // la campana del bongocero: acentúa el 1 y el 3
-    if (CASCARA.has(s % 32)) campana(t, 0.9, 790); // la campana del timbal sigue la clave
-  } else if (CASCARA.has(s % 32)) {
-    cascara(t, fuerte);
+  // ── Percusión ──
+  if (CLAVE_23.has(s % 32)) golpe(t, 'clave', 0.32 * f, { pan: 0.1 }, () => clave(t, f));
+  // Congas (tumbao): talón y punta suaves, palmada en el 2, abiertas en el 4 y su «y»
+  const conga = { 0: ['tumba', 0.18, 0.9, 0.06], 2: ['conga', 0.14, 1.35, 0.04], 4: ['conga', 0.42, 1.12, 0.07], 6: ['conga', 0.14, 1.35, 0.04],
+    8: ['tumba', 0.18, 0.9, 0.06], 10: ['conga', 0.14, 1.35, 0.04], 12: ['conga', 0.5, 1, 0.3], 14: ['tumba', 0.55, 1, 0.3] }[pos];
+  if (conga) golpe(t, conga[0], conga[1] * f * (fuerte ? 1.1 : 1), { tasa: conga[2], dur: conga[3], pan: -0.3 }, () => congaSintetica(t, pos, f));
+  if (fuerte && pos === 15) golpe(t, 'conga', 0.4 * f, { dur: 0.25, pan: -0.3 }); // en el mambo, un golpe abierto más
+  if (seccion === 'A' || seccion === 'B') {
+    // bongó «martillo» en corcheas (agudo; el grave al final del compás)
+    if (juego && pos % 2 === 0) golpe(t, pos === 14 ? 'bongoBajo' : 'bongoAlto', (pos === 4 || pos === 12 ? 0.42 : 0.26) * f, { pan: 0.35 }, () => bongo(t, pos !== 14, 0.7));
+    // cáscara del timbal sobre el casco (golpecito corto y agudo)
+    if (CASCARA_23.has(s % 32)) golpe(t, 'timbalAlto', 0.12 * f, { tasa: 1.7, dur: 0.035, pan: 0.45 }, () => cascara(t, f));
+  } else {
+    // campana de mambo en negras (abierta en el 1 y el 3, cerrada en el 2 y el 4) + la del bongocero
+    if (pos % 4 === 0) golpe(t, 'cencerro', (pos % 8 === 0 ? 0.5 : 0.34) * f, { tasa: pos % 8 === 0 ? 1 : 1.12, pan: 0.25 }, () => campana(t, 1, 560));
+    if (pos % 4 === 2) golpe(t, 'cencerro', 0.18 * f, { tasa: 1.25, dur: 0.05, pan: 0.25 });
   }
-  if (pos % 2 === 0) guiro(t, pos % 8 === 0 ? 1.6 : 1);
-  conga(t, MARCHA[pos % 8], fuerte); // las congas nunca paran
-  if (juego && !B && pos % 2 === 0) bongo(t, pos % 4 === 2, pos === 6 || pos === 14 ? 1.2 : 0.7); // martillo del bongó
-  // bajo tumbao: sin golpe en el 1; «y» del 2 (bombo) y el 4 (ponche), que se alarga cruzando el compás y ya es el acorde siguiente
-  if (pos === 6) bajo(t, ac.raiz, 0.28, 0.5);
-  if (pos === 12) bajo(t, siguiente.raiz + 12, 0.5, 0.5);
-  // guajeo de piano en octavas
-  for (const [p0, idx] of GUAJEO[compas % 2]) {
-    if (p0 === pos) {
-      piano(t, ac.notas[idx], 0.11, 0.22);
-      piano(t, ac.notas[idx] + 12, 0.08, 0.2);
-    }
-  }
-  // metales (solo parte B del juego): riff de mambo, trompetas arriba y trombón abajo; platillazo y redoble de cierre
-  if (B && juego) {
-    for (const [p0, largo] of RIFFS[compas - 4]) {
-      if (p0 === pos) {
-        const durS = largo * DUR16 * 0.9;
-        metales(t, [ac.notas[0] + 12, ac.notas[1] + 12, ac.notas[2] + 12], durS, 0.045);
-        metales(t, [ac.raiz + 24], durS, 0.05);
+  // güiro: largo en cada tiempo, cortico en el «y»
+  if (pos % 4 === 0) golpe(t, 'guiroLargo', 0.16 * f, { dur: 0.13, pan: -0.45 }, () => guiro(t, 1.4));
+  else if (pos % 4 === 2) golpe(t, 'guiroCorto', 0.13 * f, { dur: 0.06, pan: -0.45 }, () => guiro(t, 1));
+  if (seccion === 'B' && pos % 2 === 0) golpe(t, 'maracas', (pos % 4 === 0 ? 0.16 : 0.1) * f, { pan: -0.2 });
+  // platillazo al empezar el tema y el mambo; «paila» (redoble del timbal) al cerrar cada sección
+  if (pos === 0 && (compas === 0 || compas === 16)) golpe(t, 'platillo', (juego ? 0.32 : 0.16), { dur: 1.1, pan: 0.3 }, () => platillo(t, juego ? 1 : 0.5));
+  if (juego && compas % 8 === 7 && pos >= 8) golpe(t, pos % 2 ? 'timbalBajo' : 'timbalAlto', (0.22 + (pos - 8) * 0.04), { dur: 0.12, pan: 0.4 }, () => timbal(t, 0.7));
+
+  // ── Bajo tumbao: en el «y» del 2 (la quinta) y en el 4, anticipando la raíz del acorde que viene ──
+  if (pos === 6) bajo(t, ac.quinta, DUR16 * 5, 0.5 * f);
+  if (pos === 12) bajo(t, sig.raiz, DUR16 * 9, 0.55 * f);
+
+  // ── Piano montuno (en octavas sobre las notas del acorde) ──
+  const enDos = (compas % 2) * 8; // corchea dentro de la frase de 2 compases
+  if (pos % 2 === 0) {
+    for (const [corchea, grado, octava] of MONTUNO) {
+      if (corchea === enDos + pos / 2) {
+        const n = ac.notas[grado] + 12;
+        piano(t, n, (octava ? 0.11 : 0.085) * f, 0.2);
+        if (octava) piano(t, n - 12, 0.07 * f, 0.2);
       }
     }
   }
-  if (pos === 0 && (compas === 0 || compas === 4)) platillo(t, juego ? 1 : 0.5);
-  if (juego && (compas === 3 || compas === 7) && pos >= 12) timbal(t, 0.7 + (pos - 12) * 0.2); // la «paila»: redoble de timbal al cerrar la frase
+
+  // ── Metales ──
+  if (seccion === 'A' && juego) {
+    for (const [c, p0, n, d] of TEMA) if (c === compas && p0 === pos) trompetas(t, [n, terceraAbajo(n, compas)], d, 0.05);
+  } else if (seccion === 'A' && compas < 4) {
+    for (const [c, p0, n, d] of TEMA) if (c === compas && p0 === pos) trompetas(t, [n], d, 0.032); // en el menú, solo la primera mitad del tema, suave
+  }
+  if (seccion === 'B' && juego) {
+    const c = compas % 2;
+    for (const [cc, p0, n0, d] of CORO) {
+      if (cc === c && p0 === pos) {
+        const n = compas >= 14 && n0 === 79 ? 80 : n0;
+        trompetas(t, [n, terceraAbajo(n, compas)], d, 0.045);
+      }
+    }
+  }
+  if (seccion === 'C' && juego) {
+    for (const [p0, d] of GOLPES) if (p0 === pos) trompetas(t, [ac.notas[3] + 12, ac.notas[2] + 12, ac.notas[1] + 12], d, 0.04);
+    for (const [p0, salto, d] of RIFF) if (p0 === pos) trombones(t, [ac.raiz + salto], d, 0.07);
+  }
+  if (seccion === 'D' && juego) {
+    for (const [p0, grado, d] of MONA) if (p0 === pos) trompetas(t, [ac.notas[grado] + 24 > 86 ? ac.notas[grado] + 12 : ac.notas[grado] + 24], d, 0.042);
+    if (pos === 0) trombones(t, [ac.notas[1], ac.notas[0]], 14, 0.05);
+  }
 }
 
 function programar() {
@@ -434,7 +523,7 @@ function programar() {
   while (proximo < ctx.currentTime + 0.16) {
     paso_(proximo, paso);
     proximo += DUR16;
-    paso = (paso + 1) % 128;
+    paso = (paso + 1) % (modo === 'juego' ? COMPASES * 16 : 256); // en el menú se repiten solo las secciones A y B
   }
 }
 
@@ -527,7 +616,7 @@ export const audio = {
     modo = modoPrueba;
     forzarListo = true;
     bMusica.gain.value = VOL_MUSICA[modo];
-    if (opciones.musica !== false) for (let i = 0; i * DUR16 < segundos - 0.2; i++) paso_(0.05 + i * DUR16, i % 128);
+    if (opciones.musica !== false) for (let i = 0; i * DUR16 < segundos - 0.2; i++) paso_(0.05 + i * DUR16, i % (COMPASES * 16));
     for (const e of opciones.efectos ?? []) audio[e]();
     const buf = await ctx.startRendering();
     forzarListo = false;

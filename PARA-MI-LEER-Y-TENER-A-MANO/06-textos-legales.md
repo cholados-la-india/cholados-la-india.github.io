@@ -21,7 +21,7 @@ Llega a la meta y gánate **un raspao personal** o **un cholado de 10 oz** — c
 2. Cada código da **un solo regalo**: **un raspao personal** o **un cholado de 10 oz**. **No es acumulable**: con una compra de $60.000 también es un solo regalo.
 3. Se necesita una compra mínima de **$30.000** en productos pagados; el regalo no cuenta.
 4. El código tiene un **plazo máximo de 7 días** desde que lo recibes (en tu código aparece hasta cuándo) y se canjea **una sola vez**.
-5. Solo se canjea en el local: Cholados La India, Canchas Panamericanas, **todos los días, de 2:00 p. m. a 9:00 p. m.**
+5. Solo se canjea en nuestro punto de venta: Cholados La India, Canchas Panamericanas, **todos los días, de 2:00 p. m. a 9:00 p. m.**
 6. Se entrega **un código por celular cada 7 días**.
 7. Hay **50 premios por semana**; se renuevan cada lunes a la medianoche (apenas empieza el lunes). Cuando se acaban, toca esperar al lunes.
 8. La promo todavía no tiene fecha de cierre: puede cambiar o terminar, y lo avisamos en Instagram (@cholados.laindia).
@@ -39,11 +39,11 @@ Guardamos tu nombre y tu celular solo para entregarte y controlar tu premio de e
 
 ## 4. «¿Cómo se juega?» — la parte del premio
 
-Si ganas, recibes un **código** para canjear en el local por **un raspao personal** o **un cholado de 10 oz**, con una compra mínima de **$30.000** en productos (el regalo no cuenta). Un regalo por código: **no es acumulable**.
+Si ganas, recibes un **código** para canjear en nuestro punto de venta por **un raspao personal** o **un cholado de 10 oz**, con una compra mínima de **$30.000** en productos (el regalo no cuenta). Un regalo por código: **no es acumulable**.
 
 ## 5. El ticket del código
 
-1. Ve al local y muestra este código en la caja.
+1. Ve a nuestro punto de venta y muéstrale este código al vendedor.
 2. Compra mínimo **$30.000** en productos (el regalo no cuenta).
 3. Elige tu regalo: **un raspao personal** o **un cholado de 10 oz**.
 

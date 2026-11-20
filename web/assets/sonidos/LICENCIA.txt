@@ -1,8 +1,11 @@
-Grabaciones de instrumentos de la música del juego (piano, trompeta, trombón, bajo acústico, agogó y bloque de madera).
+Grabaciones de instrumentos de la música del juego.
 
-Origen: banco de sonidos «Fluid (R3) General MIDI SoundFont», de Frank Wen, en la versión por notas de
-«MIDI.js Soundfonts» de Benjamin Gleitzman: https://github.com/gleitz/midi-js-soundfonts (carpeta FluidR3_GM).
-Solo se copiaron las notas que usa el juego (32 archivos MP3), sin modificarlas.
+1. Notas de piano, trompeta, trombón y bajo acústico (carpetas acoustic_grand_piano, trumpet, trombone, acoustic_bass; MP3):
+   del banco «Fluid (R3) General MIDI SoundFont», de Frank Wen, en la versión por notas de «MIDI.js Soundfonts» de
+   Benjamin Gleitzman: https://github.com/gleitz/midi-js-soundfonts (carpeta FluidR3_GM). Copiadas sin modificar.
+2. Percusión latina (carpeta percusion; WAV): conga, tumba, bongó, timbales, campana, clave, güiro, maracas y platillo,
+   sacadas del archivo original FluidR3_GM.sf2 (paquete fluid-soundfont-gm de Debian, que lo distribuye bajo licencia MIT):
+   canal izquierdo, recortadas con una caída suave y pasadas a 22.050 Hz.
 
 Licencia de Fluid (R3): MIT — Copyright (c) 2000-2002, 2008 Frank Wen.
 Licencia de MIDI.js Soundfonts: MIT — Copyright (C) 2012 Benjamin Gleitzman (gleitz@mit.edu).

@@ -3,9 +3,11 @@
 //
 // VOCABULARIO (revisión de noviembre de 2026; usarlo igual en todo texto nuevo para no confundir a nadie):
 //   · PREMIO = lo que hay en el banco de la semana («Quedan 50 premios»).
-//   · CÓDIGO = lo que recibe quien gana y muestra en caja (LAINDIA-XXXX). Nunca «cupón».
+//   · CÓDIGO = lo que recibe quien gana y le muestra AL VENDEDOR (LAINDIA-XXXX). Nunca «cupón». De cara al cliente no se dice
+//     «caja»: el código se canjea con el vendedor (pedido del usuario, 2026-11-19).
 //   · REGALO = el producto que se lleva (raspao o cholado).
-//   · En el juego el código se ACTIVA (formulario); en el local se CANJEA.
+//   · En el juego el código se ACTIVA (formulario); en el punto de venta se CANJEA (con el vendedor). De cara al cliente se
+//     dice «punto de venta», no «el local» (pedido del usuario, 2026-11-19).
 //   · «celular» (no «número»), «promo» de cara al cliente (no «campaña»), «mínimo» (no «al menos»).
 //
 // Datos del local (llenados por el dueño, Fase B). El correo es PÚBLICO a propósito: sale en la política de datos del juego.
@@ -77,7 +79,7 @@ export const T = {
       'Esquiva las cajas y salta las barras. Las <b>pilas altas</b> no se saltan: ¡esquívalas!',
       `Recoge mínimo <b>${frutasMinimas} frutas</b> y aguanta hasta la meta (1 minuto). Tienes <b>${vidas} vidas</b>: cada choque te quita una.`,
     ],
-    premio: (compraMinima, regalos) => `Si ganas, recibes un <b>código</b> para canjear en el local por ${listaRegalos(regalos)}, con una compra mínima de <b>${pesos(compraMinima)}</b> en productos (el regalo no cuenta). Un regalo por código: <b>no es acumulable</b>.`,
+    premio: (compraMinima, regalos) => `Si ganas, recibes un <b>código</b> para canjear en nuestro punto de venta por ${listaRegalos(regalos)}, con una compra mínima de <b>${pesos(compraMinima)}</b> en productos (el regalo no cuenta). Un regalo por código: <b>no es acumulable</b>.`,
     cerrar: 'Entendido',
   },
 
@@ -90,7 +92,7 @@ export const T = {
       `Cada código da <b>un solo regalo</b>: ${listaRegalos(r.regalos)}. <b>No es acumulable</b>: con una compra de ${pesos(r.compraMinima * 2)} también es un solo regalo.`,
       `Se necesita una compra mínima de <b>${pesos(r.compraMinima)}</b> en productos pagados; el regalo no cuenta.`,
       `El código tiene un <b>plazo máximo de ${r.vigenciaDias} días</b> desde que lo recibes (en tu código aparece hasta cuándo) y se canjea <b>una sola vez</b>.`,
-      `Solo se canjea en el local: ${LOCAL.direccion}, <b>${LOCAL.dias.toLowerCase()}, ${LOCAL.horas}</b>`, // (sin punto final: la hora ya termina en «p. m.»)
+      `Solo se canjea en nuestro punto de venta: ${LOCAL.direccion}, <b>${LOCAL.dias.toLowerCase()}, ${LOCAL.horas}</b>`, // (sin punto final: la hora ya termina en «p. m.»)
       `Se entrega <b>un código por celular cada ${r.diasEntreCodigosPorCelular} días</b>.`,
       premios ? `Hay <b>${premios} premios por semana</b>; se renuevan cada lunes a la medianoche (apenas empieza el lunes). Cuando se acaban, toca esperar al lunes.` : null,
       r.cupoDiario > 0 ? `Además, cada día se entregan máximo <b>${r.cupoDiario} premios</b>; el cupo del día se renueva a la medianoche. Si ya se entregaron los de hoy, vuelve mañana.` : null,
@@ -152,10 +154,10 @@ export const T = {
     vencido: (fecha) => `Este código <b>venció</b> (valía hasta el ${fecha}). Los códigos vencidos no se reactivan.`,
     vencioAhora: 'Tu código acaba de <b>vencer</b>.',
     canjeado: (fecha) => `Ya canjeaste este código el ${fecha}`, // (sin punto final: la hora ya termina en «a. m.»)
-    desactivado: 'Este código está <b>desactivado</b>. Si crees que es un error, pregunta en el local.',
+    desactivado: 'Este código está <b>desactivado</b>. Si crees que es un error, pregúntale al vendedor en nuestro punto de venta.',
     otroCodigo: (cuando) => `Puedes ganarte otro código desde el <b>${cuando}</b>`, // (sin punto final: la hora ya termina en «a. m.»)
     pasos: (compraMinima, regalos) => [
-      'Ve al local y muestra este código en la caja.',
+      'Ve a nuestro punto de venta y muéstrale este código al vendedor.',
       `Compra mínimo <b>${pesos(compraMinima)}</b> en productos (el regalo no cuenta).`,
       `Elige tu regalo: ${listaRegalos(regalos)}.`,
     ],
@@ -169,7 +171,7 @@ export const T = {
     consejo: '¡Tómale captura para no perderlo!',
     // El botón atrás del celular (o cerrar Instagram) se lleva la pantalla, pero el código queda guardado en el servidor
     siCierras: 'Si cierras esta página, vuelve a abrir el juego en este mismo celular y toca «Ver mi código».',
-    prueba: 'Código de PRUEBA: no sirve en caja.',
+    prueba: 'Código de PRUEBA: no sirve con el vendedor.',
     volver: 'Volver al inicio',
   },
 

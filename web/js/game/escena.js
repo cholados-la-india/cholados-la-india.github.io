@@ -74,6 +74,7 @@ export function crearEscena(canvas, contenedor, cfg, tema = {}) {
     .forEach(([x, z, r, h, k]) => fijo.push(pieza(M.cono(r, h, 6), k ? pal.montanaB : pal.montanaA, [x, h / 2 - 0.02, z])));
   // Cali en el horizonte: las Tres Cruces en la montaña de la izquierda y Cristo Rey en la de la derecha
   fijo.push(...M.cerrosDeCali([-26, 8.3, -62], [27, 9.3, -60]));
+  fijo.push(...M.ermita(15, 0, -46, 1.1)); // La Ermita, a la derecha antes de las montañas
   escena.add(crearMalla(fusionar(fijo), { conContorno: false }));
 
   const sol = new THREE.Mesh(new THREE.CircleGeometry(9, 28), new THREE.MeshBasicMaterial({ color: pal.sol, fog: false }));
@@ -104,6 +105,9 @@ export function crearEscena(canvas, contenedor, cfg, tema = {}) {
   const vasos = [[-4.3, 76], [4.4, 1]]; // vasos gigantes de cholado
   const parejas = [[3.4, 15], [-3.4, 44], [3.4, 54], [-3.4, 62]]; // parejas bailando salsa
   const tarimas = [[6.6, 60]]; // la orquesta
+  const gatos = [[-6.4, 9]]; // el Gato del Río (Tejada)
+  const gatas = [[6.2, 29]]; // las gatas del río
+  const carretas = [[-4.8, 48], [4.8, 68]]; // carretas de chontaduro
   const iBanderas = crearMalla(M.banderaCali, { instancias: banderas.length, jugable: false });
   const iVallas = crearMalla(M.valla, { instancias: vallas.length, jugable: false });
   const texLogo = new THREE.TextureLoader().load('assets/marca/logo.png');
@@ -113,6 +117,9 @@ export function crearEscena(canvas, contenedor, cfg, tema = {}) {
   const iVasos = crearMalla(M.vasoGigante, { instancias: vasos.length, jugable: false });
   const iParejas = crearMalla(M.pareja, { instancias: parejas.length, jugable: false });
   const iTarimas = crearMalla(M.tarima, { instancias: tarimas.length, jugable: false });
+  const iGatos = crearMalla(M.gatoTejada, { instancias: gatos.length, jugable: false });
+  const iGatas = crearMalla(M.gatasDelRio, { instancias: gatas.length, jugable: false });
+  const iCarretas = crearMalla(M.chontaduro, { instancias: carretas.length, jugable: false });
   const iNubes = new THREE.InstancedMesh(M.nube, new THREE.MeshBasicMaterial({ vertexColors: true, fog: false }), nubes.length);
   iNubes.frustumCulled = false;
   const iRayas = crearMalla(fusionar([pieza(M.caja(0.09, 0.02, 1.1), pal.linea)]), { instancias: nRayas * 2, conContorno: false });
@@ -121,7 +128,7 @@ export function crearEscena(canvas, contenedor, cfg, tema = {}) {
   const iBarras = crearMalla(crearBarraBaja(), { instancias: MAX.barraBaja });
   const iFrutas = Object.fromEntries(TIPOS_FRUTA.map((k) => [k, crearMalla(M[k], { instancias: MAX.fruta })]));
   const todasInstancias = [iPalmas, iSombrillas, iPinas, iRayas, ...iCajas, iPilas, iBarras, ...Object.values(iFrutas)];
-  escena.add(...todasInstancias, iGente, iPuestos, iCuerdas, iNubes, iBanderas, iVallas, iLogos, iVasos, iParejas, iTarimas);
+  escena.add(...todasInstancias, iGente, iPuestos, iCuerdas, iNubes, iBanderas, iVallas, iLogos, iVasos, iParejas, iTarimas, iGatos, iGatas, iCarretas);
 
   const maxSombras = 1 + MAX.cajaBaja + MAX.pilaAlta;
   const sombras = new THREE.InstancedMesh(
@@ -299,9 +306,9 @@ export function crearEscena(canvas, contenedor, cfg, tema = {}) {
 
   // Lo que se reutiliza en cada cuadro (crear arreglos u objetos nuevos 60 veces por segundo pone a trabajar al recolector
   // de basura, y en gama baja eso se nota como tirones)
-  const nCaja = [0, 0, 0];
+  const nCaja = iCajas.map(() => 0);
   const nFruta = Object.fromEntries(TIPOS_FRUTA.map((k) => [k, 0]));
-  const mallasQueSeMueven = [...iCajas, iPilas, iBarras, ...Object.values(iFrutas), iPalmas, iSombrillas, iPinas, iRayas, sombras, iGente, iPuestos, iCuerdas, iNubes, iBanderas, iVallas, iLogos, iVasos, iParejas, iTarimas];
+  const mallasQueSeMueven = [...iCajas, iPilas, iBarras, ...Object.values(iFrutas), iPalmas, iSombrillas, iPinas, iRayas, sombras, iGente, iPuestos, iCuerdas, iNubes, iBanderas, iVallas, iLogos, iVasos, iParejas, iTarimas, iGatos, iGatas, iCarretas];
 
   /* ───────────── El cuadro ───────────── */
   /**
@@ -335,6 +342,10 @@ export function crearEscena(canvas, contenedor, cfg, tema = {}) {
     vasos.forEach(([x, f], i) => poner(iVasos, i, x, 0, zLejos(f, D), 1, i * 1.3));
     parejas.forEach(([x, f], i) => poner(iParejas, i, x, Math.abs(Math.sin(idleT * 5.6 + i)) * 0.06, zLejos(f, D), 1, idleT * 2.2 + i * 1.7)); // dan vueltas bailando
     tarimas.forEach(([x, f], i) => poner(iTarimas, i, x, 0, zLejos(f, D), 1, x > 0 ? Math.PI : 0)); // la orquesta mira a la pista
+    // los gatos y las carretas miran hacia quien llega, un poco girados hacia la pista
+    gatos.forEach(([x, f], i) => poner(iGatos, i, x, 0, zLejos(f, D), 1, x < 0 ? 0.5 : -0.5));
+    gatas.forEach(([x, f], i) => poner(iGatas, i, x, 0, zLejos(f, D), 1, x < 0 ? 0.6 : -0.6));
+    carretas.forEach(([x, f], i) => poner(iCarretas, i, x, 0, zLejos(f, D), 1, x < 0 ? 0.4 : -0.4));
     for (let i = 0; i < nRayas; i++) {
       const z = zLejos(i * (LARGO / nRayas), D);
       poner(iRayas, i, -W / 2, 0.012, z);
@@ -357,7 +368,7 @@ export function crearEscena(canvas, contenedor, cfg, tema = {}) {
         const s = suave((horizonte - dz) / 10) * suave((dz + 2.6) / 1.8);
         const x = o.carril < 0 ? 0 : (o.carril - 1) * W;
         if (o.tipo === 'cajaBaja') {
-          const v = Math.floor(o.d * 3.7) % 3; // cada caja siempre lleva la misma fruta
+          const v = Math.floor(o.d * 3.7) % iCajas.length; // cada caja siempre lleva la misma fruta
           if (nCaja[v] < MAX.cajaBaja) poner(iCajas[v], nCaja[v]++, x, 0, -dz, s);
         } else if (o.tipo === 'pilaAlta' && nPila < MAX.pilaAlta) poner(iPilas, nPila++, x, 0, -dz, s);
         else if (o.tipo === 'barraBaja' && nBarra < MAX.barraBaja) poner(iBarras, nBarra++, x, 0, -dz, s);
